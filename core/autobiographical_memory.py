@@ -207,6 +207,31 @@ class AutobiographicalMemory:
             return []
         return list(self._records[-n:])
 
+    def consolidate(self, k: int, boost: float, prune_threshold: float) -> tuple[int, int]:
+        """Offline consolidation: reinforce the top-k important records and forget
+        any record whose importance is below ``prune_threshold``.
+
+        Returns (n_boosted, n_pruned). Persists via the store when present.
+        """
+        if not self._records:
+            return 0, 0
+        ordered = sorted(self._records, key=lambda r: r.importance, reverse=True)
+        n_boost = max(0, int(k))
+        boosted = 0
+        for record in ordered[:n_boost]:
+            new_imp = float(min(1.0, record.importance * float(boost)))
+            if new_imp > record.importance:
+                record.importance = round(new_imp, 6)
+                boosted += 1
+        before = len(self._records)
+        kept = [r for r in self._records if r.importance >= float(prune_threshold)]
+        pruned = before - len(kept)
+        if pruned > 0:
+            self._records = kept
+            if self._store is not None:
+                self._store.save_records(self._records)
+        return boosted, pruned
+
     def count(self) -> int:
         """Return the number of retained records."""
         return len(self._records)
