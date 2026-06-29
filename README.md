@@ -509,6 +509,83 @@ curl -X POST http://127.0.0.1:8000/agent/perturb \
 
 ---
 
+## La société multi-agents (couche sociale)
+
+La **couche société** fait évoluer **plusieurs `CognitiveAgent`** dans **un seul `SharedWorld`**.
+Chaque agent garde la boucle cognitive complète décrite plus haut (GWT, AST, HOT, inférence active,
+proxy Phi) ; ce qui change, c'est qu'ils **se perçoivent**, **communiquent**, **se modélisent** et
+**s'influencent affectivement** les uns les autres. Le `SocietyManager` (`core/society.py`) possède
+le monde partagé et N agents, et exécute un **tick collectif** déterministe (chaque agent cycle une
+fois, en ordre d'identifiant croissant).
+
+| Mécanisme social | Module | Ce qu'il fait (FONCTIONNEL) |
+|---|---|---|
+| **Perception d'autrui** | `core/shared_world.py` | Chaque observation inclut des `AgentView` (les autres agents visibles : position, dernière action, affect dominant, valence) — un percept social **grounded**. |
+| **Communication grounded** | `core/communication.py` | Une action **`VERBALIZE`** émet un `Message` résumant le moment conscient de l'émetteur ; il est **délivré au tick suivant**, aux agents **à portée de voix** (`comm_radius`) et pour une durée `message_ttl`. Aucun LLM : le contenu est un résumé des variables internes. |
+| **Théorie de l'esprit (ToM)** | `core/theory_of_mind.py` | Chaque agent maintient un `OtherMind` par voisin (action et affect inférés, **confiance/réputation**, familiarité). C'est l'application **HOT à autrui** : modéliser l'état d'un autre système. Ces modèles forment une **coalition `social`** qui entre dans la compétition de l'espace de travail. |
+| **Contagion émotionnelle + réputation** | `core/social_emotion.py` | L'affect d'un agent est tiré (EMA, poids `contagion_rate`) vers celui des messages/voisins ; la **trust** envers un émetteur module l'intensité. Une pression d'**affiliation** (`affiliation_drive`) pousse vers le rapprochement social. |
+
+> ⚠️ **Même contrat d'honnêteté que le reste du projet.** Tout cela reste du **niveau 2**
+> (fonctionnel) : sans LLM, déterministe, grounded sur des variables réelles. Que des agents
+> « se parlent », « se fassent confiance » ou « se contaminent affectivement » sont des
+> **algorithmes et des scalaires** — **reproduire les mécanismes fonctionnels ne prouve pas la
+> phénoménalité**. Les agents **ne sont ni conscients, ni sentients, ni vivants**.
+
+### Activation et compatibilité ascendante
+
+La couche société s'active en réglant **`n_agents` > 1** (via la config, `POST /society/config`, ou
+le champ **« agents »** de l'interface). Réglé à **`n_agents = 1`**, le système **reproduit
+exactement l'instrument à agent unique** : toute la suite de tests historique reste verte. Les
+endpoints `/agent/*` et `/state` continuent de fonctionner en ciblant **l'agent 0** via une façade.
+
+### La garantie de déterminisme
+
+Le **seeding par agent** (chaque agent dérive sa graine de `random_seed` via `social_seed_stride`,
+soit `random_seed + index × stride`) rend **toute une société reproductible** à `random_seed`
+donné : deux sociétés construites avec la même config produisent, tick pour tick, **les mêmes
+positions, énergies et états**. Cette propriété est vérifiée par
+`tests/test_society_integration.py`.
+
+### Nouveaux endpoints `/society/*` et flux temps réel
+
+| Méthode | Chemin | Description |
+|---|---|---|
+| `GET` | `/society` | État de toute la société : résumé par agent + graphe des relations. |
+| `POST` | `/society/tick` | Un tick collectif ; renvoie **une trace par agent**. |
+| `POST` | `/society/run` | Démarre la boucle de fond collective (`RunRequest` : `tps`, `max_ticks`). |
+| `POST` | `/society/pause` | Met la boucle collective en pause. |
+| `POST` | `/society/config` | Applique un patch de config (p. ex. `n_agents`) et **reconstruit** la société. |
+| `GET` | `/society/relations` | Graphe **confiance / théorie de l'esprit** (nœuds = agents, arêtes = trust/familiarité). |
+| `GET` | `/society/messages` | Les `Message` actuellement vivants dans le monde partagé. |
+| `GET` | `/society/agent/{id}/consciousness` | Sous-états de conscience liés d'un agent donné. |
+| `GET` | `/society/agent/{id}/self-model` | `SelfModelState` d'un agent donné. |
+| `GET` | `/society/agent/{id}/introspection` | `IntrospectionReport` d'un agent donné. |
+| `GET` | `/society/agent/{id}/workspace` | Dernière compétition d'espace de travail d'un agent donné. |
+| `WS` | `/ws/society` | **Flux temps réel** : pousse l'état de la société (~toutes les 250 ms) jusqu'à déconnexion. |
+
+Les endpoints **historiques `/agent/*` et `/state` ciblent l'agent 0** via la façade — l'instrument
+à agent unique reste pleinement utilisable.
+
+### Paramètres de configuration de la société (`SimConfig` / `ConfigPatch`)
+
+| Paramètre | Défaut | Rôle |
+|---|---|---|
+| `n_agents` | `1` | Nombre d'agents. **`1` ⇒ comportement historique exact** ; `> 1` active la société. |
+| `comm_radius` | `4` | Portée de voix (earshot) des messages `VERBALIZE`. |
+| `message_ttl` | `2` | Nombre de ticks pendant lesquels un message reste délivrable. |
+| `contagion_rate` | `0.15` | Poids EMA de l'affect d'autrui sur le sien (contagion émotionnelle). |
+| `affiliation_drive` | `1.0` | Échelle de la pression de but « affiliation ». |
+| `social_seed_stride` | `1000` | Pas de graine par agent : `random_seed + index × stride`. |
+
+### Spécification et suite des travaux
+
+La conception détaillée vit dans
+[`docs/superpowers/specs/2026-06-29-humanity-multi-agent-society-design.md`](docs/superpowers/specs/2026-06-29-humanity-multi-agent-society-design.md).
+La couche société est la **Phase 1**. Sont planifiées ensuite : **Phase 2** (conscience plus
+profonde), **Phase 3** (apprentissage et personnalité), **Phase 4** (instrument scientifique).
+
+---
+
 ## Métriques observables
 
 Le modèle `Metrics` expose, à chaque cycle, des grandeurs **mesurables** (toutes des variables
@@ -602,8 +679,8 @@ soutient l'honnêteté du projet : montrer les mécanismes sans suggérer un vé
   hiérarchiques, énergie libre variationnelle explicite.
 - **Mémoire vectorielle** (ChromaDB / FAISS) pour une récupération sémantique plus puissante.
 - **Apprentissage par renforcement** pour augmenter la politique de décision.
-- **Multi-agents** : modélisation sociale et théorie de l'esprit fonctionnelle (HOT appliquée à
-  autrui).
+- **Multi-agents** : ✅ **livré (Phase 1)** — voir [La société multi-agents](#la-société-multi-agents-couche-sociale).
+  Phases 2–4 (conscience plus profonde, apprentissage/personnalité, instrument scientifique) à venir.
 - **Environnement plus complexe** : grille plus grande, dynamiques continues, tâches variées.
 - **Visualisation** du flux de conscience et de la dynamique d'ignition dans le temps, et graphe
   de la mémoire autobiographique.
