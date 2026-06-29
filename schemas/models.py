@@ -26,6 +26,51 @@ class WorldObject(BaseModel):
     utility: float = 0.0           # 0..1, task usefulness
 
 
+class AgentView(BaseModel):
+    """Another agent as perceived by an observer (grounded social percept)."""
+    id: int
+    x: int
+    y: int
+    distance: float
+    last_action: ActionType | None = None
+    dominant_affect: str = "neutral"   # label of the other's strongest functional affect
+    valence: float = 0.0               # other's published mood in [-1, 1]
+
+
+class Message(BaseModel):
+    """A grounded utterance emitted by a VERBALIZE action; delivered next tick."""
+    id: int
+    tick_emitted: int
+    sender_id: int
+    content: str                       # grounded summary of the sender's ConsciousMoment
+    vector: list[float] = Field(default_factory=list)  # small affect/feature summary
+    x: int
+    y: int
+    radius: int                        # earshot radius from the emission point
+    ttl: int                           # ticks the message stays deliverable
+
+
+class OtherMind(BaseModel):
+    """One agent's functional model of another agent (theory of mind, ToM)."""
+    agent_id: int
+    inferred_action: ActionType | None = None
+    inferred_affect: str = "neutral"
+    inferred_valence: float = 0.0      # -1..1
+    trust: float = 0.5                 # 0..1 reputation/confidence
+    familiarity: float = 0.0           # 0..1 grows with exposure
+    last_seen_tick: int = -1
+    note: str = ""
+
+
+class SocialState(BaseModel):
+    """An agent's social snapshot for the trace/UI."""
+    agent_id: int
+    others: list[OtherMind] = Field(default_factory=list)
+    affiliation_pressure: float = 0.0
+    last_emitted: str | None = None
+    received_count: int = 0
+
+
 class Percept(BaseModel):
     object_id: int
     kind: str
@@ -45,6 +90,8 @@ class Observation(BaseModel):
     agent_energy: float
     radius: int
     visible: list[WorldObject]
+    visible_agents: list[AgentView] = Field(default_factory=list)
+    audible_messages: list["Message"] = Field(default_factory=list)
 
 
 class SalientItem(BaseModel):
@@ -252,6 +299,7 @@ class CycleTrace(BaseModel):
     metacognition: MetacognitiveState
     conscious_moment: ConsciousMoment
     integration: IntegrationState
+    social: SocialState | None = None
 
 
 class SimConfig(BaseModel):
@@ -289,6 +337,13 @@ class SimConfig(BaseModel):
     arousal_gain: float = 1.0            # how strongly salient signals raise arousal
     competition_sharpness: float = 3.0   # how much dominance (vs raw strength) ignition requires
     ignition_maintenance: float = 0.12   # hysteresis boost to a sustained winner (train of thought)
+    # society (multi-agent, v3)
+    n_agents: int = 1                    # 1 => exact legacy single-agent behaviour
+    comm_radius: int = 4                 # earshot radius for VERBALIZE messages
+    message_ttl: int = 2                 # ticks a message stays deliverable
+    contagion_rate: float = 0.15         # EMA weight of others' affect on one's own
+    affiliation_drive: float = 1.0       # scales the 'affiliate' goal pressure
+    social_seed_stride: int = 1000       # per-agent RNG seed = seed + index*stride
 
 
 class ConfigPatch(BaseModel):
@@ -318,6 +373,12 @@ class ConfigPatch(BaseModel):
     arousal_gain: float | None = None
     competition_sharpness: float | None = None
     ignition_maintenance: float | None = None
+    n_agents: int | None = None
+    comm_radius: int | None = None
+    message_ttl: int | None = None
+    contagion_rate: float | None = None
+    affiliation_drive: float | None = None
+    social_seed_stride: int | None = None
 
 
 class GoalRequest(BaseModel):
