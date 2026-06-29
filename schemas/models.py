@@ -71,6 +71,46 @@ class SocialState(BaseModel):
     received_count: int = 0
 
 
+class CircadianState(BaseModel):
+    """Deterministic day/night phase modulating arousal (Phase 2)."""
+    phase: float          # 0..1 within the period
+    daylight: float       # 0..1 (1 = noon, 0 = midnight)
+    is_night: bool
+    period: int
+
+
+class SleepState(BaseModel):
+    """Sleep / consolidation / dream snapshot (Phase 2)."""
+    is_sleeping: bool
+    fatigue: float
+    consolidated: int = 0
+    pruned: int = 0
+    dream: str | None = None
+    sleep_ticks: int = 0
+
+
+class ImaginationState(BaseModel):
+    """Bounded mental rollout outcome (Phase 2)."""
+    best_first_action: ActionType | None = None
+    horizon: int = 0
+    imagined_value: float = 0.0
+    n_rollouts: int = 0
+
+
+class CuriosityState(BaseModel):
+    """Learning-progress driven curiosity / boredom (Phase 2)."""
+    learning_progress: float = 0.0
+    boredom: float = 0.0
+    intrinsic_reward: float = 0.0
+
+
+class AgencyState(BaseModel):
+    """Sense of agency: predicted vs actual effect of one's own action (Phase 2)."""
+    agency: float = 0.0
+    predicted_self_effect: float = 0.0
+    actual_self_effect: float = 0.0
+
+
 class Percept(BaseModel):
     object_id: int
     kind: str
@@ -212,6 +252,11 @@ class Metrics(BaseModel):
     awareness_level: float = 0.0
     ignition: bool = False
     arousal: float = 0.0          # global vigilance/wakefulness modulating ignition
+    agency: float = 0.0
+    boredom: float = 0.0
+    learning_progress: float = 0.0
+    daylight: float = 1.0
+    is_sleeping: bool = False
 
 
 class Coalition(BaseModel):
@@ -300,6 +345,11 @@ class CycleTrace(BaseModel):
     conscious_moment: ConsciousMoment
     integration: IntegrationState
     social: SocialState | None = None
+    circadian: CircadianState | None = None
+    sleep: SleepState | None = None
+    imagination: ImaginationState | None = None
+    curiosity: CuriosityState | None = None
+    agency: AgencyState | None = None
 
 
 class SimConfig(BaseModel):
@@ -343,6 +393,22 @@ class SimConfig(BaseModel):
     message_ttl: int = Field(default=2, ge=0)           # ticks a message stays deliverable
     contagion_rate: float = Field(default=0.15, ge=0.0, le=1.0)  # EMA weight of others' affect on one's own
     affiliation_drive: float = Field(default=1.0, ge=0.0)        # scales the 'affiliate' goal pressure
+    # deep consciousness (Phase 2) — default OFF => Phase-1-identical behaviour
+    circadian_enabled: bool = False
+    circadian_period: int = Field(default=50, ge=1)
+    night_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
+    sleep_enabled: bool = False
+    dream_enabled: bool = False
+    sleep_fatigue_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
+    wake_fatigue_threshold: float = Field(default=0.35, ge=0.0, le=1.0)
+    max_sleep_ticks: int = Field(default=30, ge=1)
+    replay_boost: float = Field(default=1.3, ge=1.0)
+    consolidation_prune_threshold: float = Field(default=0.0, ge=0.0, le=1.0)
+    imagination_enabled: bool = False
+    imagination_horizon: int = Field(default=3, ge=1, le=6)
+    curiosity_enabled: bool = False
+    curiosity_window: int = Field(default=8, ge=2)
+    agency_enabled: bool = False
 
 
 class ConfigPatch(BaseModel):
@@ -377,6 +443,21 @@ class ConfigPatch(BaseModel):
     message_ttl: int | None = None
     contagion_rate: float | None = None
     affiliation_drive: float | None = None
+    circadian_enabled: bool | None = None
+    circadian_period: int | None = None
+    night_threshold: float | None = None
+    sleep_enabled: bool | None = None
+    dream_enabled: bool | None = None
+    sleep_fatigue_threshold: float | None = None
+    wake_fatigue_threshold: float | None = None
+    max_sleep_ticks: int | None = None
+    replay_boost: float | None = None
+    consolidation_prune_threshold: float | None = None
+    imagination_enabled: bool | None = None
+    imagination_horizon: int | None = None
+    curiosity_enabled: bool | None = None
+    curiosity_window: int | None = None
+    agency_enabled: bool | None = None
 
 
 class GoalRequest(BaseModel):

@@ -32,6 +32,7 @@ COHERENCE_WINDOW: int = 12                 # ticks used to compute self-coherenc
 WORKSPACE_SOURCES: list[str] = [
     "perception", "memory", "motivation", "prediction_error",
     "interoception", "metacognition", "communication", "social",
+    "imagination", "dream",
 ]
 SUBLIMINAL_FACTOR: float = 0.3       # broadcast strength multiplier when NOT ignited (subliminal)
 
