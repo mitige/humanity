@@ -980,10 +980,15 @@ class CognitiveAgent:
         magnitude = float(req.magnitude)
         if ptype == "choc":
             cap = float(self.config.initial_energy) * ENERGY_CAP_FACTOR
-            new_energy = float(
-                min(cap, max(0.0, float(self.world.agent_energy) - magnitude * 10.0))
-            )
-            self.world.agent_energy = new_energy
+            if self._shared_world is not None:
+                body = self._shared_world.agents[self.agent_id]
+                new_energy = float(min(cap, max(0.0, float(body.energy) - magnitude * 10.0)))
+                body.energy = new_energy
+            else:
+                new_energy = float(
+                    min(cap, max(0.0, float(self.world.agent_energy) - magnitude * 10.0))
+                )
+                self.world.agent_energy = new_energy
             # Sync the self-model's energy view so reports stay consistent.
             self.self_model._state.energy = new_energy
             return {
@@ -1012,11 +1017,15 @@ class CognitiveAgent:
         return {"type": ptype, "applied": False, "reason": "unknown type"}
 
     def world_stimulus(self, stim: WorldStimulus) -> WorldObject:
-        """World stimulus: inject a real object into the world (bottom-up).
+        """World stimulus: inject a real object into the world the agent uses.
 
-        Delegates to :meth:`World.inject_object`; the new object is surfaced by
-        the next ``observe`` and can drive attentional capture and ignition.
+        Targets the shared world (society) when attached, else the solo world.
         """
+        if self._shared_world is not None:
+            return self._shared_world.inject_object(
+                kind=stim.kind, x=stim.x, y=stim.y, intensity=stim.intensity,
+                near_agent=self.agent_id,
+            )
         return self.world.inject_object(
             kind=stim.kind, x=stim.x, y=stim.y, intensity=stim.intensity
         )

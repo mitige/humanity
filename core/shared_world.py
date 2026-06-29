@@ -119,6 +119,55 @@ class SharedWorld:
         """Drop messages older than their ttl (measured in ticks since emission)."""
         self.messages = [m for m in self.messages if (self.tick - m.tick_emitted) < m.ttl]
 
+    # --------------------------------------------------------- world stimulus
+    def inject_object(self, kind: str, x: int | None = None, y: int | None = None,
+                      intensity: float = 1.0, near_agent: int = 0) -> WorldObject:
+        """Inject a new object into the SHARED world (bottom-up stimulus).
+
+        Properties scale with ``intensity``. Placed at ``(x, y)`` clamped to the
+        grid, or — when either coordinate is None — at a free cell next to
+        ``near_agent`` (falling back to that agent's own cell)."""
+        intensity = float(np.clip(float(intensity), 0.0, 5.0))
+        kind = str(kind)
+        if kind == "food":
+            energy_value = float(np.clip(6.0 * intensity, 0.0, 10.0)); danger = 0.0
+            utility = float(np.clip(0.2 * intensity, 0.0, 0.4)); novelty = float(np.clip(0.8 * intensity, 0.0, 1.0))
+        elif kind in ("hazard", "danger"):
+            energy_value = 0.0; danger = float(np.clip(0.6 * intensity, 0.6, 0.9))
+            utility = 0.0; novelty = float(np.clip(0.8 * intensity, 0.0, 1.0))
+        elif kind == "tool":
+            energy_value = float(np.clip(1.0 * intensity, 0.0, 2.0)); danger = float(np.clip(0.1 * intensity, 0.0, 0.2))
+            utility = float(np.clip(0.8 * intensity, 0.6, 1.0)); novelty = float(np.clip(0.7 * intensity, 0.0, 1.0))
+        else:  # curio / unknown -> inert novelty
+            energy_value = 0.0; danger = float(np.clip(0.05 * intensity, 0.0, 0.1))
+            utility = float(np.clip(0.1 * intensity, 0.0, 0.2)); novelty = float(np.clip(0.9 * intensity, 0.8, 1.0))
+        if x is None or y is None:
+            px, py = self._free_cell_near(near_agent)
+        else:
+            g = self.config.grid_size
+            px = int(np.clip(int(x), 0, g - 1)); py = int(np.clip(int(y), 0, g - 1))
+        obj = WorldObject(id=self._next_id, kind=kind, x=px, y=py,
+                          energy_value=round(energy_value, 4), danger=round(danger, 4),
+                          novelty=round(novelty, 4), utility=round(utility, 4))
+        self.objects[obj.id] = obj
+        self.seen_counts[obj.id] = 0
+        self._next_id += 1
+        return obj
+
+    def _free_cell_near(self, agent_id: int) -> tuple[int, int]:
+        """Return a free cell adjacent to ``agent_id`` (else that agent's own cell)."""
+        g = self.config.grid_size
+        me = self.agents.get(agent_id) or next(iter(self.agents.values()))
+        occupied = {(o.x, o.y) for o in self.objects.values()} | {(b.x, b.y) for b in self.agents.values()}
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                nx = int(np.clip(me.x + dx, 0, g - 1)); ny = int(np.clip(me.y + dy, 0, g - 1))
+                if (nx, ny) not in occupied:
+                    return nx, ny
+        return int(me.x), int(me.y)
+
     # ----------------------------------------------------------- perception
     def observe(self, agent_id: int) -> Observation:
         cfg = self.config
