@@ -25,6 +25,7 @@ from core.constants import (
 )
 from core.attention_schema import AttentionSchema
 from core.autobiographical_memory import AutobiographicalMemory
+from core.communication import build_message_content, message_coalition
 from core.dialogue import IntrospectiveDialogue
 from core.emotion import EmotionModel
 from core.global_workspace import GlobalWorkspace
@@ -35,12 +36,16 @@ from core.motivation import MotivationSystem
 from core.perception import Perception
 from core.policy import Policy
 from core.self_model import SelfModel
+from core.shared_world import SharedWorld
+from core.social_emotion import apply_contagion, update_trust
+from core.theory_of_mind import TheoryOfMind
 from core.working_memory import WorkingMemory
 from core.world import World
 from core.world_model import WorldModel
 from schemas.models import (
     ActionDecision,
     ActionType,
+    AgentView,
     AskResponse,
     AttendRequest,
     AttentionSchemaState,
@@ -62,6 +67,7 @@ from schemas.models import (
     SalientItem,
     SelfModelState,
     SimConfig,
+    SocialState,
     WorldObject,
     WorldStimulus,
     WorkspaceState,
@@ -73,9 +79,12 @@ from storage.trace_logger import TraceLogger
 class CognitiveAgent:
     """A single simulated agent running a full cognitive cycle per tick."""
 
-    def __init__(self, config: SimConfig) -> None:
+    def __init__(self, config: SimConfig, *, agent_id: int = 0,
+                 shared_world: "SharedWorld | None" = None) -> None:
         """Instantiate the world and every cognitive module from ``config``."""
         self.config = config
+        self.agent_id = int(agent_id)
+        self._shared_world = shared_world
         self._build(config)
 
     def _build(self, config: SimConfig, *, preserve_identity: bool = False) -> None:
@@ -133,6 +142,12 @@ class CognitiveAgent:
         self._pending_surprise: float = 0.0
         self._dialogue = IntrospectiveDialogue()
 
+        # Society layer (active only when a shared world is attached).
+        self.theory_of_mind = TheoryOfMind()
+        self._last_social: SocialState | None = None
+        self._last_visible_agents: list[AgentView] = []
+        self._last_audible_messages: list = []
+
     # ------------------------------------------------------------------ #
     # The cognitive cycle
     # ------------------------------------------------------------------ #
@@ -144,13 +159,19 @@ class CognitiveAgent:
         """
         cfg = self.config
 
-        # 1) Observe the world.
-        observation = self.world.observe()
+        # 1) Observe — from the shared world when in a society, else the solo world.
+        if self._shared_world is not None:
+            observation = self._shared_world.observe(self.agent_id)
+        else:
+            observation = self.world.observe()
+        visible_agents = list(observation.visible_agents)
+        audible_messages = list(observation.audible_messages)
+        self._last_visible_agents = visible_agents
+        self._last_audible_messages = audible_messages
 
         # 2) Perceive: encode raw observation into relative percepts.
-        percepts: list[Percept] = self.perception.encode(
-            observation, self.world.seen_counts
-        )
+        seen_counts = self._shared_world.seen_counts if self._shared_world is not None else self.world.seen_counts
+        percepts: list[Percept] = self.perception.encode(observation, seen_counts)
 
         # 3) Motivation needs the *previous* self-model / emotion / error.
         self_state: SelfModelState = self.self_model.snapshot()
@@ -163,6 +184,7 @@ class CognitiveAgent:
             prev_error,
             uncertainty,
             cfg,
+            n_visible_agents=len(visible_agents),
         )
 
         # 4) Attention: select salient items under the capacity bottleneck.
@@ -189,6 +211,11 @@ class CognitiveAgent:
         predictions: list[Prediction] = self.world_model.predict_all(
             observation, candidates
         )
+
+        # Theory of mind: refresh models of visible others + their messages.
+        if self._shared_world is not None:
+            self.theory_of_mind.update(visible_agents, audible_messages,
+                                       tick=observation.tick, grid_size=cfg.grid_size)
 
         # 6b) BUILD COALITIONS: each specialist process submits a bid for the
         #     single global-workspace broadcast channel (GWT). Bids carry an
@@ -263,7 +290,10 @@ class CognitiveAgent:
         chosen_prediction = self._prediction_for(predictions, decision)
 
         # 10) Act on the world.
-        result = self.world.step(decision)
+        if self._shared_world is not None:
+            result = self._shared_world.step(self.agent_id, decision)
+        else:
+            result = self.world.step(decision)
 
         # 11) Prediction error + world-model learning.
         current_error = self.world_model.compute_error(chosen_prediction, result)
@@ -292,6 +322,16 @@ class CognitiveAgent:
             prev=self.last_emotion,
             config=cfg,
         )
+
+        # Emotional contagion from visible others (no-op when alone).
+        if self._shared_world is not None and visible_agents:
+            others = {m.agent_id: m for m in self.theory_of_mind.all_models()}
+            emotion = apply_contagion(emotion, visible_agents, others, rate=cfg.contagion_rate)
+            # Reputation: nudge trust of nearby others by this tick's reward sign.
+            reward_sign = float(result.energy_delta) + float(result.actual.get("goal_progress", 0.0))
+            for av in visible_agents:
+                if av.distance <= 1.5:
+                    update_trust(self.theory_of_mind.model_of(av.id), reward_sign, rate=0.25)
 
         # 13) Emotion already updated above; now compute the IIT-inspired
         #     integration proxy over the (post-competition) coalitions.
@@ -389,6 +429,30 @@ class CognitiveAgent:
             arousal=round(float(workspace.arousal), 4),
         )
 
+        # Publish this agent's social signal so others can perceive it.
+        if self._shared_world is not None:
+            affects = {"fear": emotion.fear, "curiosity": emotion.curiosity,
+                       "satisfaction": emotion.satisfaction, "fatigue": emotion.fatigue,
+                       "confusion": emotion.confusion}
+            dom_affect = max(affects, key=affects.get)
+            self._shared_world.agents[self.agent_id].publish(
+                decision.action, dom_affect, float(self_state_after.mood))
+            # VERBALIZE => emit a grounded message (delivered next tick).
+            last_emitted = None
+            if decision.action == ActionType.VERBALIZE:
+                content, vector = build_message_content(self.agent_id, conscious_moment)
+                self._shared_world.post_message(self.agent_id, content, vector)
+                last_emitted = content
+            self._last_social = SocialState(
+                agent_id=self.agent_id,
+                others=self.theory_of_mind.all_models(),
+                affiliation_pressure=float(next((g.pressure for g in goals if g.need == "affiliate"), 0.0)),
+                last_emitted=last_emitted,
+                received_count=len(audible_messages),
+            )
+        else:
+            self._last_social = None
+
         # 19) Assemble the trace (with the 5 new sub-objects) and persist.
         trace = CycleTrace(
             tick=result.tick,
@@ -408,6 +472,7 @@ class CognitiveAgent:
             metacognition=metacognition,
             conscious_moment=conscious_moment,
             integration=integration,
+            social=self._last_social,
         )
         self.trace_logger.log(trace)
 
@@ -674,6 +739,23 @@ class CognitiveAgent:
                     ],
                 )
             )
+
+        # --- social: the most salient visible other (theory of mind). ---
+        social_coalition = self.theory_of_mind.social_coalition(grid_size=cfg.grid_size)
+        if social_coalition is not None:
+            coalitions.append(social_coalition)
+
+        # --- communication: the most salient received message. ---
+        if self._shared_world is not None:
+            best_msg = None
+            best_sal = -1.0
+            for msg in self._last_audible_messages:
+                sal = sum(msg.vector) if msg.vector else 0.3
+                if sal > best_sal:
+                    best_sal, best_msg = sal, msg
+            if best_msg is not None:
+                other = self.theory_of_mind.model_of(best_msg.sender_id)
+                coalitions.append(message_coalition(best_msg, other))
 
         return coalitions
 
