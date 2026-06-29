@@ -34,11 +34,12 @@ class MotivationSystem:
         prediction_error: float,
         uncertainty: float,
         config: SimConfig,
+        n_visible_agents: int = 0,
     ) -> list[GoalPressure]:
         """Return the current functional goal pressures (each >= 0).
 
         Needs covered: preserve_energy, reduce_danger, explore_novelty,
-        improve_prediction, maintain_coherence, achieve_goals.
+        improve_prediction, maintain_coherence, achieve_goals, affiliate.
         """
         # Keep the baseline in sync with the live config (config can be patched).
         initial_energy = float(config.initial_energy) if config.initial_energy > 0 else self._initial_energy
@@ -80,6 +81,11 @@ class MotivationSystem:
         else:
             achieve_goals = 0.0
 
+        # affiliate: pressure to be near others; high when isolated, relieved by
+        # company. Scaled by the affiliation drive. Zero drive => zero pressure.
+        isolation = 1.0 / (1.0 + float(max(0, n_visible_agents)))
+        affiliate = max(0.0, float(config.affiliation_drive) * isolation)
+
         return [
             GoalPressure(
                 need="preserve_energy",
@@ -117,6 +123,11 @@ class MotivationSystem:
                     if self_model.active_goals
                     else "No explicit active goal."
                 ),
+            ),
+            GoalPressure(
+                need="affiliate",
+                pressure=float(affiliate),
+                description=(f"Seek social contact ({n_visible_agents} agent(s) visible)."),
             ),
         ]
 
