@@ -1,0 +1,22 @@
+# Environnements virtuels Python
+.venv/
+venv/
+env/
+ENV/
+
+# Caches et bytecode Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Donnees de simulation generees (memoire et traces)
+storage/data/*.json
+*.jsonl
+
+# Divers
+.DS_Store
+*.egg-info/
+.coverage

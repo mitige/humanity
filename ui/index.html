@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Humanity — Instrument</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- ============================ HEADER ============================ -->
+  <header class="masthead">
+    <div class="mast-row">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="28" height="28">
+            <circle cx="16" cy="16" r="13.5" class="bm-ring" />
+            <circle cx="16" cy="16" r="4" class="bm-core" />
+            <circle cx="16" cy="16" r="8.5" class="bm-mid" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Humanity</h1>
+          <p class="brand-sub">Instrument for the functional mechanisms of consciousness</p>
+        </div>
+      </div>
+
+      <div class="mast-tools">
+        <span id="status-pill" class="pill pill-idle">
+          <span class="pill-dot"></span><span id="status-label">Paused</span>
+        </span>
+        <button id="btn-theme" class="icon-btn" title="Toggle theme" aria-label="Toggle light/dark theme">
+          <span class="theme-glyph"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Theory framing / disclaimer (THEORY_FRAMING_EN), sober. Overwritten at runtime from GET /state.framing -->
+    <p class="framing" id="framing-text">
+      This version is a good-faith attempt to implement, as faithfully as tractable, the
+      mechanisms that the major scientific theories of consciousness propose as constitutive
+      or necessary (GWT, AST, HOT, active inference, IIT&nbsp;— Phi proxy). It is a maximal
+      theoretical attempt&nbsp;: reproducing the functional mechanisms does not prove
+      phenomenality (the <em>hard problem</em>).
+    </p>
+
+    <div class="transport">
+      <div class="transport-buttons">
+        <button id="btn-step" class="btn" title="POST /tick">
+          <span class="btn-kbd">Step</span>
+        </button>
+        <button id="btn-start" class="btn btn-accent" title="POST /run">Start</button>
+        <button id="btn-pause" class="btn" title="POST /pause" disabled>Pause</button>
+        <button id="btn-reset" class="btn btn-quiet" title="POST /reset">Reset</button>
+      </div>
+      <label class="tps-field" title="Ticks per second (POST /run)">
+        <span>rate</span>
+        <input id="input-tps" type="number" min="0.5" max="30" step="0.5" value="4" />
+        <span class="tps-unit">tps</span>
+      </label>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <!-- ===================== HERO — CONSCIOUS MOMENT ===================== -->
+    <section class="panel panel-hero" aria-labelledby="hero-title">
+      <div class="panel-head">
+        <h2 id="hero-title">Conscious moment</h2>
+        <span class="src">GET /agent/consciousness</span>
+      </div>
+
+      <div class="hero-body">
+        <div class="ignition" id="ignition">
+          <div class="ignition-lamp" id="ignition-lamp" aria-hidden="true"></div>
+          <div class="ignition-meta">
+            <span class="ignition-state" id="ignition-state">—</span>
+            <span class="ignition-sub" id="ignition-sub">awaiting the stream</span>
+          </div>
+          <div class="ignition-gate" title="ignition score vs effective threshold (GET /agent/workspace)">
+            <div class="ig-track">
+              <div class="ig-fill" id="ig-fill"></div>
+              <div class="ig-thresh" id="ig-thresh"></div>
+            </div>
+            <span class="ig-readout mono"><b id="ig-score">0.000</b> / <span id="ig-eff">0.300</span></span>
+          </div>
+        </div>
+
+        <blockquote class="moment-quote" id="moment-contents">
+          The simulation has not produced a moment yet.
+        </blockquote>
+
+        <div class="hero-stats">
+          <div class="stat">
+            <span class="stat-k">Awareness level</span>
+            <div class="meter"><div class="meter-fill" id="aw-fill"></div></div>
+            <span class="stat-v mono" id="aw-val">0.000</span>
+          </div>
+          <div class="stat">
+            <span class="stat-k">Valence</span>
+            <div class="meter meter-bipolar"><div class="meter-zero"></div><div class="meter-fill" id="val-fill"></div></div>
+            <span class="stat-v mono" id="val-val">0.00</span>
+          </div>
+          <div class="stat">
+            <span class="stat-k">Φ proxy</span>
+            <div class="meter"><div class="meter-fill" id="phi-fill"></div></div>
+            <span class="stat-v mono" id="phi-val">0.000</span>
+          </div>
+        </div>
+
+        <div class="stream">
+          <div class="stream-head">
+            <span class="stream-title">Stream of consciousness</span>
+            <span class="src">GET /agent/stream</span>
+          </div>
+          <div class="stream-track" id="stream-track"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== GLOBAL WORKSPACE ===================== -->
+    <section class="panel panel-workspace" aria-labelledby="ws-title">
+      <div class="panel-head">
+        <h2 id="ws-title">Global workspace</h2>
+        <span class="src">GET /agent/workspace · GWT</span>
+      </div>
+      <div class="ws-readout">
+        <span class="ws-broadcast">broadcast <b class="mono" id="ws-broadcast">0.000</b></span>
+        <span class="ws-winner" id="ws-winner">—</span>
+      </div>
+      <div class="arousal-row" title="Arousal / vigilance — GET /state · arousal (modulates the effective threshold)">
+        <span class="arousal-k">Arousal / vigilance</span>
+        <div class="meter arousal-meter">
+          <div class="meter-fill" id="arousal-fill"></div>
+          <div class="arousal-baseline" id="arousal-baseline-mark"></div>
+        </div>
+        <span class="stat-v mono" id="arousal-val">0.000</span>
+      </div>
+      <div class="coalitions" id="coalitions">
+        <div class="threshold-line" id="threshold-line">
+          <span class="threshold-tag">effective threshold <b class="mono" id="threshold-val">0.300</b></span>
+        </div>
+      </div>
+      <p class="micro">Each bar is a specialized coalition competing for global access. The displayed threshold is the <b>effective threshold</b> — the nominal threshold modulated by arousal and homeostasis. An ignition score beyond it&nbsp;: ignition + broadcast (conscious access).</p>
+    </section>
+
+    <!-- ===================== METRICS STRIP ===================== -->
+    <section class="panel panel-metrics" aria-labelledby="met-title">
+      <div class="panel-head">
+        <h2 id="met-title">Indicators</h2>
+        <span class="src">GET /metrics · /agent/consciousness</span>
+      </div>
+      <div class="metric-grid" id="metric-grid"></div>
+    </section>
+
+    <!-- ===================== WORLD ===================== -->
+    <section class="panel panel-world" aria-labelledby="world-title">
+      <div class="panel-head">
+        <h2 id="world-title">World</h2>
+        <span class="src" id="world-meta">tick 0 · GET /state</span>
+      </div>
+      <div class="world-wrap">
+        <canvas id="world-canvas" width="560" height="560" aria-label="View of the simulated world"></canvas>
+      </div>
+      <div class="legend">
+        <span class="lg"><i class="dot dot-agent"></i>Agent</span>
+        <span class="lg"><i class="dot dot-food"></i>Food</span>
+        <span class="lg"><i class="dot dot-hazard"></i>Hazard</span>
+        <span class="lg"><i class="dot dot-tool"></i>Tool</span>
+        <span class="lg"><i class="dot dot-curio"></i>Curiosity</span>
+      </div>
+    </section>
+
+    <!-- ===================== ATTENTION SCHEMA ===================== -->
+    <section class="panel panel-ast" aria-labelledby="ast-title">
+      <div class="panel-head">
+        <h2 id="ast-title">Attention schema</h2>
+        <span class="src">AST · /agent/consciousness</span>
+      </div>
+      <div class="kv-line">
+        <span class="kv-k">aware of</span>
+        <span class="kv-v" id="ast-aware">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-k">Attentional stability</span>
+        <div class="meter"><div class="meter-fill" id="ast-stab-fill"></div></div>
+        <span class="stat-v mono" id="ast-stab-val">0.000</span>
+      </div>
+      <p class="report-voice" id="ast-attributed">—</p>
+    </section>
+
+    <!-- ===================== METACOGNITION ===================== -->
+    <section class="panel panel-hot" aria-labelledby="hot-title">
+      <div class="panel-head">
+        <h2 id="hot-title">Metacognition</h2>
+        <span class="src">HOT · /agent/consciousness</span>
+      </div>
+      <div class="gauges">
+        <div class="gauge" data-id="meta">
+          <svg viewBox="0 0 100 60"><path class="g-track" d="M8 54 A42 42 0 0 1 92 54"/><path class="g-fill" id="g-meta" d="M8 54 A42 42 0 0 1 92 54"/></svg>
+          <span class="g-val mono" id="meta-conf-val">0.00</span>
+          <span class="g-lbl">meta-confidence</span>
+        </div>
+        <div class="gauge" data-id="perc">
+          <svg viewBox="0 0 100 60"><path class="g-track" d="M8 54 A42 42 0 0 1 92 54"/><path class="g-fill" id="g-perc" d="M8 54 A42 42 0 0 1 92 54"/></svg>
+          <span class="g-val mono" id="perc-rel-val">0.00</span>
+          <span class="g-lbl">perception reliab.</span>
+        </div>
+        <div class="gauge" data-id="pred">
+          <svg viewBox="0 0 100 60"><path class="g-track" d="M8 54 A42 42 0 0 1 92 54"/><path class="g-fill" id="g-pred" d="M8 54 A42 42 0 0 1 92 54"/></svg>
+          <span class="g-val mono" id="pred-rel-val">0.00</span>
+          <span class="g-lbl">prediction reliab.</span>
+        </div>
+      </div>
+      <p class="report-voice" id="hot-report">—</p>
+    </section>
+
+    <!-- ===================== INTROSPECTION ===================== -->
+    <section class="panel panel-introspect" aria-labelledby="intro-title">
+      <div class="panel-head">
+        <h2 id="intro-title">Introspective report</h2>
+        <span class="src">GET /agent/introspection</span>
+      </div>
+      <p class="report-note">Text generated from internal variables by the AST/HOT mechanisms — not a lived experience.</p>
+      <div id="introspection" class="report-list"></div>
+    </section>
+
+    <!-- ===================== SELF-MODEL ===================== -->
+    <section class="panel panel-self" aria-labelledby="self-title">
+      <div class="panel-head">
+        <h2 id="self-title">Self-model</h2>
+        <span class="src">GET /agent/self-model</span>
+      </div>
+      <div id="self-model" class="kv"></div>
+      <h3 class="sub">Active goals</h3>
+      <div id="self-goals" class="chips"></div>
+      <form id="goal-form" class="goal-form" title="POST /agent/goal">
+        <input id="goal-input" type="text" placeholder="Set a functional goal…" />
+        <button type="submit" class="btn btn-quiet">Set</button>
+      </form>
+      <p class="report-voice narrative-note" id="self-narrative"></p>
+    </section>
+
+    <!-- ===================== WORKING MEMORY ===================== -->
+    <section class="panel panel-wm" aria-labelledby="wm-title">
+      <div class="panel-head">
+        <h2 id="wm-title">Working memory</h2>
+        <span class="src">/state · wm_load</span>
+      </div>
+      <div class="stat">
+        <span class="stat-k">Load</span>
+        <div class="meter"><div class="meter-fill" id="wm-load-fill"></div></div>
+        <span class="stat-v mono" id="wm-load-val">0%</span>
+      </div>
+      <div id="working-memory" class="rows"></div>
+    </section>
+
+    <!-- ===================== MEMORY ===================== -->
+    <section class="panel panel-mem" aria-labelledby="mem-title">
+      <div class="panel-head">
+        <h2 id="mem-title">Recent memories</h2>
+        <span class="src">GET /agent/memory</span>
+      </div>
+      <div id="recent-memories" class="rows"></div>
+    </section>
+
+    <!-- ===================== CONFIG ===================== -->
+    <section class="panel panel-config" aria-labelledby="cfg-title">
+      <div class="panel-head">
+        <h2 id="cfg-title">Settings</h2>
+        <span class="src">POST /config</span>
+      </div>
+      <div class="sliders" id="config-sliders">
+        <label class="slider-row" data-key="ignition_threshold" data-fmt="f2">
+          <span class="slider-label">Ignition threshold <b class="slider-val">0.30</b></span>
+          <input type="range" min="0.05" max="0.95" step="0.01" value="0.30" />
+        </label>
+        <label class="slider-row" data-key="arousal_baseline" data-fmt="f2">
+          <span class="slider-label">Arousal baseline <b class="slider-val">0.45</b></span>
+          <input type="range" min="0.05" max="0.95" step="0.01" value="0.45" />
+        </label>
+        <label class="slider-row" data-key="precision_weight" data-fmt="f2">
+          <span class="slider-label">Precision weight <b class="slider-val">1.00</b></span>
+          <input type="range" min="0" max="3" step="0.05" value="1" />
+        </label>
+        <label class="slider-row" data-key="epistemic_weight" data-fmt="f2">
+          <span class="slider-label">Epistemic weight <b class="slider-val">1.00</b></span>
+          <input type="range" min="0" max="3" step="0.05" value="1" />
+        </label>
+        <label class="slider-row" data-key="curiosity" data-fmt="f2">
+          <span class="slider-label">Curiosity <b class="slider-val">1.00</b></span>
+          <input type="range" min="0" max="3" step="0.05" value="1" />
+        </label>
+        <label class="slider-row" data-key="caution" data-fmt="f2">
+          <span class="slider-label">Caution <b class="slider-val">1.00</b></span>
+          <input type="range" min="0" max="3" step="0.05" value="1" />
+        </label>
+        <label class="slider-row" data-key="working_memory_capacity" data-fmt="int">
+          <span class="slider-label">Working memory capacity <b class="slider-val">5</b></span>
+          <input type="range" min="1" max="12" step="1" value="5" />
+        </label>
+        <label class="slider-row" data-key="initial_energy" data-fmt="f0">
+          <span class="slider-label">Initial energy <b class="slider-val">100</b></span>
+          <input type="range" min="20" max="200" step="5" value="100" />
+        </label>
+        <label class="slider-row" data-key="world_noise" data-fmt="f2">
+          <span class="slider-label">World noise <b class="slider-val">0.10</b></span>
+          <input type="range" min="0" max="1" step="0.01" value="0.1" />
+        </label>
+      </div>
+      <p class="micro">Any change applies <span class="mono">POST /config</span> immediately.</p>
+    </section>
+
+  </main>
+
+  <footer class="colophon">
+    <span id="footer-disclaimer"></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
