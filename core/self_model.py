@@ -234,6 +234,11 @@ class SelfModel:
         if goal and goal not in self._state.active_goals:
             self._state.active_goals.append(goal)
 
+    def _apply_agency(self, agency: float) -> None:
+        """Nudge confidence toward a high sense of agency (Phase 2, gentle EMA)."""
+        a = _clip01(float(agency))
+        self._state.confidence = _clip01(0.9 * self._state.confidence + 0.1 * a)
+
     def snapshot(self) -> SelfModelState:
         """Return a deep copy of the current self-model state."""
         return self._state.model_copy(deep=True)

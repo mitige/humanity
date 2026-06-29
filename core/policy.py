@@ -99,6 +99,7 @@ class Policy:
         emotion: EmotionState,
         salient: list[SalientItem],
         config: SimConfig,
+        imagined_best_action: ActionType | None = None,
     ) -> ActionDecision:
         """Score each predicted candidate and return the best as an ActionDecision."""
         pressure_by_need = {g.need: max(0.0, float(g.pressure)) for g in motivations}
@@ -147,6 +148,11 @@ class Policy:
             # 7) Certainty bonus.
             certainty_term = (1.0 - float(pred.uncertainty)) * 0.3
 
+            # Imagination bonus: the action the mental rollout favoured gets a
+            # small forward-looking lift (additive; None => no effect).
+            imagination_term = 0.3 if (imagined_best_action is not None
+                                       and action == imagined_best_action) else 0.0
+
             score = (
                 value_term
                 + pref_term
@@ -155,6 +161,7 @@ class Policy:
                 - danger_term
                 + novelty_term
                 + certainty_term
+                + imagination_term
             )
             scored.append((float(score), pred))
             candidate_scores[label] = float(score)
