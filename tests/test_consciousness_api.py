@@ -29,9 +29,9 @@ def client(tmp_path) -> TestClient:
     # Reset the process-wide singleton so tests are independent.
     agent_module._MANAGER = None
     manager = agent_module.get_manager()
-    manager.agent.memory_store = MemoryStore(tmp_path / "memory.json")
-    manager.agent.memory._store = manager.agent.memory_store
-    manager.agent.trace_logger = TraceLogger(tmp_path / "traces.jsonl")
+    manager.agent(0).memory_store = MemoryStore(tmp_path / "memory.json")
+    manager.agent(0).memory._store = manager.agent(0).memory_store
+    manager.agent(0).trace_logger = TraceLogger(tmp_path / "traces.jsonl")
 
     with TestClient(app) as c:
         yield c

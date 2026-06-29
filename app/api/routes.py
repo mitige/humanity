@@ -2,20 +2,22 @@
 
 FUNCTIONAL NOTE
 ---------------
-These endpoints expose the simulation's internal variables (world state,
-metrics, self-model, episodic memory, introspection text, cognitive traces).
-All responses describe a FUNCTIONAL simulation; the agent is not conscious,
-sentient, or alive. ``GET /state`` and other relevant responses carry the
-canonical disclaimer.
+These endpoints expose the simulation's internal variables. The legacy
+``/agent/*`` and ``/state`` endpoints target agent 0 of the society façade so the
+single-agent instrument keeps working; ``/society/*`` exposes the multi-agent
+view. All responses describe a FUNCTIONAL simulation; the agent is not conscious,
+sentient, or alive.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 
-from core.agent import SimulationManager, get_manager
+from core.agent import get_manager
+from core.society import SocietyManager
 from core.constants import THEORY_FRAMING_EN, THEORY_FRAMING_FR
 from schemas.models import (
     AskRequest,
@@ -36,7 +38,6 @@ from schemas.models import (
     WorkspaceState,
 )
 
-# Canonical disclaimers (verbatim per the project contract).
 DISCLAIMER_FR = (
     "Simulation fonctionnelle de processus associes a la conscience. "
     "L'agent n'est ni conscient, ni sentient, ni vivant. Les rapports "
@@ -53,15 +54,61 @@ DISCLAIMER_EN = (
 router = APIRouter()
 
 
-def _manager() -> SimulationManager:
-    """Lazily obtain the process-wide simulation manager."""
+def _manager() -> SocietyManager:
+    """Lazily obtain the process-wide society manager."""
     return get_manager()
 
 
+def _agent0():
+    """Legacy single-agent accessor: agent 0 of the society façade."""
+    return _manager().agent(0)
+
+
+def _legacy_world_snapshot() -> dict:
+    """Solo-shaped world snapshot (singular ``agent``) for agent 0 of the society."""
+    w = _manager().world
+    a0 = w.agents[0]
+    return {
+        "grid_size": int(w.config.grid_size),
+        "tick": int(w.tick),
+        "agent": {"x": int(a0.x), "y": int(a0.y), "energy": round(float(a0.energy), 4)},
+        "objects": [o.model_dump() for o in w.objects.values()],
+    }
+
+
+def _society_state_legacy() -> dict:
+    """Legacy ``/state`` shape, sourced from agent 0 of the society."""
+    mgr = _manager()
+    ag = mgr.agent(0)
+    metrics = ag.metrics()
+    intro = ag._last_introspection
+    ws = ag.workspace_state()
+    return {
+        "world": _legacy_world_snapshot(),
+        "metrics": metrics.model_dump(),
+        "running": bool(mgr.running),
+        "introspection_summary": (
+            intro.self_state if intro is not None else "No introspective report generated yet."
+        ),
+        "self_model": ag.self_model_state().model_dump(),
+        "working_memory_load": float(ag.working_memory.load()),
+        "phi_proxy": float(metrics.phi_proxy),
+        "free_energy": float(metrics.free_energy),
+        "awareness_level": float(metrics.awareness_level),
+        "ignition": bool(metrics.ignition),
+        "broadcast_strength": float(metrics.broadcast_strength),
+        "winner_source": ws.winner_source,
+        "arousal": float(metrics.arousal),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Legacy single-agent endpoints (agent 0 of the society façade)
+# --------------------------------------------------------------------------- #
 @router.get("/state")
 async def get_state() -> dict:
-    """Return the current simulation state plus the functional disclaimer."""
-    state = _manager().state()
+    """Return agent 0's state plus the functional disclaimer."""
+    state = _society_state_legacy()
     state["disclaimer"] = DISCLAIMER_EN
     state["disclaimer_en"] = DISCLAIMER_EN
     state["framing"] = THEORY_FRAMING_EN
@@ -70,16 +117,17 @@ async def get_state() -> dict:
 
 @router.post("/tick", response_model=CycleTrace)
 async def post_tick() -> CycleTrace:
-    """Advance the simulation by one cognitive cycle and return the trace."""
-    return await _manager().async_tick()
+    """Advance the society one tick and return agent 0's trace."""
+    traces = await _manager().async_tick()
+    return traces[0]
 
 
 @router.post("/reset")
 async def post_reset(patch: ConfigPatch | None = None) -> dict:
-    """Reset the simulation (optionally applying a config patch); return state."""
+    """Reset the society (optionally applying a config patch); return agent 0 state."""
     mgr = _manager()
     mgr.reset(patch)
-    state = mgr.state()
+    state = _society_state_legacy()
     state["disclaimer"] = DISCLAIMER_EN
     return state
 
@@ -100,29 +148,26 @@ async def post_pause() -> dict:
 
 @router.get("/agent/self-model", response_model=SelfModelState)
 async def get_self_model() -> SelfModelState:
-    """Return the agent's current self-model state."""
-    return _manager().agent.self_model_state()
+    """Return agent 0's current self-model state."""
+    return _agent0().self_model_state()
 
 
 @router.get("/agent/memory", response_model=list[MemoryRecord])
 async def get_memory(limit: int = Query(default=20, ge=1, le=1000)) -> list[MemoryRecord]:
-    """Return the most recent autobiographical memory records."""
-    return _manager().agent.recent_memories(limit)
+    """Return agent 0's most recent autobiographical memory records."""
+    return _agent0().recent_memories(limit)
 
 
 @router.get("/agent/introspection", response_model=IntrospectionReport)
 async def get_introspection() -> IntrospectionReport:
-    """Return a freshly generated introspection report (text from variables)."""
-    return _manager().agent.introspect()
+    """Return a freshly generated introspection report for agent 0."""
+    return _agent0().introspect()
 
 
 @router.get("/agent/consciousness")
 async def get_consciousness() -> dict:
-    """Return the bound v2 consciousness sub-states (GWT/AST/HOT/IIT proxy).
-
-    Carries the functional disclaimer and the good-faith theory framing.
-    """
-    state = _manager().agent.consciousness_state()
+    """Return agent 0's bound v2 consciousness sub-states (GWT/AST/HOT/IIT proxy)."""
+    state = _agent0().consciousness_state()
     state["disclaimer"] = DISCLAIMER_EN
     state["framing"] = THEORY_FRAMING_EN
     return state
@@ -130,84 +175,76 @@ async def get_consciousness() -> dict:
 
 @router.get("/agent/workspace", response_model=WorkspaceState)
 async def get_workspace() -> WorkspaceState:
-    """Return the latest global-workspace competition outcome (GWT)."""
-    return _manager().agent.workspace_state()
+    """Return agent 0's latest global-workspace competition outcome (GWT)."""
+    return _agent0().workspace_state()
 
 
 @router.get("/agent/stream", response_model=list[ConsciousMoment])
 async def get_stream(limit: int = Query(default=20, ge=1, le=1000)) -> list[ConsciousMoment]:
-    """Return up to ``limit`` most recent ConsciousMoments (stream of consciousness)."""
-    return _manager().agent.stream(limit)
+    """Return up to ``limit`` of agent 0's most recent ConsciousMoments."""
+    return _agent0().stream(limit)
 
 
 @router.post("/agent/goal", response_model=SelfModelState)
 async def post_goal(req: GoalRequest) -> SelfModelState:
-    """Register an explicit goal and return the updated self-model."""
-    mgr = _manager()
-    mgr.agent.set_goal(req.goal)
-    return mgr.agent.self_model_state()
+    """Register an explicit goal on agent 0 and return the updated self-model."""
+    ag = _agent0()
+    ag.set_goal(req.goal)
+    return ag.self_model_state()
 
 
 @router.post("/agent/ask", response_model=AskResponse)
 async def post_ask(req: AskRequest) -> AskResponse:
-    """Introspective-dialogue probe: a grounded report from internal variables.
-
-    Reads the live workspace / attention-schema / metacognition / decision /
-    prediction / emotion / self-model state to answer; the text is explicitly
-    framed as generated from internal variables (GWT/HOT reportability).
-    """
-    return await _manager().ask(req.question, req.intent)
+    """Introspective-dialogue probe on agent 0 (grounded report from variables)."""
+    return _agent0().ask(req.question, req.intent)
 
 
 @router.post("/world/stimulus")
 async def post_world_stimulus(stim: WorldStimulus) -> dict:
-    """World stimulus: inject a real object into the world (bottom-up capture)."""
-    mgr = _manager()
-    obj = await mgr.world_stimulus(stim)
-    return {"object": obj.model_dump(), "state": mgr.state()}
+    """World stimulus: inject a real object into the shared world near agent 0."""
+    obj = _agent0().world_stimulus(stim)
+    return {"object": obj.model_dump(), "state": _society_state_legacy()}
 
 
 @router.post("/agent/inject")
 async def post_inject(injection: CognitiveInjection) -> dict:
-    """Cognitive injection: force a coalition into the next workspace round."""
-    return await _manager().inject(injection)
+    """Cognitive injection: force a coalition into agent 0's next workspace round."""
+    return _agent0().inject(injection)
 
 
 @router.post("/agent/attend")
 async def post_attend(req: AttendRequest) -> dict:
-    """Attention steering: bias top-down attention toward a target (AST)."""
-    return await _manager().attend(req)
+    """Attention steering: bias agent 0's top-down attention toward a target (AST)."""
+    return _agent0().attend(req)
 
 
 @router.post("/agent/perturb")
 async def post_perturb(req: PerturbRequest) -> dict:
-    """Perturbation: apply a choc / surprise / apaisement to internal state."""
-    mgr = _manager()
-    effect = await mgr.perturb(req)
-    return {"effect": effect, "state": mgr.state()}
+    """Perturbation: apply a choc / surprise / apaisement to agent 0."""
+    effect = _agent0().perturb(req)
+    return {"effect": effect, "state": _society_state_legacy()}
 
 
 @router.post("/config")
 async def post_config(patch: ConfigPatch) -> dict:
-    """Apply a partial config patch and return the applied config plus state."""
+    """Apply a partial config patch (rebuilds the society) and return config + state."""
     mgr = _manager()
-    config = mgr.agent.apply_config(patch)
-    mgr.config = config
-    state = mgr.state()
+    mgr.reset(patch)
+    state = _society_state_legacy()
     state["disclaimer"] = DISCLAIMER_EN
-    return {"config": config.model_dump(), "state": state}
+    return {"config": mgr.config.model_dump(), "state": state}
 
 
 @router.get("/metrics", response_model=Metrics)
 async def get_metrics() -> Metrics:
-    """Return the latest metrics for the simulation."""
-    return _manager().agent.metrics()
+    """Return agent 0's latest metrics."""
+    return _agent0().metrics()
 
 
 @router.get("/trace")
 async def get_trace(limit: int = Query(default=50, ge=1, le=1000)) -> list[dict]:
-    """Return the most recent cognitive traces from the JSONL export."""
-    path = Path(_manager().agent.trace_logger.path())
+    """Return agent 0's most recent cognitive traces from the JSONL export."""
+    path = Path(_agent0().trace_logger.path())
     if not path.exists():
         return []
     try:
@@ -226,3 +263,105 @@ async def get_trace(limit: int = Query(default=50, ge=1, le=1000)) -> list[dict]
         except json.JSONDecodeError:
             continue
     return traces
+
+
+# --------------------------------------------------------------------------- #
+# Society (multi-agent) endpoints
+# --------------------------------------------------------------------------- #
+@router.get("/society")
+async def get_society() -> dict:
+    """Return the whole-society state (per-agent summaries + relations graph)."""
+    state = _manager().state()
+    state["disclaimer"] = DISCLAIMER_EN
+    state["framing"] = THEORY_FRAMING_EN
+    return state
+
+
+@router.post("/society/tick")
+async def post_society_tick() -> dict:
+    """Run one collective society tick; return one trace per agent."""
+    traces = await _manager().async_tick()
+    return {"traces": [t.model_dump() for t in traces]}
+
+
+@router.post("/society/run")
+async def post_society_run(req: RunRequest) -> dict:
+    """Start the society background loop at ``req.tps``."""
+    await _manager().run(req)
+    return {"running": True}
+
+
+@router.post("/society/pause")
+async def post_society_pause() -> dict:
+    """Pause the society background loop."""
+    _manager().pause()
+    return {"running": False}
+
+
+@router.post("/society/config")
+async def post_society_config(patch: ConfigPatch) -> dict:
+    """Apply a config patch (e.g. n_agents) and rebuild the society; return state."""
+    mgr = _manager()
+    mgr.reset(patch)
+    state = mgr.state()
+    state["disclaimer"] = DISCLAIMER_EN
+    return state
+
+
+@router.get("/society/relations")
+async def get_society_relations() -> dict:
+    """Return the trust / theory-of-mind relations graph."""
+    return _manager().relations()
+
+
+@router.get("/society/messages")
+async def get_society_messages() -> dict:
+    """Return the messages currently alive in the shared world."""
+    return {"messages": [m.model_dump() for m in _manager().world.messages]}
+
+
+def _require_agent(agent_id: int):
+    """Return the society agent or raise 404 if it does not exist."""
+    mgr = _manager()
+    if agent_id not in mgr.agents:
+        raise HTTPException(status_code=404, detail=f"agent {agent_id} not found")
+    return mgr.agent(agent_id)
+
+
+@router.get("/society/agent/{agent_id}/consciousness")
+async def get_society_agent_consciousness(agent_id: int) -> dict:
+    """Return one agent's bound consciousness sub-states."""
+    state = _require_agent(agent_id).consciousness_state()
+    state["disclaimer"] = DISCLAIMER_EN
+    state["framing"] = THEORY_FRAMING_EN
+    return state
+
+
+@router.get("/society/agent/{agent_id}/self-model", response_model=SelfModelState)
+async def get_society_agent_self_model(agent_id: int) -> SelfModelState:
+    """Return one agent's self-model state."""
+    return _require_agent(agent_id).self_model_state()
+
+
+@router.get("/society/agent/{agent_id}/introspection", response_model=IntrospectionReport)
+async def get_society_agent_introspection(agent_id: int) -> IntrospectionReport:
+    """Return one agent's introspection report."""
+    return _require_agent(agent_id).introspect()
+
+
+@router.get("/society/agent/{agent_id}/workspace", response_model=WorkspaceState)
+async def get_society_agent_workspace(agent_id: int) -> WorkspaceState:
+    """Return one agent's latest workspace competition outcome."""
+    return _require_agent(agent_id).workspace_state()
+
+
+@router.websocket("/ws/society")
+async def ws_society(ws: WebSocket) -> None:
+    """Push the society state roughly every 250ms until the client disconnects."""
+    await ws.accept()
+    try:
+        while True:
+            await ws.send_json(_manager().state())
+            await asyncio.sleep(0.25)
+    except WebSocketDisconnect:
+        return
