@@ -185,6 +185,7 @@ class CognitiveAgent:
             uncertainty,
             cfg,
             n_visible_agents=len(visible_agents),
+            society_size=(len(self._shared_world.agents) if self._shared_world is not None else 1),
         )
 
         # 4) Attention: select salient items under the capacity bottleneck.
@@ -326,7 +327,7 @@ class CognitiveAgent:
         # Emotional contagion from visible others (no-op when alone).
         if self._shared_world is not None and visible_agents:
             others = {m.agent_id: m for m in self.theory_of_mind.all_models()}
-            emotion = apply_contagion(emotion, visible_agents, others, rate=cfg.contagion_rate)
+            emotion = apply_contagion(emotion, visible_agents, others, rate=cfg.contagion_rate, grid_size=cfg.grid_size)
             # Reputation: nudge trust of nearby others by this tick's reward sign.
             reward_sign = float(result.energy_delta) + float(result.actual.get("goal_progress", 0.0))
             for av in visible_agents:
@@ -821,8 +822,13 @@ class CognitiveAgent:
     # ------------------------------------------------------------------ #
     def introspect(self) -> IntrospectionReport:
         """Regenerate an introspection report from the current internal state."""
-        observation = self.world.observe()
-        percepts = self.perception.encode(observation, self.world.seen_counts)
+        if self._shared_world is not None:
+            observation = self._shared_world.observe(self.agent_id)
+            seen_counts = self._shared_world.seen_counts
+        else:
+            observation = self.world.observe()
+            seen_counts = self.world.seen_counts
+        percepts = self.perception.encode(observation, seen_counts)
         self_state = self.self_model.snapshot()
         goals = self.motivation.evaluate(
             self_state,
@@ -871,7 +877,7 @@ class CognitiveAgent:
         if self._last_metrics is not None:
             return self._last_metrics
         return Metrics(
-            tick=int(self.world.tick),
+            tick=(self._shared_world.tick if self._shared_world is not None else self.world.tick),
             prediction_error=0.0,
             self_coherence=float(self.self_model.snapshot().coherence),
             attention_focus=0.0,
@@ -879,7 +885,7 @@ class CognitiveAgent:
             autobiographical_memory_count=int(self.memory.count()),
             goal_pressure=0.0,
             emotional_state=self.last_emotion,
-            energy=round(float(self.world.agent_energy), 4),
+            energy=round(float(self._shared_world.agents[self.agent_id].energy if self._shared_world is not None else self.world.agent_energy), 4),
             uncertainty=round(float(self.world_model.current_uncertainty), 4),
             novelty_score=0.0,
             action_confidence=0.0,

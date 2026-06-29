@@ -12,15 +12,26 @@ def _self():
 def test_affiliate_pressure_present_and_scales_with_drive():
     cfg = SimConfig(affiliation_drive=2.0)
     m = MotivationSystem(cfg)
-    goals = m.evaluate(_self(), EmotionState(), [], 0.0, 0.0, cfg, n_visible_agents=0)
+    goals = m.evaluate(_self(), EmotionState(), [], 0.0, 0.0, cfg,
+                       n_visible_agents=0, society_size=3)
     aff = next(g for g in goals if g.need == "affiliate")
-    # Isolated agent (0 visible) feels affiliation pressure, scaled by the drive.
+    # Isolated agent in a peered society feels affiliation pressure.
     assert aff.pressure > 0.0
 
 
 def test_affiliate_pressure_drops_when_others_present():
     cfg = SimConfig(affiliation_drive=1.0)
     m = MotivationSystem(cfg)
-    alone = next(g for g in m.evaluate(_self(), EmotionState(), [], 0.0, 0.0, cfg, n_visible_agents=0) if g.need == "affiliate")
-    social = next(g for g in m.evaluate(_self(), EmotionState(), [], 0.0, 0.0, cfg, n_visible_agents=3) if g.need == "affiliate")
+    alone = next(g for g in m.evaluate(_self(), EmotionState(), [], 0.0, 0.0, cfg,
+                 n_visible_agents=0, society_size=3) if g.need == "affiliate")
+    social = next(g for g in m.evaluate(_self(), EmotionState(), [], 0.0, 0.0, cfg,
+                  n_visible_agents=3, society_size=3) if g.need == "affiliate")
     assert social.pressure < alone.pressure
+
+
+def test_affiliate_is_zero_in_solo_or_society_of_one():
+    cfg = SimConfig(affiliation_drive=2.0)
+    m = MotivationSystem(cfg)
+    aff = next(g for g in m.evaluate(_self(), EmotionState(), [], 0.0, 0.0, cfg,
+               n_visible_agents=0, society_size=1) if g.need == "affiliate")
+    assert aff.pressure == 0.0

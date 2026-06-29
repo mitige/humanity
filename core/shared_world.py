@@ -246,6 +246,7 @@ class SharedWorld:
         elif action == ActionType.VERBALIZE:
             events.append("The agent verbalizes an internal report (a social message).")
 
+        self._maybe_random_event(events)
         me.energy = float(np.clip(me.energy, 0.0, self._energy_cap()))
         energy_delta = float(me.energy) - start_energy
         if energy_delta > 0.0:
@@ -279,7 +280,7 @@ class SharedWorld:
         elif action == ActionType.AVOID and target is not None:
             dx, dy = -self._sign(target.x - me.x), -self._sign(target.y - me.y)
         elif decision.direction is not None and len(decision.direction) == 2:
-            dx, dy = self._clamp(decision.direction[0]), self._clamp(decision.direction[1])
+            dx, dy = self._sign(decision.direction[0]), self._sign(decision.direction[1])
         else:
             dx = int(self.rng.integers(-1, 2))
             dy = int(self.rng.integers(-1, 2))
@@ -330,12 +331,24 @@ class SharedWorld:
         events.append(f"The agent examines object {target.id}.")
         return prior
 
-    @staticmethod
-    def _sign(v: int) -> int:
-        return 1 if v > 0 else (-1 if v < 0 else 0)
+    def _maybe_random_event(self, events: list[str]) -> None:
+        """Occasionally spawn a new object or flare a hazard (scaled by world_noise)."""
+        noise = self.config.world_noise
+        if noise <= 0.0:
+            return
+        if float(self.rng.random()) < noise * 0.25:
+            obj = self._spawn_object()
+            events.append(f"A new object {obj.id} ({obj.kind}) appears in the world.")
+        if float(self.rng.random()) < noise * 0.25:
+            hazards = [o for o in self.objects.values() if o.kind == "hazard"]
+            if hazards:
+                idx = int(self.rng.integers(0, len(hazards)))
+                hz = hazards[idx]
+                hz.danger = round(float(min(1.0, hz.danger + float(self.rng.uniform(0.05, 0.2)))), 4)
+                events.append(f"The danger level of object {hz.id} (hazard) suddenly increases.")
 
     @staticmethod
-    def _clamp(v: int) -> int:
+    def _sign(v: int) -> int:
         return 1 if v > 0 else (-1 if v < 0 else 0)
 
     # ----------------------------------------------------------- snapshot

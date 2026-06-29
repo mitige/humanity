@@ -20,7 +20,7 @@ _AFFECT_CHANNEL = {
 
 
 def apply_contagion(own: EmotionState, views: list[AgentView],
-                    others: dict[int, OtherMind], rate: float) -> EmotionState:
+                    others: dict[int, OtherMind], rate: float, grid_size: int = 12) -> EmotionState:
     """Return a new EmotionState nudged toward neighbours' affect (EMA, bounded).
 
     For each visible other, its dominant affect label contributes to the matching
@@ -36,8 +36,9 @@ def apply_contagion(own: EmotionState, views: list[AgentView],
         ch = _AFFECT_CHANNEL.get(av.dominant_affect)
         if ch is None:
             continue
-        trust = float(others.get(av.id).trust) if others.get(av.id) else 0.5
-        proximity = 1.0 - float(np.clip(av.distance / 12.0, 0.0, 1.0))
+        om = others.get(av.id)
+        trust = float(om.trust) if om is not None else 0.5
+        proximity = 1.0 - float(np.clip(av.distance / max(1.0, float(grid_size)), 0.0, 1.0))
         w = float(np.clip(trust * (0.5 + 0.5 * proximity), 0.0, 1.0))
         # Intensity of the other's affect proxied by |valence|, min 0.3 so a
         # labelled affect always transmits something.

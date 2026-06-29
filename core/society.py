@@ -90,6 +90,8 @@ class SocietyManager:
         edges = []
         for aid, ag in self.agents.items():
             for m in ag.theory_of_mind.all_models():
+                if m.agent_id == aid:
+                    continue
                 edges.append({"from": aid, "to": m.agent_id,
                               "trust": round(float(m.trust), 4),
                               "familiarity": round(float(m.familiarity), 4),

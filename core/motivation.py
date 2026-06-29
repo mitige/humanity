@@ -35,6 +35,7 @@ class MotivationSystem:
         uncertainty: float,
         config: SimConfig,
         n_visible_agents: int = 0,
+        society_size: int = 1,
     ) -> list[GoalPressure]:
         """Return the current functional goal pressures (each >= 0).
 
@@ -81,10 +82,14 @@ class MotivationSystem:
         else:
             achieve_goals = 0.0
 
-        # affiliate: pressure to be near others; high when isolated, relieved by
-        # company. Scaled by the affiliation drive. Zero drive => zero pressure.
-        isolation = 1.0 / (1.0 + float(max(0, n_visible_agents)))
-        affiliate = max(0.0, float(config.affiliation_drive) * isolation)
+        # affiliate: pressure to be near others; only meaningful when the society
+        # actually contains peers. High when isolated *among* a peered society,
+        # relieved by company. Zero in a solo instrument / society of one.
+        if society_size > 1:
+            isolation = 1.0 / (1.0 + float(max(0, n_visible_agents)))
+            affiliate = max(0.0, float(config.affiliation_drive) * isolation)
+        else:
+            affiliate = 0.0
 
         return [
             GoalPressure(

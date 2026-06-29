@@ -338,12 +338,11 @@ class SimConfig(BaseModel):
     competition_sharpness: float = 3.0   # how much dominance (vs raw strength) ignition requires
     ignition_maintenance: float = 0.12   # hysteresis boost to a sustained winner (train of thought)
     # society (multi-agent, v3)
-    n_agents: int = 1                    # 1 => exact legacy single-agent behaviour
-    comm_radius: int = 4                 # earshot radius for VERBALIZE messages
-    message_ttl: int = 2                 # ticks a message stays deliverable
-    contagion_rate: float = 0.15         # EMA weight of others' affect on one's own
-    affiliation_drive: float = 1.0       # scales the 'affiliate' goal pressure
-    social_seed_stride: int = 1000       # per-agent RNG seed = seed + index*stride
+    n_agents: int = Field(default=1, ge=1)              # 1 => exact legacy single-agent behaviour
+    comm_radius: int = Field(default=4, ge=0)           # earshot radius for VERBALIZE messages
+    message_ttl: int = Field(default=2, ge=0)           # ticks a message stays deliverable
+    contagion_rate: float = Field(default=0.15, ge=0.0, le=1.0)  # EMA weight of others' affect on one's own
+    affiliation_drive: float = Field(default=1.0, ge=0.0)        # scales the 'affiliate' goal pressure
 
 
 class ConfigPatch(BaseModel):
@@ -378,7 +377,6 @@ class ConfigPatch(BaseModel):
     message_ttl: int | None = None
     contagion_rate: float | None = None
     affiliation_drive: float | None = None
-    social_seed_stride: int | None = None
 
 
 class GoalRequest(BaseModel):

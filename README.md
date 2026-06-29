@@ -540,11 +540,10 @@ endpoints `/agent/*` et `/state` continuent de fonctionner en ciblant **l'agent 
 
 ### La garantie de déterminisme
 
-Le **seeding par agent** (chaque agent dérive sa graine de `random_seed` via `social_seed_stride`,
-soit `random_seed + index × stride`) rend **toute une société reproductible** à `random_seed`
-donné : deux sociétés construites avec la même config produisent, tick pour tick, **les mêmes
-positions, énergies et états**. Cette propriété est vérifiée par
-`tests/test_society_integration.py`.
+Un **unique RNG seedé partagé** plus un **ordre de tick ascendant fixe** rendent **toute une
+société reproductible** à `random_seed` donné : deux sociétés construites avec la même config
+produisent, tick pour tick, **les mêmes positions, énergies et états**. Cette propriété est vérifiée
+par `tests/test_society_integration.py`.
 
 ### Nouveaux endpoints `/society/*` et flux temps réel
 
@@ -575,7 +574,6 @@ Les endpoints **historiques `/agent/*` et `/state` ciblent l'agent 0** via la fa
 | `message_ttl` | `2` | Nombre de ticks pendant lesquels un message reste délivrable. |
 | `contagion_rate` | `0.15` | Poids EMA de l'affect d'autrui sur le sien (contagion émotionnelle). |
 | `affiliation_drive` | `1.0` | Échelle de la pression de but « affiliation ». |
-| `social_seed_stride` | `1000` | Pas de graine par agent : `random_seed + index × stride`. |
 
 ### Spécification et suite des travaux
 

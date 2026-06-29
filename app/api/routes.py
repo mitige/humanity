@@ -359,9 +359,12 @@ async def get_society_agent_workspace(agent_id: int) -> WorkspaceState:
 async def ws_society(ws: WebSocket) -> None:
     """Push the society state roughly every 250ms until the client disconnects."""
     await ws.accept()
+    mgr = _manager()
     try:
         while True:
-            await ws.send_json(_manager().state())
+            async with mgr._lock:
+                payload = mgr.state()
+            await ws.send_json(payload)
             await asyncio.sleep(0.25)
     except WebSocketDisconnect:
         return
