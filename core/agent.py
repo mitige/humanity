@@ -1215,9 +1215,10 @@ class SimulationManager:
 _MANAGER: SimulationManager | None = None
 
 
-def get_manager() -> SimulationManager:
-    """Return the process-wide :class:`SimulationManager`, creating it lazily."""
+def get_manager() -> "SocietyManager":
+    """Return the process-wide SocietyManager (society of `config.n_agents`)."""
     global _MANAGER
     if _MANAGER is None:
-        _MANAGER = SimulationManager()
+        from core.society import SocietyManager
+        _MANAGER = SocietyManager()
     return _MANAGER
