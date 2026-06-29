@@ -581,6 +581,8 @@
       if (self) renderSelfModel(self);
       renderMemories(mem || []);
       if (intro) renderIntrospection(intro);
+      // society view updates alongside the single-agent instrument
+      refreshSociety();
     } catch (err) {
       console.error("refresh failed", err);
       setStatus("error", "API error");
@@ -736,6 +738,84 @@
         } catch (e) { setStatus("error", "Config error"); }
       }, 120);
     });
+  });
+
+  // ============================================================
+  //  SOCIETY VIEW (multi-agent) — GET /society
+  // ============================================================
+  let SOC_SELECTED = 0;
+
+  async function refreshSociety() {
+    let data;
+    try {
+      data = await api("society");
+    } catch (e) { return; }
+    if (!data) return;
+    drawSociety(data.world, SOC_SELECTED);
+    renderRelations(data.relations, data.agents);
+  }
+
+  function drawSociety(world, selected) {
+    const cv = document.getElementById("society-canvas");
+    if (!cv || !world) return;
+    const ctx = cv.getContext("2d");
+    const g = num(world.grid_size) || 12, cell = cv.width / g;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    const KIND = {
+      food: cssVar("--pos"),
+      hazard: cssVar("--neg"),
+      tool: cssVar("--cool"),
+      curio: cssVar("--curio"),
+    };
+    (world.objects || []).forEach((o) => {
+      ctx.fillStyle = KIND[o.kind] || cssVar("--ink-faint");
+      ctx.fillRect(o.x * cell + cell * 0.3, o.y * cell + cell * 0.3, cell * 0.4, cell * 0.4);
+    });
+    (world.agents || []).forEach((a) => {
+      ctx.beginPath();
+      ctx.arc(a.x * cell + cell / 2, a.y * cell + cell / 2, cell * 0.32, 0, Math.PI * 2);
+      ctx.fillStyle = a.id === selected ? cssVar("--accent") : cssVar("--ink");
+      ctx.fill();
+      ctx.fillStyle = cssVar("--bg-inset");
+      ctx.font = `${Math.floor(cell * 0.4)}px sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(a.id), a.x * cell + cell / 2, a.y * cell + cell / 2);
+    });
+  }
+
+  function renderRelations(rel, agents) {
+    const box = document.getElementById("society-relations");
+    if (!box || !rel) return;
+    box.innerHTML = (rel.edges || [])
+      .map((e) => `<div class="row"><span class="mono">${esc(e.from)}→${esc(e.to)}</span>` +
+                  `<span class="micro">trust ${f2(e.trust)} · ${esc(e.affect)}</span></div>`)
+      .join("") || '<div class="micro">No relations yet.</div>';
+  }
+
+  document.getElementById("btn-society-apply")?.addEventListener("click", async () => {
+    const n = parseInt(document.getElementById("input-nagents").value, 10) || 1;
+    try {
+      await postJSON("society/config", { n_agents: n });
+    } catch (e) { setStatus("error", "Society error"); }
+    refreshSociety();
+  });
+
+  document.getElementById("society-canvas")?.addEventListener("click", (ev) => {
+    api("society").then((d) => {
+      if (!d || !d.world) return;
+      const cv = ev.currentTarget, g = num(d.world.grid_size) || 12, cell = cv.width / g;
+      const rect = cv.getBoundingClientRect();
+      // canvas is CSS-scaled to fit; map client px back to canvas px first
+      const sx = cv.width / rect.width, sy = cv.height / rect.height;
+      const gx = Math.floor((ev.clientX - rect.left) * sx / cell);
+      const gy = Math.floor((ev.clientY - rect.top) * sy / cell);
+      const hit = (d.world.agents || []).find((a) => a.x === gx && a.y === gy);
+      if (hit) {
+        SOC_SELECTED = hit.id;
+        document.getElementById("soc-selected").textContent = `viewing agent ${hit.id}`;
+      }
+      refreshSociety();
+    }).catch(() => {});
   });
 
   // ============================================================

@@ -587,6 +587,23 @@ input[type="range"]::-moz-range-thumb {
   font-family: var(--serif);
 }
 
+/* =====================================================================
+   SOCIETY — multi-agent canvas + relations
+   ===================================================================== */
+.panel-society { grid-column: span 5; }
+@media (max-width: 1180px) { .panel-society { grid-column: span 6; } }
+.panel-society .soc-controls { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.6rem; }
+.panel-society .soc-controls .micro { margin: 0; }
+#society-canvas {
+  width: 100%; max-width: 560px; height: auto; aspect-ratio: 1;
+  border-radius: var(--radius, 10px); background: var(--bg-inset);
+  border: 1px solid var(--line);
+}
+.panel-society #society-relations { margin-top: 14px; }
+.panel-society .row { display: flex; justify-content: space-between; align-items: baseline;
+  padding: 0.15rem 0.25rem; }
+.panel-society .row .micro { margin: 0; }
+
 /* reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition-duration: 0.001ms !important; }

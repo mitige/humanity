@@ -172,6 +172,24 @@
       </div>
     </section>
 
+    <!-- ===================== SOCIETY ===================== -->
+    <section class="panel panel-society" aria-labelledby="soc-title">
+      <div class="panel-head">
+        <h2 id="soc-title">Society</h2>
+        <span class="src">GET /society · multi-agent</span>
+      </div>
+      <div class="soc-controls">
+        <label class="tps-field" title="Number of agents (POST /society/config)">
+          <span>agents</span>
+          <input id="input-nagents" type="number" min="1" max="8" step="1" value="1" />
+        </label>
+        <button id="btn-society-apply" class="btn btn-quiet">Apply</button>
+        <span id="soc-selected" class="micro">viewing agent 0</span>
+      </div>
+      <canvas id="society-canvas" width="560" height="560" aria-label="Society world"></canvas>
+      <div id="society-relations" class="rows"></div>
+    </section>
+
     <!-- ===================== ATTENTION SCHEMA ===================== -->
     <section class="panel panel-ast" aria-labelledby="ast-title">
       <div class="panel-head">
