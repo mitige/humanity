@@ -29,7 +29,10 @@ COHERENCE_WINDOW: int = 12                 # ticks used to compute self-coherenc
 
 # === Consciousness architecture (v2) ===
 # Specialist processes that can bid for global-workspace access (GWT).
-WORKSPACE_SOURCES: list[str] = ["perception", "memory", "motivation", "prediction_error", "interoception", "metacognition"]
+WORKSPACE_SOURCES: list[str] = [
+    "perception", "memory", "motivation", "prediction_error",
+    "interoception", "metacognition", "communication", "social",
+]
 SUBLIMINAL_FACTOR: float = 0.3       # broadcast strength multiplier when NOT ignited (subliminal)
 
 # Arousal / vigilance (v2.1), modelled as a bounded [0,1] scalar smoothed over
@@ -51,3 +54,10 @@ IGNITION_SCORE_WINDOW: int = 24      # ticks of ignition-score history for adapt
 
 THEORY_FRAMING_FR = "Cette version vise une implementation de bonne foi, aussi fidele que possible, des mecanismes que les grandes theories scientifiques de la conscience proposent comme constitutifs ou necessaires : espace de travail global (GWT), schema attentionnel (AST), theories d'ordre superieur (HOT), inference active / energie libre, et information integree (IIT, proxy Phi). C'est une tentative theorique maximale. Elle reste incapable d'etablir la presence d'une experience subjective reelle (le hard problem) : reproduire les mecanismes fonctionnels ne prouve pas la phenomenalite."
 THEORY_FRAMING_EN = "This version is a good-faith attempt to implement, as faithfully as tractable, the mechanisms that the major scientific theories of consciousness propose as constitutive or necessary: the global workspace (GWT), the attention schema (AST), higher-order theories (HOT), active inference / free energy, and integrated information (IIT, Phi proxy). It is a maximal theoretical attempt. It still cannot establish the presence of real subjective experience (the hard problem): reproducing functional mechanisms does not prove phenomenality."
+
+# === Society (multi-agent, v3) ===
+# Smoothing weights for the social layer (bounded EMA updates).
+CONTAGION_EMA: float = 0.15     # default; SimConfig.contagion_rate overrides per run
+TRUST_EMA: float = 0.25         # how fast reputation moves toward observed reward sign
+FAMILIARITY_EMA: float = 0.30   # how fast familiarity saturates with exposure
+SOCIAL_PERCEPT_NORM: float = 1.0  # reserved scale for social salience normalization
