@@ -7,17 +7,12 @@ orchestrates the existing interaction modalities; it does not change the cycle.
 """
 from __future__ import annotations
 
-import tempfile
-import uuid
-from pathlib import Path
-
 from core.introspection import DISCLAIMER_EN
 from core.society import SocietyManager
 from schemas.models import (
     AttendRequest, CognitiveInjection, Intervention, PerturbRequest, Scenario,
     ScenarioResult, WorldStimulus,
 )
-from storage.persistence import MemoryStore
 
 
 class ScenarioRunner:
@@ -54,19 +49,18 @@ class ScenarioRunner:
 
     @staticmethod
     def _isolate_persistence(mgr: SocietyManager) -> None:
-        """Make the run hermetic: redirect every agent's autobiographical-memory
-        store to a unique, ephemeral temp file and drop any records the default
-        store loaded from the shared on-disk ``memory.json``.
+        """Make the run hermetic: detach every agent's autobiographical memory from
+        the shared on-disk ``memory.json`` (in-RAM only) and drop any records the
+        default store loaded.
 
         Without this a scenario would read and write the global memory file, so
         successive runs would start from accumulated records and diverge -- the
         runner is meant to be reproducible, so it must never touch persisted state.
+        In-RAM only also leaves zero filesystem footprint.
         """
-        base = Path(tempfile.gettempdir()) / "humanity_scenario"
         for ag in mgr.agents.values():
-            store = MemoryStore(base / f"{uuid.uuid4().hex}.json")
-            ag.memory_store = store
-            ag.memory._store = store
+            ag.memory_store = None
+            ag.memory._store = None
             ag.memory._records = []
             ag.memory._next_id = 1
 

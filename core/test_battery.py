@@ -31,6 +31,7 @@ def _isolated_agent(config: SimConfig) -> CognitiveAgent:
     clearing any preloaded records makes each probe start from an empty memory.
     """
     agent = CognitiveAgent(config)
+    agent.memory_store = None
     agent.memory._store = None
     agent.memory._records = []
     agent.memory._next_id = 1

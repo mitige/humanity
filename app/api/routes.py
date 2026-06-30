@@ -380,7 +380,7 @@ async def post_battery(test_name: str, req: _BatteryReq) -> BatteryResult:
     if test_name == "mirror":
         return battery.mirror_test(seed=req.seed, ticks=req.ticks)
     if test_name == "false_memory":
-        return battery.false_memory_test(seed=req.seed)
+        return battery.false_memory_test(seed=req.seed, ticks=req.ticks)
     if test_name == "calibration":
         return battery.calibration_test(seed=req.seed, ticks=req.ticks)
     raise HTTPException(status_code=404, detail=f"unknown test '{test_name}'")
