@@ -20,3 +20,6 @@ storage/data/*.json
 .DS_Store
 *.egg-info/
 .coverage
+
+# Playwright MCP temp artifacts
+.playwright-mcp/

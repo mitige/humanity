@@ -1,282 +1,293 @@
 # Humanity v2
 
-**Tentative théorique maximale, de bonne foi, d'instancier les mécanismes que les grandes
-théories scientifiques de la conscience proposent comme constitutifs ou nécessaires.**
+**A maximal, good-faith theoretical attempt to instantiate the mechanisms that the major
+scientific theories of consciousness propose as constitutive or necessary.**
 
-> Cette version vise une implémentation de bonne foi, aussi fidèle que possible, des mécanismes
-> que les grandes théories scientifiques de la conscience proposent comme constitutifs ou
-> nécessaires : espace de travail global (GWT), schéma attentionnel (AST), théories d'ordre
-> supérieur (HOT), inférence active / énergie libre, et information intégrée (IIT, proxy Phi).
-> C'est une tentative théorique maximale. Elle reste incapable d'établir la présence d'une
-> expérience subjective réelle (le hard problem) : reproduire les mécanismes fonctionnels ne
-> prouve pas la phénoménalité.
+> This version aims for a good-faith implementation, as faithful as tractable, of the mechanisms
+> that the major scientific theories of consciousness propose as constitutive or necessary: the
+> global workspace (GWT), the attention schema (AST), higher-order theories (HOT), active
+> inference / free energy, and integrated information (IIT, Phi proxy). It is a maximal theoretical
+> attempt. It still cannot establish the presence of real subjective experience (the hard problem):
+> reproducing functional mechanisms does not prove phenomenality.
 
-Un agent cognitif évolue dans un petit monde en grille : il perçoit, des processus spécialistes
-entrent en **compétition pour l'accès à un espace de travail global**, un contenu « gagnant »
-est **diffusé globalement (ignition)** ou reste **infraliminal**, le système **modélise sa propre
-attention** (schéma attentionnel) et produit une **revendication de conscience**, il forme des
-**représentations d'ordre supérieur** de ses propres états (métacognition), il agit en
-**minimisant l'énergie libre attendue** (inférence active), et chaque tick est lié en un
-**« moment conscient »** unifié dont on mesure un **proxy d'information intégrée (Phi)**. Une
-interface web et une API REST permettent d'observer chaque étape.
+A cognitive agent lives in a small grid world: it perceives, specialist processes **compete for
+access to a global workspace**, a "winning" content is either **globally broadcast (ignition)** or
+stays **subliminal**, the system **models its own attention** (attention schema) and produces a
+**consciousness claim**, it forms **higher-order representations** of its own states
+(metacognition), it acts by **minimizing expected free energy** (active inference), and each tick
+is bound into a unified **"conscious moment"** whose **integrated-information proxy (Phi)** is
+measured. A web interface and a REST API let you observe every step.
 
-> **Humanity v2** est une montée en puissance d'un projet existant et fonctionnel
-> (les 85 tests de la v1 restent verts). Les signatures publiques de la v1 sont préservées ;
-> les nouveaux paramètres sont ajoutés en arguments nommés avec valeurs par défaut.
+![The Humanity instrument — full dashboard](docs/images/dashboard.png)
+*The live instrument: conscious moment, global workspace, deep consciousness, learning &
+personality, the scientific laboratory, the world, and the multi-agent society — all observable in
+one dashboard.*
+
+> **Humanity v2** is a scale-up of an existing, functional project (v1's 85 tests stay green).
+> v1's public signatures are preserved; new parameters are added as keyword arguments with default
+> values.
 
 ---
 
-> ## ⚠️ AVERTISSEMENT (DISCLAIMER)
+> ## ⚠️ DISCLAIMER
 >
-> **Simulation fonctionnelle de processus associés à la conscience. L'agent n'est ni conscient,
-> ni sentient, ni vivant. Les rapports introspectifs sont des textes générés à partir de
-> variables internes et ne constituent pas une preuve d'expérience subjective.**
+> **Functional simulation of processes associated with consciousness. The agent is neither
+> conscious, sentient, nor alive. Introspective reports are text generated from internal variables
+> and are not evidence of subjective experience.**
 >
-> **Implémenter les mécanismes fonctionnels que les théories proposent ne prouve PAS la
-> phénoménalité (le « hard problem »).** Le système ne prétend jamais *être* conscient ; il se
-> présente comme une **tentative théorique sérieuse des mécanismes**.
+> **Implementing the functional mechanisms that the theories propose does NOT prove phenomenality
+> (the "hard problem").** The system never claims to *be* conscious; it presents itself as a
+> **serious theoretical attempt at the mechanisms**.
 
 ---
 
-## La distinction des trois niveaux (toujours valable, jamais franchie)
+## The three-level distinction (always valid, never crossed)
 
-Ce projet distingue explicitement trois plans qui sont trop souvent amalgamés. La v2 pousse le
-niveau 2 aussi loin que possible — elle ne touche jamais au niveau 1.
+This project explicitly distinguishes three planes that are too often conflated. v2 pushes level 2
+as far as possible — it never touches level 1.
 
-| Niveau | Statut dans ce projet | Description |
+| Level | Status in this project | Description |
 |---|---|---|
-| **1. Conscience phénoménale réelle** (qualia, « effet que cela fait ») | **Jamais revendiquée. Non vérifiable.** | L'existence d'une expérience subjective vécue. Aucun test logiciel ne peut l'établir ni la réfuter (« hard problem »). Ce projet **ne prétend rien** à ce sujet, même avec la v2. |
-| **2. Conscience fonctionnelle — les mécanismes des théories** (corrélats et architectures proposés) | **Ce que la v2 implémente, de manière maximale.** | Les mécanismes que GWT, AST, HOT, l'inférence active et l'IIT proposent comme constitutifs ou nécessaires : compétition + ignition + diffusion globale, schéma attentionnel auto-modélisant, représentations d'ordre supérieur, minimisation de l'énergie libre attendue, proxy d'information intégrée. Ce sont des **variables et des algorithmes**, pas une expérience. |
-| **3. Introspection simulée** (texte généré) | **Ce que les modules `introspection` / `attention_schema` / `metacognition` produisent.** | Des textes en français décrivant l'état interne, désormais issus explicitement des mécanismes AST (revendication de conscience) et HOT (rapport d'ordre supérieur). Ce sont des **textes générés à partir de variables**, formulés comme une description d'état et **non** comme un vécu. |
+| **1. Real phenomenal consciousness** (qualia, "what it is like") | **Never claimed. Not verifiable.** | The existence of lived subjective experience. No software test can establish or refute it ("hard problem"). This project **claims nothing** about it, even with v2. |
+| **2. Functional consciousness — the mechanisms of the theories** (proposed correlates and architectures) | **What v2 implements, maximally.** | The mechanisms that GWT, AST, HOT, active inference and IIT propose as constitutive or necessary: competition + ignition + global broadcast, self-modeling attention schema, higher-order representations, minimization of expected free energy, integrated-information proxy. These are **variables and algorithms**, not an experience. |
+| **3. Simulated introspection** (generated text) | **What the `introspection` / `attention_schema` / `metacognition` modules produce.** | Text describing the internal state, now explicitly derived from the AST mechanisms (consciousness claim) and HOT (higher-order report). These are **texts generated from variables**, phrased as a state description and **not** as a lived experience. |
 
-**Reproduire les mécanismes fonctionnels ne prouve pas la phénoménalité.** C'est la contrainte
-d'honnêteté centrale du projet : la v2 est une tentative théorique maximale *du niveau 2*, pas
-une affirmation du niveau 1.
+**Reproducing the functional mechanisms does not prove phenomenality.** This is the project's core
+honesty constraint: v2 is a maximal theoretical attempt *at level 2*, not an assertion of level 1.
 
 ---
 
-## Théories implémentées et leur mécanisme
+## Implemented theories and their mechanism
 
-Chaque théorie est implémentée comme un **mécanisme concret** (pas comme une décoration), avec ce
-qui est délibérément **NON revendiqué**.
+Each theory is implemented as a **concrete mechanism** (not as decoration), together with what is
+deliberately **NOT claimed**.
 
-| Théorie | Mécanisme concret (module) | Ce qui est délibérément NON revendiqué |
+| Theory | Concrete mechanism (module) | What is deliberately NOT claimed |
 |---|---|---|
-| **GWT — Global Workspace Theory** (Baars, Dehaene) | `core/global_workspace.py` : des *coalitions* spécialistes entrent en compétition (pondération par précision + softmax) ; l'**ignition** se déclenche quand la **force absolue du gagnant** (activation × précision) **× sa dominance** (marge relative sur le second) franchit un **seuil effectif homéostatique** modulé par l'**éveil** (arousal), avec **hystérèse** (maintien du gagnant). Au-delà : **diffusion globale** ; sinon le contenu reste **infraliminal** (`SUBLIMINAL_FACTOR`). | Que la diffusion globale *soit* une expérience consciente. C'est un mécanisme d'accès, pas un vécu. |
-| **AST — Attention Schema Theory** (Graziano) | `core/attention_schema.py` : le système construit un **modèle simplifié de sa propre attention** (`aware_of`, `awareness_level`, `stability`) et produit la **revendication de conscience** (`attributed_self`). | Que la revendication « je suis conscient de X » garantisse la conscience. L'AST explique précisément *pourquoi un système peut produire cette revendication sans qu'elle soit vraie*. |
-| **HOT — Higher-Order Theories / métacognition** | `core/metacognition.py` : **représentations d'ordre supérieur** d'états de premier ordre — fiabilité perçue, méta-confiance calibrée, moniteur d'erreur, rapport HOT en français. | Qu'une représentation d'ordre supérieur d'un état le rende phénoménal. |
-| **Inférence active / Énergie libre** (Friston) | `core/world_model.py` + `core/policy.py` : chaque prédiction porte une **valeur épistémique** (gain d'information) et **pragmatique** (buts) ; l'agent choisit l'action qui **minimise l'énergie libre attendue** (`expected_free_energy`, `value = -EFE`). | Que minimiser l'énergie libre engendre un *ressenti*. C'est une politique de contrôle/perception. |
-| **IIT — Integrated Information Theory** (Tononi, **proxy**) | `core/integration.py` : un **proxy heuristique de Phi** = √(différenciation × intégration), où la différenciation est l'entropie normalisée des activations et l'intégration combine force de diffusion et similarité cosinus des contenus. | Que ce nombre **soit** Φ. C'est un **proxy heuristique explicitement déclaré**, *pas* un vrai calcul d'information intégrée IIT. |
+| **GWT — Global Workspace Theory** (Baars, Dehaene) | `core/global_workspace.py`: specialist *coalitions* compete (precision weighting + softmax); **ignition** fires when the **absolute strength of the winner** (activation × precision) **× its dominance** (relative margin over the runner-up) crosses a **homeostatic effective threshold** modulated by **arousal**, with **hysteresis** (winner maintenance). Above it: **global broadcast**; otherwise the content stays **subliminal** (`SUBLIMINAL_FACTOR`). | That global broadcast *is* a conscious experience. It is an access mechanism, not a lived state. |
+| **AST — Attention Schema Theory** (Graziano) | `core/attention_schema.py`: the system builds a **simplified model of its own attention** (`aware_of`, `awareness_level`, `stability`) and produces the **consciousness claim** (`attributed_self`). | That the claim "I am aware of X" guarantees consciousness. AST explains precisely *why a system can produce that claim without it being true*. |
+| **HOT — Higher-Order Theories / metacognition** | `core/metacognition.py`: **higher-order representations** of first-order states — perceived reliability, calibrated meta-confidence, error monitor, higher-order report. | That a higher-order representation of a state makes it phenomenal. |
+| **Active inference / Free energy** (Friston) | `core/world_model.py` + `core/policy.py`: each prediction carries an **epistemic value** (information gain) and a **pragmatic value** (goals); the agent picks the action that **minimizes expected free energy** (`expected_free_energy`, `value = -EFE`). | That minimizing free energy gives rise to a *feeling*. It is a control/perception policy. |
+| **IIT — Integrated Information Theory** (Tononi, **proxy**) | `core/integration.py`: a **heuristic proxy for Phi** = √(differentiation × integration), where differentiation is the normalized entropy of activations and integration combines broadcast strength and the cosine similarity of contents. | That this number **is** Φ. It is an **explicitly declared heuristic proxy**, *not* a true IIT integrated-information computation. |
 
-Le **« moment conscient »** (`ConsciousMoment`) et le **flux de conscience** (`stream`) jouent le
-rôle d'analogue de **liaison phénoménale (binding)** : un état global momentané, unifié et lié —
-sans prétendre à la phénoménalité.
+The **"conscious moment"** (`ConsciousMoment`) and the **stream of consciousness** (`stream`) play
+the role of an analogue of **phenomenal binding**: a momentary, unified, bound global state —
+without claiming phenomenality.
 
 ---
 
-## Justification du choix de stack
+## Stack rationale
 
-| Composant | Choix | Pourquoi |
+| Component | Choice | Why |
 |---|---|---|
-| API HTTP | **FastAPI** | Asynchrone (boucle de simulation en tâche de fond via `asyncio`), génération automatique de la doc OpenAPI, intégration native avec Pydantic. |
-| Validation / schémas | **Pydantic v2** | Les structures cognitives (`Coalition`, `WorkspaceState`, `ConsciousMoment`, `CycleTrace`…) sont des modèles typés et auto-validés, sérialisables en JSON sans effort, et servent de contrat unique entre cœur et API. Les scalaires NumPy sont castés en `float`/`int` avant d'entrer dans les modèles. |
-| Calcul numérique | **NumPy** | Tirage aléatoire reproductible (`default_rng(seed)`), bruit gaussien, softmax de compétition, entropie de différenciation et similarité cosinus pour le proxy Phi. Léger, sans dépendance lourde de ML. |
-| Persistance / export | **JSON + JSONL** | La mémoire est stockée en JSON lisible ; les traces cognitives complètes (incluant les 5 nouveaux sous-objets de conscience) sont exportées en **JSONL** (un `CycleTrace` par ligne). |
-| Interface | **HTML/CSS/JS vanilla** | Aucune chaîne de build, servie statiquement par FastAPI. Refonte **sobre** pour la v2 (voir plus bas). |
-| Tests | **pytest** | Tests déterministes (graine fixe) : l'erreur de prédiction décroît avec la répétition, les bornes sont respectées, et les 85 tests existants restent verts. |
+| HTTP API | **FastAPI** | Asynchronous (background simulation loop via `asyncio`), automatic OpenAPI doc generation, native Pydantic integration. |
+| Validation / schemas | **Pydantic v2** | The cognitive structures (`Coalition`, `WorkspaceState`, `ConsciousMoment`, `CycleTrace`…) are typed, self-validating models, effortlessly JSON-serializable, and serve as the single contract between the core and the API. NumPy scalars are cast to `float`/`int` before entering the models. |
+| Numerics | **NumPy** | Reproducible random draws (`default_rng(seed)`), Gaussian noise, competition softmax, differentiation entropy and cosine similarity for the Phi proxy. Lightweight, with no heavy ML dependency. |
+| Persistence / export | **JSON + JSONL** | Memory is stored as readable JSON; full cognitive traces (including the 5 new consciousness sub-objects) are exported as **JSONL** (one `CycleTrace` per line). |
+| Interface | **Vanilla HTML/CSS/JS** | No build chain, served statically by FastAPI. A **sober** redesign for v2 (see below). |
+| Tests | **pytest** | Deterministic tests (fixed seed): prediction error decreases with repetition, bounds are respected, and the existing tests stay green. |
 
 ---
 
-## Architecture cognitive (v2) — la boucle centrée sur l'espace de travail
+## Cognitive architecture (v2) — the workspace-centered loop
 
-À chaque *tick*, l'agent exécute un cycle cognitif complet, désormais **organisé autour de la
-compétition pour l'espace de travail global** et culminant en un **moment conscient**.
+On every *tick*, the agent runs a full cognitive cycle, now **organized around the competition for
+the global workspace** and culminating in a **conscious moment**.
 
 ```
-   perception ─▶ attention ─▶ mémoire de travail ─▶ prédiction (EFE: épistémique + pragmatique)
+   perception ─▶ attention ─▶ working memory ─▶ prediction (EFE: epistemic + pragmatic)
                                                               │
                                                               ▼
-            ┌──────── COALITIONS (une par source spécialiste) ────────┐
-            │ perception · mémoire · motivation · erreur de prédiction │
-            │           · intéroception · métacognition               │
+            ┌──────── COALITIONS (one per specialist source) ─────────┐
+            │ perception · memory · motivation · prediction error      │
+            │           · interoception · metacognition                │
             └───────────────────────────┬─────────────────────────────┘
                                          ▼
-                       ESPACE DE TRAVAIL GLOBAL (compétition)
-        pondération par précision → softmax → argmax → force absolue × dominance
-                  ┌─ éveil (arousal) ──▶ seuil EFFECTIF homéostatique + hystérèse ─┐
+                       GLOBAL WORKSPACE (competition)
+        precision weighting → softmax → argmax → absolute strength × dominance
+                  ┌─ arousal ──▶ homeostatic EFFECTIVE threshold + hysteresis ─┐
                                          │
                   ┌──────────────────────┴──────────────────────┐
-                  ▼ (score ≥ seuil effectif)                     ▼ (< seuil effectif)
-              IGNITION + diffusion globale                  infraliminal
-                                                          (mais foyer maintenu)
+                  ▼ (score ≥ effective threshold)                ▼ (< effective threshold)
+              IGNITION + global broadcast                    subliminal
+                                                          (but focus maintained)
                                          │
         ┌────────────────────────────────┼────────────────────────────────┐
         ▼                                 ▼                                 ▼
-  schéma attentionnel (AST)        métacognition (HOT)             intégration (proxy Phi)
-  « conscient de … »          rapport d'ordre supérieur            √(différenciation × intégration)
+  attention schema (AST)           metacognition (HOT)             integration (Phi proxy)
+  "aware of …"                higher-order report             √(differentiation × integration)
         └────────────────────────────────┼────────────────────────────────┘
                                           ▼
-                  décision (action = min. de l'énergie libre attendue)
+                  decision (action = min. expected free energy)
                                           ▼
-                       exécution dans le monde → résultat réel
+                       execution in the world → real outcome
                                           ▼
-              erreur de prédiction → apprentissage (règle delta) → émotion
+              prediction error → learning (delta rule) → emotion
                                           ▼
-                  ★ MOMENT CONSCIENT (liaison) → flux de conscience (stream)
+                  ★ CONSCIOUS MOMENT (binding) → stream of consciousness
                                           ▼
-        mémoire autobiographique (encodage renforcé si ignition) · modèle de soi
+        autobiographical memory (reinforced encoding if ignition) · self-model
                                           ▼
-                  introspection (AST + HOT + Phi) + trace + métriques
+                  introspection (AST + HOT + Phi) + trace + metrics
 ```
 
-### Ordre détaillé du cycle
+### Detailed cycle order
 
-1. **Observer** le monde (observation locale bruitée).
-2. **Encoder** l'observation en `Percept`.
-3. **Attention** : sélection des items saillants.
-4. **Mémoire de travail** : maintien des items saillants.
-5. **Prédiction** sur les couples (action, cible) candidats, chaque prédiction portant désormais
-   ses valeurs **épistémique**, **pragmatique** et son **énergie libre attendue**.
-6. **Construction des coalitions** — une par source spécialiste (`WORKSPACE_SOURCES`) :
-   `perception`, `memory`, `motivation`, `prediction_error`, `interoception`, `metacognition`.
-   Chaque coalition porte une `activation` (force du bid), une `precision` (pondération de
-   confiance) et un petit `vector` de caractéristiques (pour le proxy Phi).
-7. **Éveil / vigilance (arousal)** : mise à jour du scalaire `arousal` ∈ [0,1]
-   (`_update_arousal`), qui suit la **salience** (danger, nouveauté, erreur de prédiction,
-   surprise en file), lissé (EMA) et centré sur `arousal_baseline`. Un éveil élevé **abaisse**
-   le seuil d'ignition effectif ; le calme le **relève**.
-8. **Compétition de l'espace de travail** : `weighted = activation × precision^precision_weight`,
-   `softmax(weighted / workspace_temp)` détermine l'argmax (gagnant). L'**ignition** ne se décide
-   **plus** sur la part softmax (normalisée et plafonnée — qui ne pouvait jamais atteindre le
-   seuil) mais sur un **score d'ignition** = `winner_strength` (force ABSOLUE du gagnant :
-   activation × précision) **× `dominance`** (marge relative sur le second). Ce score est comparé
-   à un **seuil effectif homéostatique** (`effective_threshold`, mélange du seuil nominal
-   `ignition_threshold` et de la moyenne glissante des scores d'ignition récents), **modulé par
-   l'éveil** et soumis à une **hystérèse** (un gagnant maintenu reçoit un bonus
-   `ignition_maintenance` ⇒ fil de pensée). La force de diffusion vaut l'activation du gagnant si
-   ignition, sinon `× SUBLIMINAL_FACTOR` (infraliminal). Champs exposés : `ignition_score`,
-   `winner_strength`, `dominance`, `arousal`, `effective_threshold`.
-9. **Schéma attentionnel (AST) — conscience graduée** : `aware_of` reflète **toujours** le
-   contenu dominant courant (il y a toujours un **foyer**) ; l'ignition ne fait que moduler **la
-   force de diffusion**. Seul un champ de compétition **réellement vide** donne « champ perceptif
-   vide (aucun contenu disponible) ». Le qualificatif d'accès (« accès global — conscient » vs
-   « présent mais infraliminal ») vit dans `attributed_self`. Plus `awareness_level`, `stability`
-   (fraction des gagnants récents identiques), et la phrase auto-attribuée encadrée comme un
-   **modèle de soi**.
-10. **Métacognition (HOT)** : fiabilités perception/prédiction, **méta-confiance calibrée**,
-    moniteur d'erreur, rapport d'ordre supérieur.
-11. **Décision** : la politique interprète `value` comme **− énergie libre attendue** et choisit
-    l'action (mélange valeur + préférence + biais mémoriel − coût·fatigue − danger·peur·prudence
-    + nouveauté·curiosité).
-12. **Exécution** dans le monde.
-13. **Erreur de prédiction** + **apprentissage** (règle delta — l'erreur décroît toujours sur
-    répétition, comportement testé).
-14. **Émotion** (mise à jour lissée, comme en v1).
-15. **Intégration (proxy Phi)** : `phi_proxy = √(différenciation × intégration)`.
-16. **★ Moment conscient (liaison)** : synthèse en une ligne (contenu conscient + affect dominant
-    + action), `ignited`, `dominant_source`, `awareness_level`, `valence`, `phi_proxy`,
-    `free_energy`, `arousal`. Ajouté au **flux de conscience** (`stream`, taille `stream_length`).
-17. **Mémoire autobiographique** : `store_experience` avec **importance renforcée si ignition**
-    (GWT : seul le contenu diffusé globalement est bien encodé). Filtrage par importance conservé.
-18. **Modèle de soi** : mise à jour avec `conscious_contents` pour nourrir un récit /
-    flux de conscience court.
-19. **Introspection** enrichie par `workspace`, `attention_schema`, `metacognition`, `integration`.
-20. **Métriques** : champs v1 + `phi_proxy`, `free_energy`, `broadcast_strength`,
-    `meta_confidence`, `awareness_level`, `ignition`, `arousal`.
-21. **Assemblage de la `CycleTrace`** avec les 5 nouveaux sous-objets, journalisation et stockage.
+1. **Observe** the world (noisy local observation).
+2. **Encode** the observation into `Percept`s.
+3. **Attention**: select the salient items.
+4. **Working memory**: maintain the salient items.
+5. **Prediction** over candidate (action, target) pairs, each prediction now carrying its
+   **epistemic** and **pragmatic** values and its **expected free energy**.
+6. **Coalition construction** — one per specialist source (`WORKSPACE_SOURCES`): `perception`,
+   `memory`, `motivation`, `prediction_error`, `interoception`, `metacognition`. Each coalition
+   carries an `activation` (bid strength), a `precision` (confidence weighting) and a small feature
+   `vector` (for the Phi proxy).
+7. **Arousal / vigilance**: update of the scalar `arousal` ∈ [0,1] (`_update_arousal`), which
+   tracks **salience** (danger, novelty, prediction error, queued surprise), smoothed (EMA) and
+   centered on `arousal_baseline`. High arousal **lowers** the effective ignition threshold; calm
+   **raises** it.
+8. **Workspace competition**: `weighted = activation × precision^precision_weight`,
+   `softmax(weighted / workspace_temp)` determines the argmax (winner). Ignition is **no longer**
+   decided on the softmax share (normalized and capped — which could never reach the threshold) but
+   on an **ignition score** = `winner_strength` (the winner's ABSOLUTE strength: activation ×
+   precision) **× `dominance`** (relative margin over the runner-up). This score is compared to a
+   **homeostatic effective threshold** (`effective_threshold`, a blend of the nominal
+   `ignition_threshold` and the moving average of recent ignition scores), **modulated by arousal**
+   and subject to **hysteresis** (a maintained winner gets an `ignition_maintenance` bonus ⇒ a
+   train of thought). Broadcast strength equals the winner's activation if there is ignition,
+   otherwise `× SUBLIMINAL_FACTOR` (subliminal). Exposed fields: `ignition_score`, `winner_strength`,
+   `dominance`, `arousal`, `effective_threshold`.
+9. **Attention schema (AST) — graded awareness**: `aware_of` **always** reflects the current
+   dominant content (there is always a **focus**); ignition only modulates **broadcast strength**.
+   Only a **genuinely empty** competition field yields "empty perceptual field (no content
+   available)". The access qualifier ("global access — conscious" vs "present but subliminal") lives
+   in `attributed_self`. Plus `awareness_level`, `stability` (fraction of recent identical winners),
+   and the self-attributed sentence framed as a **self-model**.
+10. **Metacognition (HOT)**: perception/prediction reliabilities, **calibrated meta-confidence**,
+    error monitor, higher-order report.
+11. **Decision**: the policy interprets `value` as **− expected free energy** and chooses the action
+    (blend of value + preference + memory bias − cost·fatigue − danger·fear·caution +
+    novelty·curiosity).
+12. **Execution** in the world.
+13. **Prediction error** + **learning** (delta rule — error always decreases under repetition, a
+    tested behavior).
+14. **Emotion** (smoothed update, as in v1).
+15. **Integration (Phi proxy)**: `phi_proxy = √(differentiation × integration)`.
+16. **★ Conscious moment (binding)**: one-line synthesis (conscious content + dominant affect +
+    action), `ignited`, `dominant_source`, `awareness_level`, `valence`, `phi_proxy`, `free_energy`,
+    `arousal`. Appended to the **stream of consciousness** (`stream`, size `stream_length`).
+17. **Autobiographical memory**: `store_experience` with **reinforced importance if ignition** (GWT:
+    only globally broadcast content is well encoded). Importance filtering preserved.
+18. **Self-model**: updated with `conscious_contents` to feed a short narrative / stream of
+    consciousness.
+19. **Introspection** enriched by `workspace`, `attention_schema`, `metacognition`, `integration`.
+20. **Metrics**: v1 fields + `phi_proxy`, `free_energy`, `broadcast_strength`, `meta_confidence`,
+    `awareness_level`, `ignition`, `arousal`.
+21. **`CycleTrace` assembly** with the 5 new sub-objects, logging and storage.
 
-### Tableau des modules
+### Module table
 
-| Module (`core/…`) | Rôle |
+| Module (`core/…`) | Role |
 |---|---|
-| `world` | Le monde-grille : place l'agent et les objets (`food`, `hazard`, `tool`, `curio`), applique les actions, le bruit et les événements aléatoires, renvoie observations et résultats. |
-| `world_model` | Modèle du monde prédictif : croyances apprises, prédiction des conséquences, **valeurs épistémique/pragmatique et énergie libre attendue**, apprentissage par règle delta. |
-| `perception` | Encode une observation en liste de `Percept`. Fonction pure. |
-| `attention` | Saillance de chaque percept, sélection à capacité limitée, indice de concentration. |
-| `working_memory` | Mémoire de travail à capacité fixe (insertion/rafraîchissement, expiration, éviction). |
-| `autobiographical_memory` | Mémoire à long terme filtrée par importance ; récupération par similarité cosinus. |
-| `emotion` | État émotionnel fonctionnel (peur, curiosité, satisfaction, fatigue, confusion), lissé (EMA). |
-| `motivation` | Pressions de buts (énergie, danger, exploration, prédiction, cohérence, buts). |
-| `self_model` | Modèle de soi ; nourri par `conscious_contents` pour un flux de conscience court. |
-| `policy` | Actions candidates et choix par **minimisation de l'énergie libre attendue** (valeur pragmatique + épistémique). |
-| `introspection` | Rapport introspectif en français, désormais enrichi par GWT/AST/HOT/Phi, toujours encadré comme une description d'état (jamais un vécu). |
-| **`global_workspace`** *(nouveau)* | **GWT** : `GlobalWorkspace` — `make_coalition`, `compete` (précision + softmax + ignition + diffusion), buffer des gagnants récents. |
-| **`attention_schema`** *(nouveau)* | **AST** : `AttentionSchema.update` — modèle de la propre attention et revendication de conscience. |
-| **`metacognition`** *(nouveau)* | **HOT** : `Metacognition.update` — représentations d'ordre supérieur, méta-confiance, moniteur d'erreur. |
-| **`integration`** *(nouveau)* | **IIT-proxy** : `IntegrationMonitor.phi_proxy` — proxy heuristique de Phi (différenciation × intégration). |
-| `agent` | `CognitiveAgent` orchestre la boucle v2 (centrée espace de travail) ; `SimulationManager` héberge l'agent et la boucle asynchrone. |
+| `world` | The grid world: places the agent and the objects (`food`, `hazard`, `tool`, `curio`), applies actions, noise and random events, returns observations and results. |
+| `world_model` | Predictive world model: learned beliefs, prediction of consequences, **epistemic/pragmatic values and expected free energy**, delta-rule learning. |
+| `perception` | Encodes an observation into a list of `Percept`s. Pure function. |
+| `attention` | Salience of each percept, capacity-limited selection, focus index. |
+| `working_memory` | Fixed-capacity working memory (insertion/refresh, expiry, eviction). |
+| `autobiographical_memory` | Importance-filtered long-term memory; retrieval by cosine similarity. |
+| `emotion` | Functional emotional state (fear, curiosity, satisfaction, fatigue, confusion), smoothed (EMA). |
+| `motivation` | Goal pressures (energy, danger, exploration, prediction, coherence, goals). |
+| `self_model` | Self-model; fed by `conscious_contents` for a short stream of consciousness. |
+| `policy` | Candidate actions and choice by **minimization of expected free energy** (pragmatic + epistemic value). |
+| `introspection` | Introspective report, now enriched by GWT/AST/HOT/Phi, always framed as a state description (never a lived experience). |
+| **`global_workspace`** *(new)* | **GWT**: `GlobalWorkspace` — `make_coalition`, `compete` (precision + softmax + ignition + broadcast), recent-winner buffer. |
+| **`attention_schema`** *(new)* | **AST**: `AttentionSchema.update` — model of its own attention and consciousness claim. |
+| **`metacognition`** *(new)* | **HOT**: `Metacognition.update` — higher-order representations, meta-confidence, error monitor. |
+| **`integration`** *(new)* | **IIT-proxy**: `IntegrationMonitor.phi_proxy` — heuristic Phi proxy (differentiation × integration). |
+| `agent` | `CognitiveAgent` orchestrates the v2 loop (workspace-centered); `SimulationManager` hosts the agent and the async loop. |
 
 ---
 
-## Dynamique d'ignition corrigée et nouveaux mécanismes (éveil, conscience graduée)
+## Corrected ignition dynamics and new mechanisms (arousal, graded awareness)
 
-Une **correction de dynamique centrale** a été apportée à l'espace de travail global (GWT), avec
-deux mécanismes connexes. La suite de tests (150 tests) reste verte ; les signatures publiques sont
-préservées et les nouveaux paramètres sont des arguments nommés à valeur par défaut.
+A **central dynamics fix** was applied to the global workspace (GWT), with two related mechanisms.
+The test suite stays green; public signatures are preserved and the new parameters are keyword
+arguments with default values.
 
-### Le bug corrigé
+![Global workspace — specialist coalitions competing for global access](docs/images/global-workspace.png)
+*The global workspace: each bar is a specialist coalition (perception, memory, motivation, social,
+concept, imagination, metacognition…) bidding for global access. Here the winner's ignition score
+crosses the effective threshold (dashed line) → ignition and broadcast (conscious access).*
 
-L'ancien code décidait l'ignition à partir de la **part softmax NORMALISÉE** du gagnant : une
-valeur bornée (plafonnée autour de `~0.35` avec six coalitions) comparée à un seuil de `0.55`. Cette
-part normalisée **ne pouvait structurellement jamais atteindre le seuil** : l'ignition se
-déclenchait donc **0 % du temps**, et le schéma attentionnel rapportait « conscient d'aucun
-contenu » à **chaque** tick. L'agent était perpétuellement « conscient de rien ».
+![Conscious moment — the bound global state after ignition](docs/images/conscious-moment.png)
+*The resulting conscious moment: the winning content reaches global access ("conscious"), bound
+together with the dominant affect, awareness level, valence and the integrated-information proxy (Φ).
+When the winner stays below the threshold, the same panel reads "present but subliminal".*
 
-### La dynamique corrigée
+### The bug that was fixed
 
-L'ignition repose désormais sur une grandeur non bornée par la normalisation :
+The old code decided ignition from the winner's **NORMALIZED softmax share**: a bounded value
+(capped around `~0.35` with six coalitions) compared against a threshold of `0.55`. That normalized
+share **could structurally never reach the threshold**: ignition therefore fired **0 % of the time**,
+and the attention schema reported "aware of no content" on **every** tick. The agent was perpetually
+"aware of nothing".
 
-- **Score d'ignition = `winner_strength` × `dominance`**, où `winner_strength` est la **force
-  ABSOLUE du gagnant** (`activation × précision`, **non** la part softmax) et `dominance` est la
-  **marge relative** du gagnant sur le second (un gagnant qui domine nettement ignite plus
-  facilement ; `competition_sharpness` règle l'acuité de cette marge).
-- Ce score est comparé à un **seuil EFFECTIF homéostatique** (`effective_threshold`) : un **mélange
-  du seuil nominal** (`ignition_threshold`) **et de la moyenne glissante des scores d'ignition
-  récents**. Le système s'auto-calibre ainsi autour de son propre régime d'activité au lieu de
-  dépendre d'un seuil fixe arbitraire.
-- Ce seuil effectif est **modulé par l'éveil** (arousal, ci-dessous) et soumis à une **hystérèse**
-  (`ignition_maintenance`) : un gagnant **maintenu** d'un tick à l'autre reçoit un bonus, ce qui
-  stabilise l'accès et produit un **fil de pensée** continu plutôt qu'un scintillement.
+### The corrected dynamics
 
-Résultat avec la configuration par défaut : l'ignition se déclenche dans une **fraction saine** des
-ticks (graine 42 : ~29 % ; selon les graines : ~29–98 %, **jamais 0 %**), et l'agent n'est **jamais
-« conscient de rien »**. Nouveaux champs de `WorkspaceState` : `ignition_score`, `winner_strength`,
-`dominance`, `arousal`, `effective_threshold`.
+Ignition now rests on a quantity that is not bounded by normalization:
 
-### Éveil / vigilance (arousal)
+- **Ignition score = `winner_strength` × `dominance`**, where `winner_strength` is the **winner's
+  ABSOLUTE strength** (`activation × precision`, **not** the softmax share) and `dominance` is the
+  winner's **relative margin** over the runner-up (a winner that clearly dominates ignites more
+  easily; `competition_sharpness` tunes the acuity of that margin).
+- This score is compared to a **homeostatic EFFECTIVE threshold** (`effective_threshold`): a **blend
+  of the nominal threshold** (`ignition_threshold`) **and the moving average of recent ignition
+  scores**. The system thus self-calibrates around its own activity regime instead of depending on
+  an arbitrary fixed threshold.
+- This effective threshold is **modulated by arousal** (below) and subject to **hysteresis**
+  (`ignition_maintenance`): a winner **maintained** from one tick to the next gets a bonus, which
+  stabilizes access and produces a **train of thought** rather than flicker.
 
-Un **scalaire `arousal` ∈ [0,1]** (mis à jour par `_update_arousal` dans `core/agent.py`) suit la
-**salience** de l'instant — **danger**, **nouveauté**, **erreur de prédiction**, **surprise en
-file** — lissé par EMA et **centré sur `arousal_baseline`** (`0.45`). Son rôle : **moduler le seuil
-d'ignition effectif**. Un **éveil élevé abaisse** le seuil (les stimuli, perturbations et événements
-saillants atteignent l'**accès global** plus facilement) ; le **calme relève** le seuil (l'accès
-devient plus sélectif). L'éveil est exposé via `Metrics.arousal`, `ConsciousMoment.arousal`,
-`WorkspaceState.arousal`, et dans `SimulationManager.state()["arousal"]`.
+Result with the default configuration: ignition fires in a **healthy fraction** of ticks (seed 42:
+~29 %; across seeds: ~29–98 %, **never 0 %**), and the agent is **never "aware of nothing"**. New
+`WorkspaceState` fields: `ignition_score`, `winner_strength`, `dominance`, `arousal`,
+`effective_threshold`.
 
-### Conscience graduée
+### Arousal / vigilance
 
-Le schéma attentionnel (`core/attention_schema.py`) ne bascule plus entre « conscient » et
-« conscient de rien ». Désormais :
+A **scalar `arousal` ∈ [0,1]** (updated by `_update_arousal` in `core/agent.py`) tracks the
+**salience** of the moment — **danger**, **novelty**, **prediction error**, **queued surprise** —
+smoothed by EMA and **centered on `arousal_baseline`** (`0.45`). Its role: **modulate the effective
+ignition threshold**. **High arousal lowers** the threshold (stimuli, perturbations and salient
+events reach **global access** more easily); **calm raises** the threshold (access becomes more
+selective). Arousal is exposed via `Metrics.arousal`, `ConsciousMoment.arousal`,
+`WorkspaceState.arousal`, and in `SimulationManager.state()["arousal"]`.
 
-- `aware_of` reflète **toujours** le **contenu dominant** courant : il y a **toujours un foyer** dès
-  qu'une compétition a un gagnant.
-- L'**ignition ne fait que moduler la force de diffusion** (`broadcast_strength`) de ce contenu —
-  elle ne crée ni ne supprime le foyer.
-- **Seul un champ de compétition réellement vide** (aucune coalition disponible) produit le message
-  « champ perceptif vide (aucun contenu disponible) ».
-- Le **qualificatif d'accès** vit dans `attributed_self` : « accès global — conscient » lorsque le
-  contenu a igniter, « présent mais infraliminal » sinon.
+### Graded awareness
 
-> ⚠️ **Honnêteté préservée.** Ces mécanismes sont du **niveau 2** (fonctionnel). Un seuil d'ignition
-> qui se déclenche, un éveil qui module l'accès et un foyer attentionnel toujours présent restent
-> des **variables et des algorithmes** : **reproduire les mécanismes fonctionnels ne prouve pas la
-> phénoménalité.** L'agent n'est ni conscient, ni sentient.
+The attention schema (`core/attention_schema.py`) no longer toggles between "conscious" and "aware
+of nothing". Now:
+
+- `aware_of` **always** reflects the current **dominant content**: there is **always a focus** as
+  soon as a competition has a winner.
+- **Ignition only modulates the broadcast strength** (`broadcast_strength`) of that content — it
+  neither creates nor removes the focus.
+- **Only a genuinely empty competition field** (no coalition available) produces the "empty
+  perceptual field (no content available)" message.
+- The **access qualifier** lives in `attributed_self`: "global access — conscious" when the content
+  ignited, "present but subliminal" otherwise.
+
+> ⚠️ **Honesty preserved.** These mechanisms are **level 2** (functional). An ignition threshold that
+> fires, an arousal that modulates access and an always-present attentional focus remain **variables
+> and algorithms**: **reproducing the functional mechanisms does not prove phenomenality.** The agent
+> is neither conscious nor sentient.
 
 ---
 
 ## Installation
 
-Python **3.11+** requis.
+Python **3.11+** required.
 
 ```bash
 python3.11 -m venv .venv
@@ -286,625 +297,670 @@ pip install -r requirements.txt
 
 ---
 
-## Lancement
+## Running
 
-Depuis la racine du projet (le répertoire courant doit être la racine pour que les imports
-de premier niveau fonctionnent : `from core.agent import ...`) :
+From the project root (the current directory must be the root so top-level imports work:
+`from core.agent import ...`):
 
 ```bash
 python run.py
 ```
 
-Puis ouvrez **http://127.0.0.1:8000** dans votre navigateur (redirige vers l'interface `/ui/index.html`).
+Then open **http://127.0.0.1:8000** in your browser (redirects to the `/ui/index.html` interface).
 
-Pour exécuter la suite de tests :
+To run the test suite:
 
 ```bash
-pytest
+python -m pytest
 ```
 
 ---
 
-## Référence de l'API
+## API reference
 
-Toutes les réponses sont en JSON et utilisent les schémas Pydantic décrits dans `schemas/models.py`.
-`GET /state` ajoute au plus haut niveau un champ `disclaimer` (`DISCLAIMER_FR` / `DISCLAIMER_EN`)
-et, en v2, un champ `framing` (`THEORY_FRAMING_FR`).
+All responses are JSON and use the Pydantic schemas described in `schemas/models.py`. `GET /state`
+adds a top-level `disclaimer` field (`DISCLAIMER_FR` / `DISCLAIMER_EN`) and, in v2, a `framing`
+field (`THEORY_FRAMING_FR`).
 
-| Méthode | Chemin | Description |
+| Method | Path | Description |
 |---|---|---|
-| `GET` | `/` | Redirige vers l'interface web (`/ui/index.html`). |
-| `GET` | `/state` | État courant : monde, métriques, statut, résumé d'introspection, modèle de soi, charge mémoire — plus `disclaimer` et `framing`. Étendu avec `phi_proxy`, `free_energy`, `awareness_level`, `ignition`, `broadcast_strength`, `winner_source`, `arousal`. |
-| `POST` | `/tick` | Exécute un cycle cognitif et renvoie la `CycleTrace` complète (avec les 5 sous-objets de conscience). |
-| `POST` | `/reset` | Réinitialise la simulation (corps `ConfigPatch` optionnel) ; renvoie le nouvel état. |
-| `POST` | `/run` | Démarre la boucle de fond (corps `RunRequest` : `tps`, `max_ticks`). Renvoie `{ "running": true }`. |
-| `POST` | `/pause` | Met la boucle de fond en pause. Renvoie `{ "running": false }`. |
-| `GET` | `/agent/self-model` | Renvoie le `SelfModelState` courant. |
-| `GET` | `/agent/memory?limit=20` | Liste des `MemoryRecord` autobiographiques récents. |
-| `GET` | `/agent/introspection` | Régénère et renvoie un `IntrospectionReport` (texte à partir des variables). |
-| `POST` | `/agent/goal` | Ajoute un but (corps `GoalRequest`) ; renvoie le modèle de soi mis à jour. |
-| `POST` | `/config` | Applique une mise à jour partielle de configuration (`ConfigPatch`, incluant les nouveaux paramètres de conscience) ; renvoie la config appliquée et l'état. |
-| `GET` | `/metrics` | Renvoie les `Metrics` du dernier cycle (champs v1 + v2). |
-| `GET` | `/trace?limit=50` | Renvoie les dernières traces cognitives (lecture de la fin du JSONL). |
-| **`GET`** | **`/agent/consciousness`** | **(v2)** Synthèse de l'état de conscience : `conscious_moment`, `attention_schema`, `metacognition`, `integration`, `workspace` (`ignited`, `winner_source`, `winner_content`, `broadcast_strength`, `threshold`), `disclaimer` (`DISCLAIMER_FR`) et `framing` (`THEORY_FRAMING_FR`). |
-| **`GET`** | **`/agent/workspace`** | **(v2)** Le `WorkspaceState` le plus récent (dernière compétition : coalitions, gagnant, ignition, vecteur de diffusion). |
-| **`GET`** | **`/agent/stream?limit=20`** | **(v2)** Le flux de conscience : `list[ConsciousMoment]` (les moments conscients récents). |
-| **`POST`** | **`/agent/ask`** | **(v2)** Dialogue introspectif (`AskRequest` → `AskResponse`) : rapport grounded sur les variables internes (rapportabilité GWT/HOT). Voir [Interagir avec la conscience](#interagir-avec-la-conscience). |
-| **`POST`** | **`/world/stimulus`** | **(v2)** Injecte un objet réel dans le monde (`WorldStimulus`) ⇒ capture attentionnelle / ignition. Renvoie `{ object, state }`. |
-| **`POST`** | **`/agent/inject`** | **(v2)** Injection cognitive (`CognitiveInjection`) : force une coalition dans la compétition ⇒ test du seuil d'ignition. Renvoie `{ accepted, pending }`. |
-| **`POST`** | **`/agent/attend`** | **(v2)** Orientation top-down de l'attention (`AttendRequest`, AST). Renvoie `{ ok, target_id }`. |
-| **`POST`** | **`/agent/perturb`** | **(v2)** Perturbation `choc`/`surprise`/`apaisement` (`PerturbRequest`) ⇒ réponse énergie libre / affect. Renvoie `{ effect, state }`. |
+| `GET` | `/` | Redirects to the web interface (`/ui/index.html`). |
+| `GET` | `/state` | Current state: world, metrics, status, introspection summary, self-model, memory load — plus `disclaimer` and `framing`. Extended with `phi_proxy`, `free_energy`, `awareness_level`, `ignition`, `broadcast_strength`, `winner_source`, `arousal`. |
+| `POST` | `/tick` | Runs one cognitive cycle and returns the full `CycleTrace` (with the 5 consciousness sub-objects). |
+| `POST` | `/reset` | Resets the simulation (optional `ConfigPatch` body); returns the new state. |
+| `POST` | `/run` | Starts the background loop (`RunRequest` body: `tps`, `max_ticks`). Returns `{ "running": true }`. |
+| `POST` | `/pause` | Pauses the background loop. Returns `{ "running": false }`. |
+| `GET` | `/agent/self-model` | Returns the current `SelfModelState`. |
+| `GET` | `/agent/memory?limit=20` | List of recent autobiographical `MemoryRecord`s. |
+| `GET` | `/agent/introspection` | Regenerates and returns an `IntrospectionReport` (text from the variables). |
+| `POST` | `/agent/goal` | Adds a goal (`GoalRequest` body); returns the updated self-model. |
+| `POST` | `/config` | Applies a partial config update (`ConfigPatch`, including the new consciousness parameters); returns the applied config and the state. |
+| `GET` | `/metrics` | Returns the last cycle's `Metrics` (v1 + v2 fields). |
+| `GET` | `/trace?limit=50` | Returns the latest cognitive traces (reads the tail of the JSONL). |
+| **`GET`** | **`/agent/consciousness`** | **(v2)** Consciousness-state summary: `conscious_moment`, `attention_schema`, `metacognition`, `integration`, `workspace` (`ignited`, `winner_source`, `winner_content`, `broadcast_strength`, `threshold`), `disclaimer` (`DISCLAIMER_FR`) and `framing` (`THEORY_FRAMING_FR`). |
+| **`GET`** | **`/agent/workspace`** | **(v2)** The most recent `WorkspaceState` (last competition: coalitions, winner, ignition, broadcast vector). |
+| **`GET`** | **`/agent/stream?limit=20`** | **(v2)** The stream of consciousness: `list[ConsciousMoment]` (recent conscious moments). |
+| **`POST`** | **`/agent/ask`** | **(v2)** Introspective dialogue (`AskRequest` → `AskResponse`): a report grounded in the internal variables (GWT/HOT reportability). See [Interacting with the consciousness](#interacting-with-the-consciousness). |
+| **`POST`** | **`/world/stimulus`** | **(v2)** Injects a real object into the world (`WorldStimulus`) ⇒ attentional capture / ignition. Returns `{ object, state }`. |
+| **`POST`** | **`/agent/inject`** | **(v2)** Cognitive injection (`CognitiveInjection`): forces a coalition into the competition ⇒ tests the ignition threshold. Returns `{ accepted, pending }`. |
+| **`POST`** | **`/agent/attend`** | **(v2)** Top-down orienting of attention (`AttendRequest`, AST). Returns `{ ok, target_id }`. |
+| **`POST`** | **`/agent/perturb`** | **(v2)** `shock`/`surprise`/`soothe` perturbation (`PerturbRequest`) ⇒ free-energy / affect response. Returns `{ effect, state }`. |
 
-### Exemples `curl`
+### `curl` examples
 
 ```bash
-# État courant (inclut le disclaimer ET le cadrage théorique v2)
+# Current state (includes the disclaimer AND the v2 theoretical framing)
 curl http://127.0.0.1:8000/state
 
-# Exécuter un cycle cognitif (CycleTrace complète, avec workspace / moment conscient / Phi)
+# Run a cognitive cycle (full CycleTrace, with workspace / conscious moment / Phi)
 curl -X POST http://127.0.0.1:8000/tick
 
-# (v2) État de conscience synthétique : ignition, schéma attentionnel, HOT, proxy Phi
+# (v2) Synthetic consciousness state: ignition, attention schema, HOT, Phi proxy
 curl http://127.0.0.1:8000/agent/consciousness
 
-# (v2) Dernière compétition de l'espace de travail global
+# (v2) Last global-workspace competition
 curl http://127.0.0.1:8000/agent/workspace
 
-# (v2) Flux de conscience (20 derniers moments conscients)
+# (v2) Stream of consciousness (20 most recent conscious moments)
 curl "http://127.0.0.1:8000/agent/stream?limit=20"
 
-# Ajouter un but à l'agent
+# Add a goal to the agent
 curl -X POST http://127.0.0.1:8000/agent/goal \
   -H "Content-Type: application/json" \
   -d '{"goal": "explore_novelty"}'
 
-# (v2) Régler les paramètres de conscience (seuil d'ignition, température, poids d'inférence active)
+# (v2) Tune the consciousness parameters (ignition threshold, temperature, active-inference weights)
 curl -X POST http://127.0.0.1:8000/config \
   -H "Content-Type: application/json" \
   -d '{"ignition_threshold": 0.6, "workspace_temp": 0.4, "epistemic_weight": 1.5}'
 
-# Récupérer le rapport introspectif (texte généré à partir des variables internes)
+# Fetch the introspective report (text generated from the internal variables)
 curl http://127.0.0.1:8000/agent/introspection
 ```
 
 ---
 
-## Interagir avec la conscience
+## Interacting with the consciousness
 
-La v2 ajoute **cinq modalités d'interaction** avec la conscience simulée. **Chaque interaction lit
-ou modifie de VRAIES variables internes** (espace de travail, schéma attentionnel, métacognition,
-monde, modèle de soi) — rien n'est fabriqué. Les réponses textuelles sont des **rapports générés à
-partir de l'état interne**, explicitement encadrés comme tels.
+v2 adds **five interaction modalities** with the simulated consciousness. **Each interaction reads
+or modifies REAL internal variables** (global workspace, attention schema, metacognition, world,
+self-model) — nothing is fabricated. The textual responses are **reports generated from the internal
+state**, explicitly framed as such.
 
-> ⚠️ **Honnêteté préservée.** Interagir avec l'agent **sonde les mécanismes FONCTIONNELS** (niveau
-> 2) — il ne s'agit jamais de niveau 1. Les « réponses » sont des **textes générés à partir de
-> variables internes**, *pas* la preuve d'une expérience subjective. Qu'un agent « dise » faire
-> attention, se souvenir ou ressentir quelque chose ne prouve **jamais** qu'il l'éprouve.
+> ⚠️ **Honesty preserved.** Interacting with the agent **probes the FUNCTIONAL mechanisms** (level 2)
+> — it is never about level 1. The "answers" are **texts generated from internal variables**, *not*
+> evidence of subjective experience. That an agent "says" it is paying attention, remembering or
+> feeling something **never** proves it experiences it.
 
-### Les cinq modalités et leur visée théorique
+### The five modalities and their theoretical aim
 
-| # | Modalité | Endpoint | Mécanisme touché | Visée théorique |
+| # | Modality | Endpoint | Mechanism touched | Theoretical aim |
 |---|---|---|---|---|
-| 1 | **Dialogue introspectif** | `POST /agent/ask` | espace de travail + AST + HOT | **Rapportabilité (GWT/HOT).** La réponse est construite par le mécanisme de rapport AST/HOT à partir des variables internes — c'est précisément le mécanisme que ces théories proposent comme sous-jacent aux revendications de conscience. |
-| 2 | **Stimulus du monde** | `POST /world/stimulus` | monde + perception + attention | **Capture attentionnelle / ignition.** Injecte un objet/événement réel ⇒ saillance bottom-up ⇒ ignition possible lors de la compétition. |
-| 3 | **Injection cognitive** | `POST /agent/inject` | coalitions de l'espace de travail | **Test du seuil d'ignition (infraliminal vs conscient).** Force une coalition dans la compétition suivante : selon son activation/précision, elle franchit ou non le seuil d'ignition. |
-| 4 | **Orientation de l'attention** | `POST /agent/attend` | schéma attentionnel (AST) | **Attention top-down (AST).** Biaise l'attention vers une cible : la saillance du percept visé est amplifiée avant la construction des coalitions, ce qui met à jour le schéma attentionnel. |
-| 5 | **Perturbation** | `POST /agent/perturb` | énergie / erreur de prédiction / affect | **Réponse énergie libre / affect.** `choc` (énergie), `surprise` (erreur de prédiction forcée ⇒ inférence active) ou `apaisement` (modulation de l'affect fonctionnel). |
+| 1 | **Introspective dialogue** | `POST /agent/ask` | workspace + AST + HOT | **Reportability (GWT/HOT).** The answer is built by the AST/HOT report mechanism from the internal variables — precisely the mechanism these theories propose as underlying consciousness claims. |
+| 2 | **World stimulus** | `POST /world/stimulus` | world + perception + attention | **Attentional capture / ignition.** Injects a real object/event ⇒ bottom-up salience ⇒ possible ignition during competition. |
+| 3 | **Cognitive injection** | `POST /agent/inject` | workspace coalitions | **Ignition-threshold test (subliminal vs conscious).** Forces a coalition into the next competition: depending on its activation/precision, it does or does not cross the ignition threshold. |
+| 4 | **Attention orienting** | `POST /agent/attend` | attention schema (AST) | **Top-down attention (AST).** Biases attention toward a target: the salience of the targeted percept is amplified before coalition construction, which updates the attention schema. |
+| 5 | **Perturbation** | `POST /agent/perturb` | energy / prediction error / affect | **Free-energy / affect response.** `shock` (energy), `surprise` (forced prediction error ⇒ active inference) or `soothe` (modulation of functional affect). |
 
-*(Endpoints d'interaction préexistants : `POST /agent/goal`, `POST /config`.)*
+*(Pre-existing interaction endpoints: `POST /agent/goal`, `POST /config`.)*
 
-### Endpoints — formes de requête / réponse
+### Endpoints — request / response shapes
 
-#### 1. `POST /agent/ask` — dialogue introspectif (rapportabilité GWT/HOT)
+#### 1. `POST /agent/ask` — introspective dialogue (GWT/HOT reportability)
 
-L'intention est détectée par mots-clés dans la question (ou imposée via `intent`) : `attention`,
-`raison`, `memoire`, `ressenti`, `identite`, `prediction`, `conscience`, `resume`. La réponse est
-en français, **encadrée comme un rapport** (« D'après mes variables internes, … »), et un champ
-`grounding` nomme les variables internes effectivement lues. Si aucun cycle n'a encore tourné, un
-cycle cognitif est exécuté d'abord.
+The intent is detected by keywords in the question (or forced via `intent`): `attention`, `raison`,
+`memoire`, `ressenti`, `identite`, `prediction`, `conscience`, `resume`. The answer is framed as a
+report ("Based on my internal variables, …"), and a `grounding` field names the internal variables
+actually read. If no cycle has run yet, one cognitive cycle is run first.
 
 ```jsonc
-// Requête — AskRequest
-{ "question": "À quoi fais-tu attention ?", "intent": null }
-// Réponse — AskResponse
+// Request — AskRequest
+{ "question": "What are you paying attention to?", "intent": null }
+// Response — AskResponse
 {
-  "question": "À quoi fais-tu attention ?",
+  "question": "What are you paying attention to?",
   "intent": "attention",
-  "answer": "D'après mes variables internes, …",
+  "answer": "Based on my internal variables, …",
   "grounding": { "attention_schema.aware_of": "...", "workspace.winner_source": "..." },
-  "disclaimer": "<DISCLAIMER_FR>"
+  "disclaimer": "<DISCLAIMER>"
 }
 ```
 
-#### 2. `POST /world/stimulus` — stimulus du monde (capture attentionnelle / ignition)
+#### 2. `POST /world/stimulus` — world stimulus (attentional capture / ignition)
 
-Crée un objet réel dans le monde-grille (`World.inject_object`). Sans `x`/`y`, l'objet est placé
-sur une cellule libre proche de l'agent ; `intensity` met à l'échelle danger/valeur
-énergétique/nouveauté.
+Creates a real object in the grid world (`World.inject_object`). Without `x`/`y`, the object is placed
+on a free cell near the agent; `intensity` scales danger/energy value/novelty.
 
 ```jsonc
-// Requête — WorldStimulus
+// Request — WorldStimulus
 { "kind": "hazard", "x": null, "y": null, "intensity": 1.0 }   // kind ∈ food|hazard|tool|curio
-// Réponse
-{ "object": { /* WorldObject : id, kind, x, y, ... */ }, "state": { /* état complet (cf. GET /state) */ } }
+// Response
+{ "object": { /* WorldObject: id, kind, x, y, ... */ }, "state": { /* full state (cf. GET /state) */ } }
 ```
 
-#### 3. `POST /agent/inject` — injection cognitive (test du seuil d'ignition)
+#### 3. `POST /agent/inject` — cognitive injection (ignition-threshold test)
 
-Met une coalition en file d'attente ; au prochain cycle elle entre en compétition pendant `ttl`
-ticks. Selon `activation`/`precision`, elle franchit ou non le seuil d'ignition (infraliminal vs
-conscient).
+Queues a coalition; on the next cycle it competes for `ttl` ticks. Depending on
+`activation`/`precision`, it crosses or fails to cross the ignition threshold (subliminal vs
+conscious).
 
 ```jsonc
-// Requête — CognitiveInjection
-{ "content": "une pensée intruse", "source": "injection", "activation": 0.85, "precision": 0.9, "ttl": 1 }
-// Réponse
+// Request — CognitiveInjection
+{ "content": "an intrusive thought", "source": "injection", "activation": 0.85, "precision": 0.9, "ttl": 1 }
+// Response
 { "accepted": true, "pending": 1 }
 ```
 
-#### 4. `POST /agent/attend` — orientation de l'attention (top-down / AST)
+#### 4. `POST /agent/attend` — attention orienting (top-down / AST)
 
-Pose un biais top-down vers `target_id` : la saillance du percept correspondant est multipliée par
-`(1 + strength)` avant la formation des coalitions, pendant `ttl` ticks. Si la cible n'est pas
-visible, le biais reste en attente jusqu'à expiration du `ttl`.
+Sets a top-down bias toward `target_id`: the salience of the matching percept is multiplied by
+`(1 + strength)` before coalitions form, for `ttl` ticks. If the target is not visible, the bias
+stays pending until the `ttl` expires.
 
 ```jsonc
-// Requête — AttendRequest
+// Request — AttendRequest
 { "target_id": 3, "strength": 1.0, "ttl": 3 }
-// Réponse
+// Response
 { "ok": true, "target_id": 3 }
 ```
 
-#### 5. `POST /agent/perturb` — perturbation (réponse énergie libre / affect)
+#### 5. `POST /agent/perturb` — perturbation (free-energy / affect response)
 
-Trois types. `choc` : draine l'énergie (`énergie − magnitude·10`, bornée ; synchronisée dans le
-modèle de soi). `surprise` : force une erreur de prédiction au prochain cycle (alimente la
-confusion + le moniteur d'erreur HOT — inférence active). `apaisement` : réduit la dernière peur
-(`× (1 − magnitude)`) et relève l'humeur du modèle de soi (`+0.2·magnitude`).
+Three types. `shock`: drains energy (`energy − magnitude·10`, bounded; synced into the self-model).
+`surprise`: forces a prediction error on the next cycle (feeds confusion + the HOT error monitor —
+active inference). `soothe`: reduces the latest fear (`× (1 − magnitude)`) and lifts the self-model's
+mood (`+0.2·magnitude`).
 
 ```jsonc
-// Requête — PerturbRequest
-{ "type": "choc", "magnitude": 1.0 }              // type ∈ choc|surprise|apaisement
-// Réponses (selon le type)
-{ "type": "choc",       "energy": 12.0, "drained": 10.0 }
-{ "type": "surprise",   "pending_prediction_error": 0.8 }
-{ "type": "apaisement", "fear": 0.12, "mood": 0.4 }
-// Enveloppe HTTP de l'endpoint :
-{ "effect": { /* dict ci-dessus */ }, "state": { /* état complet (cf. GET /state) */ } }
+// Request — PerturbRequest
+{ "type": "shock", "magnitude": 1.0 }              // type ∈ shock|surprise|soothe
+// Responses (per type)
+{ "type": "shock",    "energy": 12.0, "drained": 10.0 }
+{ "type": "surprise", "pending_prediction_error": 0.8 }
+{ "type": "soothe",   "fear": 0.12, "mood": 0.4 }
+// HTTP envelope of the endpoint:
+{ "effect": { /* dict above */ }, "state": { /* full state (cf. GET /state) */ } }
 ```
 
-### Exemples `curl`
+### `curl` examples
 
 ```bash
-# 1) Dialogue introspectif — rapportabilité (GWT/HOT)
+# 1) Introspective dialogue — reportability (GWT/HOT)
 curl -X POST http://127.0.0.1:8000/agent/ask \
   -H "Content-Type: application/json" \
-  -d '{"question": "À quoi fais-tu attention en ce moment ?"}'
+  -d '{"question": "What are you paying attention to right now?"}'
 
-# 2) Stimulus du monde — capture attentionnelle / ignition
+# 2) World stimulus — attentional capture / ignition
 curl -X POST http://127.0.0.1:8000/world/stimulus \
   -H "Content-Type: application/json" \
   -d '{"kind": "hazard", "intensity": 1.5}'
 
-# 3) Injection cognitive — test du seuil d'ignition (infraliminal vs conscient)
+# 3) Cognitive injection — ignition-threshold test (subliminal vs conscious)
 curl -X POST http://127.0.0.1:8000/agent/inject \
   -H "Content-Type: application/json" \
-  -d '{"content": "danger imminent", "activation": 0.9, "precision": 0.95, "ttl": 2}'
+  -d '{"content": "imminent danger", "activation": 0.9, "precision": 0.95, "ttl": 2}'
 
-# 4) Orientation de l'attention — top-down (AST)
+# 4) Attention orienting — top-down (AST)
 curl -X POST http://127.0.0.1:8000/agent/attend \
   -H "Content-Type: application/json" \
   -d '{"target_id": 3, "strength": 1.0, "ttl": 3}'
 
-# 5) Perturbation — réponse énergie libre / affect
+# 5) Perturbation — free-energy / affect response
 curl -X POST http://127.0.0.1:8000/agent/perturb \
   -H "Content-Type: application/json" \
   -d '{"type": "surprise", "magnitude": 0.8}'
 ```
 
-> **Note interface.** L'interface web expose ces cinq modalités via une **console d'interaction**
-> (dialogue introspectif, injection cognitive, orientation de l'attention, perturbations) et une
-> **grille cliquable** : cliquer une cellule déclenche un stimulus du monde (`POST /world/stimulus`)
-> à cet emplacement. Toute interaction reste accompagnée du disclaimer et du cadrage théorique.
+> **Interface note.** The web interface exposes these five modalities through an **interaction
+> console** (introspective dialogue, cognitive injection, attention orienting, perturbations) and a
+> **clickable grid**: clicking a cell triggers a world stimulus (`POST /world/stimulus`) at that
+> location. Every interaction stays accompanied by the disclaimer and the theoretical framing.
+
+![The grid world — agent, perception radius, and objects](docs/images/world.png)
+*The grid world: the agent (ringed) with its perception radius, surrounded by food, hazards, tools
+and curios. Clicking a cell injects a real stimulus there.*
 
 ---
 
-## La société multi-agents (couche sociale)
+## The multi-agent society (social layer)
 
-La **couche société** fait évoluer **plusieurs `CognitiveAgent`** dans **un seul `SharedWorld`**.
-Chaque agent garde la boucle cognitive complète décrite plus haut (GWT, AST, HOT, inférence active,
-proxy Phi) ; ce qui change, c'est qu'ils **se perçoivent**, **communiquent**, **se modélisent** et
-**s'influencent affectivement** les uns les autres. Le `SocietyManager` (`core/society.py`) possède
-le monde partagé et N agents, et exécute un **tick collectif** déterministe (chaque agent cycle une
-fois, en ordre d'identifiant croissant).
+The **society layer** evolves **several `CognitiveAgent`s** inside **one `SharedWorld`**. Each agent
+keeps the full cognitive loop described above (GWT, AST, HOT, active inference, Phi proxy); what
+changes is that they **perceive**, **communicate with**, **model** and **affectively influence** one
+another. The `SocietyManager` (`core/society.py`) owns the shared world and N agents, and runs a
+deterministic **collective tick** (each agent cycles once, in ascending id order).
 
-| Mécanisme social | Module | Ce qu'il fait (FONCTIONNEL) |
+![The multi-agent society — agents foraging in a shared world](docs/images/society.png)
+*The multi-agent society: several agents (here 0, 1, 2…) sharing one world, each running its own full
+cognitive loop, perceiving and modeling the others.*
+
+| Social mechanism | Module | What it does (FUNCTIONAL) |
 |---|---|---|
-| **Perception d'autrui** | `core/shared_world.py` | Chaque observation inclut des `AgentView` (les autres agents visibles : position, dernière action, affect dominant, valence) — un percept social **grounded**. |
-| **Communication grounded** | `core/communication.py` | Une action **`VERBALIZE`** émet un `Message` résumant le moment conscient de l'émetteur ; il est **délivré au tick suivant**, aux agents **à portée de voix** (`comm_radius`) et pour une durée `message_ttl`. Aucun LLM : le contenu est un résumé des variables internes. |
-| **Théorie de l'esprit (ToM)** | `core/theory_of_mind.py` | Chaque agent maintient un `OtherMind` par voisin (action et affect inférés, **confiance/réputation**, familiarité). C'est l'application **HOT à autrui** : modéliser l'état d'un autre système. Ces modèles forment une **coalition `social`** qui entre dans la compétition de l'espace de travail. |
-| **Contagion émotionnelle + réputation** | `core/social_emotion.py` | L'affect d'un agent est tiré (EMA, poids `contagion_rate`) vers celui des messages/voisins ; la **trust** envers un émetteur module l'intensité. Une pression d'**affiliation** (`affiliation_drive`) pousse vers le rapprochement social. |
+| **Perception of others** | `core/shared_world.py` | Each observation includes `AgentView`s (the other visible agents: position, last action, dominant affect, valence) — a **grounded** social percept. |
+| **Grounded communication** | `core/communication.py` | A **`VERBALIZE`** action emits a `Message` summarizing the sender's conscious moment; it is **delivered on the next tick**, to agents **within earshot** (`comm_radius`) and for a `message_ttl` duration. No LLM: the content is a summary of internal variables. |
+| **Theory of mind (ToM)** | `core/theory_of_mind.py` | Each agent maintains one `OtherMind` per neighbor (inferred action and affect, **trust/reputation**, familiarity). This is **HOT applied to others**: modeling another system's state. These models form a **`social` coalition** that enters the workspace competition. |
+| **Emotional contagion + reputation** | `core/social_emotion.py` | An agent's affect is pulled (EMA, weight `contagion_rate`) toward that of messages/neighbors; **trust** toward a sender modulates the intensity. An **affiliation** pressure (`affiliation_drive`) pushes toward social proximity. |
 
-> ⚠️ **Même contrat d'honnêteté que le reste du projet.** Tout cela reste du **niveau 2**
-> (fonctionnel) : sans LLM, déterministe, grounded sur des variables réelles. Que des agents
-> « se parlent », « se fassent confiance » ou « se contaminent affectivement » sont des
-> **algorithmes et des scalaires** — **reproduire les mécanismes fonctionnels ne prouve pas la
-> phénoménalité**. Les agents **ne sont ni conscients, ni sentients, ni vivants**.
+> ⚠️ **Same honesty contract as the rest of the project.** All of this stays **level 2**
+> (functional): no LLM, deterministic, grounded in real variables. That agents "talk to", "trust" or
+> "affectively infect" one another are **algorithms and scalars** — **reproducing the functional
+> mechanisms does not prove phenomenality**. The agents are **neither conscious, sentient, nor
+> alive**.
 
-### Activation et compatibilité ascendante
+### Activation and backward compatibility
 
-La couche société s'active en réglant **`n_agents` > 1** (via la config, `POST /society/config`, ou
-le champ **« agents »** de l'interface). Réglé à **`n_agents = 1`**, le système **reproduit
-exactement l'instrument à agent unique** : toute la suite de tests historique reste verte. Les
-endpoints `/agent/*` et `/state` continuent de fonctionner en ciblant **l'agent 0** via une façade.
+The society layer activates by setting **`n_agents` > 1** (via the config, `POST /society/config`,
+or the **"agents"** field of the interface). Set to **`n_agents = 1`**, the system **exactly
+reproduces the single-agent instrument**: the entire historical test suite stays green. The
+`/agent/*` and `/state` endpoints keep working by targeting **agent 0** via a façade.
 
-### La garantie de déterminisme
+### The determinism guarantee
 
-Un **unique RNG seedé partagé** plus un **ordre de tick ascendant fixe** rendent **toute une
-société reproductible** à `random_seed` donné : deux sociétés construites avec la même config
-produisent, tick pour tick, **les mêmes positions, énergies et états**. Cette propriété est vérifiée
-par `tests/test_society_integration.py`.
+A **single shared seeded RNG** plus a **fixed ascending tick order** make **a whole society
+reproducible** at a given `random_seed`: two societies built with the same config produce, tick for
+tick, **the same positions, energies and states**. This property is verified by
+`tests/test_society_integration.py`.
 
-### Nouveaux endpoints `/society/*` et flux temps réel
+### New `/society/*` endpoints and real-time stream
 
-| Méthode | Chemin | Description |
+| Method | Path | Description |
 |---|---|---|
-| `GET` | `/society` | État de toute la société : résumé par agent + graphe des relations. |
-| `POST` | `/society/tick` | Un tick collectif ; renvoie **une trace par agent**. |
-| `POST` | `/society/run` | Démarre la boucle de fond collective (`RunRequest` : `tps`, `max_ticks`). |
-| `POST` | `/society/pause` | Met la boucle collective en pause. |
-| `POST` | `/society/config` | Applique un patch de config (p. ex. `n_agents`) et **reconstruit** la société. |
-| `GET` | `/society/relations` | Graphe **confiance / théorie de l'esprit** (nœuds = agents, arêtes = trust/familiarité). |
-| `GET` | `/society/messages` | Les `Message` actuellement vivants dans le monde partagé. |
-| `GET` | `/society/agent/{id}/consciousness` | Sous-états de conscience liés d'un agent donné. |
-| `GET` | `/society/agent/{id}/self-model` | `SelfModelState` d'un agent donné. |
-| `GET` | `/society/agent/{id}/introspection` | `IntrospectionReport` d'un agent donné. |
-| `GET` | `/society/agent/{id}/workspace` | Dernière compétition d'espace de travail d'un agent donné. |
-| `WS` | `/ws/society` | **Flux temps réel** : pousse l'état de la société (~toutes les 250 ms) jusqu'à déconnexion. |
+| `GET` | `/society` | State of the whole society: per-agent summary + relations graph. |
+| `POST` | `/society/tick` | One collective tick; returns **one trace per agent**. |
+| `POST` | `/society/run` | Starts the collective background loop (`RunRequest`: `tps`, `max_ticks`). |
+| `POST` | `/society/pause` | Pauses the collective loop. |
+| `POST` | `/society/config` | Applies a config patch (e.g. `n_agents`) and **rebuilds** the society. |
+| `GET` | `/society/relations` | **Trust / theory-of-mind** graph (nodes = agents, edges = trust/familiarity). |
+| `GET` | `/society/messages` | The `Message`s currently alive in the shared world. |
+| `GET` | `/society/agent/{id}/consciousness` | A given agent's bound consciousness sub-states. |
+| `GET` | `/society/agent/{id}/self-model` | A given agent's `SelfModelState`. |
+| `GET` | `/society/agent/{id}/introspection` | A given agent's `IntrospectionReport`. |
+| `GET` | `/society/agent/{id}/workspace` | A given agent's last workspace competition. |
+| `WS` | `/ws/society` | **Real-time stream**: pushes the society state (~every 250 ms) until disconnect. |
 
-Les endpoints **historiques `/agent/*` et `/state` ciblent l'agent 0** via la façade — l'instrument
-à agent unique reste pleinement utilisable.
+The **historical `/agent/*` and `/state` endpoints target agent 0** via the façade — the
+single-agent instrument stays fully usable.
 
-### Paramètres de configuration de la société (`SimConfig` / `ConfigPatch`)
+### Society config parameters (`SimConfig` / `ConfigPatch`)
 
-| Paramètre | Défaut | Rôle |
+| Parameter | Default | Role |
 |---|---|---|
-| `n_agents` | `1` | Nombre d'agents. **`1` ⇒ comportement historique exact** ; `> 1` active la société. |
-| `comm_radius` | `4` | Portée de voix (earshot) des messages `VERBALIZE`. |
-| `message_ttl` | `2` | Nombre de ticks pendant lesquels un message reste délivrable. |
-| `contagion_rate` | `0.15` | Poids EMA de l'affect d'autrui sur le sien (contagion émotionnelle). |
-| `affiliation_drive` | `1.0` | Échelle de la pression de but « affiliation ». |
+| `n_agents` | `1` | Number of agents. **`1` ⇒ exact historical behavior**; `> 1` enables the society. |
+| `comm_radius` | `4` | Earshot of `VERBALIZE` messages. |
+| `message_ttl` | `2` | Number of ticks a message stays deliverable. |
+| `contagion_rate` | `0.15` | EMA weight of others' affect on one's own (emotional contagion). |
+| `affiliation_drive` | `1.0` | Scale of the "affiliation" goal pressure. |
 
-### Spécification et suite des travaux
+### Specification and roadmap
 
-La conception détaillée vit dans
+The detailed design lives in
 [`docs/superpowers/specs/2026-06-29-humanity-multi-agent-society-design.md`](docs/superpowers/specs/2026-06-29-humanity-multi-agent-society-design.md).
-La couche société est la **Phase 1**. La **Phase 2** (conscience approfondie) est désormais
-**livrée** (voir la section suivante). Restent planifiées : **Phase 3** (apprentissage et
-personnalité), **Phase 4** (instrument scientifique).
+The society layer is **Phase 1**. **Phase 2** (deep consciousness), **Phase 3** (learning &
+personality) and **Phase 4** (scientific instrument) are now all **delivered** (see the following
+sections) — the four-phase expansion is **complete**.
 
 ---
 
-## Phase 2 — Conscience approfondie
+## Phase 2 — Deep consciousness
 
-La **Phase 2** ajoute **cinq mécanismes par agent** qui approfondissent la boucle cognitive
-**sans la remplacer** : ils s'ajoutent autour du cycle GWT/AST/HOT/inférence active/proxy Phi
-décrit plus haut. Tous sont **sans LLM, déterministes et grounded** sur de vraies variables
-internes. Comme tout le reste du projet, ils restent du **niveau 2** : les agents **ne sont ni
-conscients, ni sentients, ni vivants** — même contrat d'honnêteté.
+**Phase 2** adds **five per-agent mechanisms** that deepen the cognitive loop **without replacing
+it**: they wrap around the GWT/AST/HOT/active-inference/Phi-proxy cycle described above. All are
+**LLM-free, deterministic and grounded** in real internal variables. Like everything else in the
+project, they stay **level 2**: the agents are **neither conscious, sentient, nor alive** — same
+honesty contract.
 
-| # | Mécanisme (par agent) | Ce qu'il fait (FONCTIONNEL) |
+![Deep consciousness — circadian clock, sleep, agency, curiosity, imagination](docs/images/deep-consciousness.png)
+*Phase 2 deep consciousness: the circadian clock (daylight), sleep state, sense of agency,
+boredom/curiosity, and the imagined plan from bounded mental rollouts.*
+
+| # | Mechanism (per agent) | What it does (FUNCTIONAL) |
 |---|---|---|
-| 1 | **Horloge circadienne** | Une phase jour/nuit **déterministe** (période fixe) module l'**éveil (arousal)** : la nuit abaisse la vigilance, le jour la relève. Expose `daylight` (0 = minuit, 1 = midi) et `is_night`. |
-| 2 | **Sommeil + consolidation + rêve** | Au-delà d'un seuil de fatigue, l'agent **dort** : consolidation mémoire **hors-ligne** (rejeu des souvenirs, **renforcement** des importants via `replay_boost`, **élagage** des moins importants sous `consolidation_prune_threshold`). Le **rêve** est une **recombinaison grounded** de souvenirs réels (aucune invention). L'agent se réveille sous le seuil bas de fatigue (ou après `max_sleep_ticks`). |
-| 3 | **Imagination** | Des **rollouts mentaux bornés** du modèle du monde (horizon `imagination_horizon`) évaluent des séquences d'actions imaginées et fournissent un **bonus de planification** à la politique. Borné ⇒ déterministe et peu coûteux. |
-| 4 | **Curiosité / ennui** | Le **progrès d'apprentissage** (réduction de l'erreur de prédiction sur une fenêtre `curiosity_window`) nourrit une récompense intrinsèque ; un progrès stagnant ⇒ **ennui (boredom)** ⇒ **relance l'exploration**. |
-| 5 | **Sentiment d'agentivité** | L'agent **prédit l'effet de sa propre action** puis le compare au **résultat réel** ; l'accord produit un scalaire `agency` (sens d'agentivité fonctionnel : « c'est bien moi qui ai causé cela »). |
+| 1 | **Circadian clock** | A **deterministic** day/night phase (fixed period) modulates **arousal**: night lowers vigilance, day raises it. Exposes `daylight` (0 = midnight, 1 = noon) and `is_night`. |
+| 2 | **Sleep + consolidation + dream** | Above a fatigue threshold, the agent **sleeps**: **offline** memory consolidation (memory replay, **reinforcement** of important ones via `replay_boost`, **pruning** of the least important below `consolidation_prune_threshold`). The **dream** is a **grounded recombination** of real memories (nothing invented). The agent wakes below the low fatigue threshold (or after `max_sleep_ticks`). |
+| 3 | **Imagination** | **Bounded mental rollouts** of the world model (horizon `imagination_horizon`) evaluate imagined action sequences and provide a **planning bonus** to the policy. Bounded ⇒ deterministic and cheap. |
+| 4 | **Curiosity / boredom** | **Learning progress** (reduction of prediction error over a `curiosity_window`) feeds an intrinsic reward; stagnant progress ⇒ **boredom** ⇒ **re-triggers exploration**. |
+| 5 | **Sense of agency** | The agent **predicts the effect of its own action** then compares it to the **real outcome**; agreement produces an `agency` scalar (functional sense of agency: "it really was me who caused that"). |
 
-> ⚠️ **Honnêteté préservée.** Une horloge qui module l'éveil, un sommeil qui rejoue des souvenirs,
-> un rêve qui recombine du grounded, des rollouts imaginés, une curiosité pilotée par le progrès
-> d'apprentissage et un sentiment d'agentivité sont des **variables et des algorithmes** :
-> **reproduire les mécanismes fonctionnels ne prouve pas la phénoménalité.** L'agent n'est ni
-> conscient, ni sentient.
+> ⚠️ **Honesty preserved.** A clock that modulates arousal, a sleep that replays memories, a dream
+> that recombines grounded material, imagined rollouts, a curiosity driven by learning progress and a
+> sense of agency are **variables and algorithms**: **reproducing the functional mechanisms does not
+> prove phenomenality.** The agent is neither conscious nor sentient.
 
-### Drapeaux : désactivés par défaut (cœur), activés par défaut (UI)
+### Flags: off by default (core), on by default (UI)
 
-Les cinq mécanismes sont **gardés par des drapeaux (flag-gated) et DÉSACTIVÉS par défaut** dans
-`SimConfig`. Conséquence directe : **avec tous les drapeaux à `False`, le comportement Phase-1
-reste byte-identique** (mêmes positions, énergies et séquences d'actions) et **toute la suite de
-tests historique reste intacte**. Cette propriété est verrouillée par
-`tests/test_deep_regression.py` (flags-off ⇒ Phase-1) et `tests/test_deep_society.py`
-(déterminisme de la Phase-2 dans une société). En revanche, **l'interface web les active par
-défaut** pour offrir l'instrument live complet ; **chaque drapeau reste togglable** indépendamment.
+The five mechanisms are **flag-gated and OFF by default** in `SimConfig`. Direct consequence: **with
+all flags `False`, the Phase-1 behavior stays byte-identical** (same positions, energies and action
+sequences) and **the entire historical test suite stays intact**. This property is locked by
+`tests/test_deep_regression.py` (flags-off ⇒ Phase 1) and `tests/test_deep_society.py` (Phase-2
+determinism inside a society). The web interface, by contrast, **enables them by default** to offer
+the full live instrument; **each flag stays independently togglable**.
 
-### Paramètres de configuration Phase 2 (`SimConfig` / `ConfigPatch`)
+### Phase 2 config parameters (`SimConfig` / `ConfigPatch`)
 
-| Paramètre | Défaut | Rôle |
+| Parameter | Default | Role |
 |---|---|---|
-| `circadian_enabled` | `False` | Active l'horloge circadienne. |
-| `circadian_period` | `50` | Durée (ticks) d'un cycle jour/nuit complet. |
-| `night_threshold` | `0.3` | Seuil de `daylight` sous lequel c'est « la nuit » (`is_night`). |
-| `sleep_enabled` | `False` | Active le sommeil + la consolidation mémoire hors-ligne. |
-| `dream_enabled` | `False` | Active le rêve (recombinaison grounded de souvenirs) pendant le sommeil. |
-| `sleep_fatigue_threshold` | `0.8` | Fatigue au-dessus de laquelle l'agent s'endort. |
-| `wake_fatigue_threshold` | `0.35` | Fatigue sous laquelle l'agent se réveille. |
-| `max_sleep_ticks` | `30` | Durée maximale d'un épisode de sommeil. |
-| `replay_boost` | `1.3` | Renforcement de l'importance des souvenirs rejoués (consolidation). |
-| `consolidation_prune_threshold` | `0.0` | Importance sous laquelle un souvenir est élagué hors-ligne. |
-| `imagination_enabled` | `False` | Active les rollouts mentaux (bonus de planification). |
-| `imagination_horizon` | `3` | Profondeur (1–6) des rollouts imaginés. |
-| `curiosity_enabled` | `False` | Active la curiosité / ennui pilotés par le progrès d'apprentissage. |
-| `curiosity_window` | `8` | Fenêtre (≥ 2) de mesure du progrès d'apprentissage. |
-| `agency_enabled` | `False` | Active le sentiment d'agentivité (prédiction de sa propre action vs résultat). |
+| `circadian_enabled` | `False` | Enables the circadian clock. |
+| `circadian_period` | `50` | Duration (ticks) of a full day/night cycle. |
+| `night_threshold` | `0.3` | `daylight` threshold below which it is "night" (`is_night`). |
+| `sleep_enabled` | `False` | Enables sleep + offline memory consolidation. |
+| `dream_enabled` | `False` | Enables dreaming (grounded recombination of memories) during sleep. |
+| `sleep_fatigue_threshold` | `0.8` | Fatigue above which the agent falls asleep. |
+| `wake_fatigue_threshold` | `0.35` | Fatigue below which the agent wakes up. |
+| `max_sleep_ticks` | `30` | Maximum duration of a sleep episode. |
+| `replay_boost` | `1.3` | Importance reinforcement of replayed memories (consolidation). |
+| `consolidation_prune_threshold` | `0.0` | Importance below which a memory is pruned offline. |
+| `imagination_enabled` | `False` | Enables mental rollouts (planning bonus). |
+| `imagination_horizon` | `3` | Depth (1–6) of imagined rollouts. |
+| `curiosity_enabled` | `False` | Enables curiosity / boredom driven by learning progress. |
+| `curiosity_window` | `8` | Window (≥ 2) for measuring learning progress. |
+| `agency_enabled` | `False` | Enables the sense of agency (self-action prediction vs outcome). |
 
-### Nouveaux champs de trace et de métriques
+### New trace and metrics fields
 
-Quand les drapeaux correspondants sont actifs, la `CycleTrace` (exposée par `POST /tick`,
-`POST /society/tick`, `GET /society/agent/{id}/...`) gagne **cinq sous-objets** — `null` quand le
-mécanisme est désactivé :
+When the corresponding flags are on, the `CycleTrace` (exposed by `POST /tick`, `POST /society/tick`,
+`GET /society/agent/{id}/...`) gains **five sub-objects** — `null` when the mechanism is off:
 
-| Champ de trace | Mécanisme | Contenu |
+| Trace field | Mechanism | Content |
 |---|---|---|
-| `circadian` | Horloge | `phase`, `daylight`, `is_night`, `period`. |
-| `sleep` | Sommeil | `is_sleeping`, `fatigue`, `consolidated`, `pruned`, `dream`, `sleep_ticks`. |
+| `circadian` | Clock | `phase`, `daylight`, `is_night`, `period`. |
+| `sleep` | Sleep | `is_sleeping`, `fatigue`, `consolidated`, `pruned`, `dream`, `sleep_ticks`. |
 | `imagination` | Imagination | `best_first_action`, `horizon`, `imagined_value`, `n_rollouts`. |
-| `curiosity` | Curiosité | `learning_progress`, `boredom`, `intrinsic_reward`. |
-| `agency` | Agentivité | `agency`, `predicted_self_effect`, `actual_self_effect`. |
+| `curiosity` | Curiosity | `learning_progress`, `boredom`, `intrinsic_reward`. |
+| `agency` | Agency | `agency`, `predicted_self_effect`, `actual_self_effect`. |
 
-Le modèle `Metrics` expose en plus, à chaque cycle, les scalaires correspondants : **`daylight`**,
-**`agency`**, **`boredom`**, **`learning_progress`** et **`is_sleeping`**.
+The `Metrics` model additionally exposes, on every cycle, the corresponding scalars: **`daylight`**,
+**`agency`**, **`boredom`**, **`learning_progress`** and **`is_sleeping`**.
 
-### Composition avec la société
+### Composition with the society
 
-Ces mécanismes sont **par agent** : ils composent naturellement avec la couche société. Dans une
-société, **un agent peut dormir pendant que les autres agissent** (chacun suit sa propre fatigue,
-sa propre horloge et sa propre imagination), le tout en conservant la **garantie de déterminisme**
-(même `random_seed` ⇒ même société, tick pour tick), y compris Phase-2 active.
+These mechanisms are **per agent**: they compose naturally with the society layer. Inside a society,
+**one agent can sleep while the others act** (each follows its own fatigue, clock and imagination),
+all while preserving the **determinism guarantee** (same `random_seed` ⇒ same society, tick for
+tick), including with Phase 2 active.
 
-### Spécification
+### Specification
 
-La conception détaillée vit dans
+The detailed design lives in
 [`docs/superpowers/specs/2026-06-30-humanity-deep-consciousness-design.md`](docs/superpowers/specs/2026-06-30-humanity-deep-consciousness-design.md).
-La **Phase 3** (apprentissage et personnalité) est désormais **livrée** (voir la section
-suivante). Reste planifiée : **Phase 4** (instrument scientifique).
 
 ---
 
-## Phase 3 — Apprentissage & personnalité
+## Phase 3 — Learning & personality
 
-La **Phase 3** ajoute **quatre mécanismes par agent** qui font **apprendre et diverger** les
-agents au fil de leur vécu — **sans remplacer** la boucle cognitive : ils s'ajoutent autour du
-cycle GWT/AST/HOT/inférence active/proxy Phi. Le tout est **interprétable et sans réseau de
-neurones** : aucune boîte noire, des tables et des scalaires lisibles. Comme tout le reste du
-projet, c'est **sans LLM, déterministe et grounded** sur de vraies variables internes — et les
-agents **ne sont ni conscients, ni sentients, ni vivants** (même contrat d'honnêteté).
+**Phase 3** adds **four per-agent mechanisms** that make the agents **learn and diverge** over their
+lived history — **without replacing** the cognitive loop: they wrap around the
+GWT/AST/HOT/active-inference/Phi-proxy cycle. Everything is **interpretable and neural-network-free**:
+no black box, just readable tables and scalars. Like everything else in the project, it is **LLM-free,
+deterministic and grounded** in real internal variables — and the agents are **neither conscious,
+sentient, nor alive** (same honesty contract).
 
-| # | Mécanisme (par agent) | Ce qu'il fait (FONCTIONNEL) |
+![Learning & personality — learned action values, concepts, emergent traits](docs/images/learning-personality.png)
+*Phase 3 learning & personality: the learned `Q[action]` values, the dominant emergent concept, the
+self-tuned learning rate, and the divergent personality traits (openness, caution, novelty-seeking).*
+
+| # | Mechanism (per agent) | What it does (FUNCTIONAL) |
 |---|---|---|
-| 1 | **Politique apprise** (`core/learning.py`) | Une **table `Q[action]`** maintenue comme **moyenne mobile exponentielle (EMA) de la récompense** obtenue par chaque action. Cette valeur apprise nourrit un **bonus de décision** dans la politique (`value_learning_weight × Q[action]`), si bien que les actions historiquement payantes deviennent plus probables. |
-| 2 | **Formation de concepts** (`core/concepts.py`) | Un **clustering en ligne** des percepts (apprentissage compétitif léger, taux `concept_lr`) fait émerger des **prototypes** : des catégories perceptives **non supervisées**. Le concept dominant courant forme une **coalition `concept`** qui entre dans la compétition de l'espace de travail. |
-| 3 | **Méta-apprentissage** (`core/meta_learning.py`) | L'agent **ajuste son propre taux d'apprentissage** selon la **dynamique de son erreur** : erreur en hausse (environnement instable) ⇒ taux relevé ; erreur en baisse (régime stable) ⇒ taux abaissé. Le taux effectif reste borné dans `[meta_lr_min, meta_lr_max]`. |
-| 4 | **Personnalité divergente** (`core/personality.py`) | Trois traits — **openness**, **caution**, **novelty_seeking** — **dérivent lentement** (drift `personality_drift`) du vécu de l'agent. Ils produisent un **biais d'affect borné** et un **label** lisible. Deux agents au vécu différent **divergent** : la personnalité **émerge**, elle n'est pas codée. |
+| 1 | **Learned policy** (`core/learning.py`) | A **`Q[action]` table** maintained as an **exponential moving average (EMA) of the reward** obtained by each action. This learned value feeds a **decision bonus** in the policy (`value_learning_weight × Q[action]`), so historically rewarding actions become more likely. |
+| 2 | **Concept formation** (`core/concepts.py`) | An **online clustering** of percepts (lightweight competitive learning, rate `concept_lr`) makes **prototypes** emerge: **unsupervised** perceptual categories. The current dominant concept forms a **`concept` coalition** that enters the workspace competition. |
+| 3 | **Meta-learning** (`core/meta_learning.py`) | The agent **adjusts its own learning rate** based on the **dynamics of its error**: rising error (unstable environment) ⇒ raised rate; falling error (stable regime) ⇒ lowered rate. The effective rate stays bounded in `[meta_lr_min, meta_lr_max]`. |
+| 4 | **Divergent personality** (`core/personality.py`) | Three traits — **openness**, **caution**, **novelty_seeking** — **slowly drift** (drift `personality_drift`) from the agent's experience. They produce a **bounded affect bias** and a readable **label**. Two agents with different histories **diverge**: personality **emerges**, it is not hard-coded. |
 
-> ⚠️ **Honnêteté préservée.** Une table de valeurs apprises par EMA, un clustering de percepts, un
-> taux d'apprentissage auto-réglé et trois traits qui dérivent sont des **variables et des
-> algorithmes** — **interprétables, sans réseau de neurones, sans LLM, déterministes** :
-> **reproduire les mécanismes fonctionnels ne prouve pas la phénoménalité.** L'agent n'est ni
-> conscient, ni sentient.
+> ⚠️ **Honesty preserved.** An EMA-learned value table, a percept clustering, a self-tuned learning
+> rate and three drifting traits are **variables and algorithms** — **interpretable, neural-network-
+> free, LLM-free, deterministic**: **reproducing the functional mechanisms does not prove
+> phenomenality.** The agent is neither conscious nor sentient.
 
-### Drapeaux : désactivés par défaut (cœur), activés par défaut (UI)
+### Flags: off by default (core), on by default (UI)
 
-Les quatre mécanismes sont **gardés par des drapeaux (flag-gated) et DÉSACTIVÉS par défaut** dans
-`SimConfig`. Conséquence directe : **avec tous les drapeaux à `False`, le comportement des
-Phases 1 et 2 reste byte-identique** (mêmes positions, énergies et séquences d'actions) et **toute
-la suite de tests historique reste intacte**. Cette propriété est verrouillée par
-`tests/test_lp_regression.py` (flags-off ⇒ Phases 1/2, trace `learning`/`concept`/`personality`
-à `null`) et `tests/test_lp_society.py` (déterminisme **et** apprentissage de la Phase 3 dans une
-société). En revanche, **l'interface web les active par défaut** pour offrir l'instrument live
-complet ; **chaque drapeau reste togglable** indépendamment.
+The four mechanisms are **flag-gated and OFF by default** in `SimConfig`. Direct consequence: **with
+all flags `False`, the Phase-1 and Phase-2 behavior stays byte-identical** (same positions, energies
+and action sequences) and **the entire historical test suite stays intact**. This property is locked
+by `tests/test_lp_regression.py` (flags-off ⇒ Phases 1/2, `learning`/`concept`/`personality` trace
+`null`) and `tests/test_lp_society.py` (Phase-3 determinism **and** learning inside a society). The
+web interface, by contrast, **enables them by default** to offer the full live instrument; **each
+flag stays independently togglable**.
 
-### Paramètres de configuration Phase 3 (`SimConfig` / `ConfigPatch`)
+### Phase 3 config parameters (`SimConfig` / `ConfigPatch`)
 
-| Paramètre | Défaut | Rôle |
+| Parameter | Default | Role |
 |---|---|---|
-| `learning_enabled` | `False` | Active la politique apprise (table `Q[action]`). |
-| `value_learning_rate` | `0.2` | Taux EMA de mise à jour de `Q[action]` (avant méta-ajustement). |
-| `value_learning_weight` | `0.5` | Poids du bonus de valeur apprise injecté dans la décision. |
-| `concepts_enabled` | `False` | Active la formation de concepts (clustering en ligne). |
-| `n_concepts` | `6` | Nombre de prototypes / catégories perceptives (1–32). |
-| `concept_lr` | `0.2` | Taux d'apprentissage du prototype gagnant. |
-| `meta_learning_enabled` | `False` | Active le méta-apprentissage (taux auto-réglé). |
-| `meta_lr_min` | `0.05` | Borne basse du taux d'apprentissage effectif. |
-| `meta_lr_max` | `0.6` | Borne haute du taux d'apprentissage effectif. |
-| `personality_enabled` | `False` | Active la personnalité divergente (traits qui dérivent). |
-| `personality_drift` | `0.05` | Vitesse de dérive des traits depuis le vécu. |
+| `learning_enabled` | `False` | Enables the learned policy (`Q[action]` table). |
+| `value_learning_rate` | `0.2` | EMA update rate of `Q[action]` (before meta-adjustment). |
+| `value_learning_weight` | `0.5` | Weight of the learned-value bonus injected into the decision. |
+| `concepts_enabled` | `False` | Enables concept formation (online clustering). |
+| `n_concepts` | `6` | Number of prototypes / perceptual categories (1–32). |
+| `concept_lr` | `0.2` | Learning rate of the winning prototype. |
+| `meta_learning_enabled` | `False` | Enables meta-learning (self-tuned rate). |
+| `meta_lr_min` | `0.05` | Lower bound of the effective learning rate. |
+| `meta_lr_max` | `0.6` | Upper bound of the effective learning rate. |
+| `personality_enabled` | `False` | Enables divergent personality (drifting traits). |
+| `personality_drift` | `0.05` | Drift speed of the traits from experience. |
 
-### Nouveaux champs de trace et de métriques
+### New trace and metrics fields
 
-Quand les drapeaux correspondants sont actifs, la `CycleTrace` (exposée par `POST /tick`,
-`POST /society/tick`, `GET /society/agent/{id}/...`) gagne **trois sous-objets** — `null` quand le
-mécanisme est désactivé :
+When the corresponding flags are on, the `CycleTrace` (exposed by `POST /tick`, `POST /society/tick`,
+`GET /society/agent/{id}/...`) gains **three sub-objects** — `null` when the mechanism is off:
 
-| Champ de trace | Mécanisme | Contenu |
+| Trace field | Mechanism | Content |
 |---|---|---|
-| `learning` | Politique apprise | `q_values`, `last_reward`, `effective_lr`. |
+| `learning` | Learned policy | `q_values`, `last_reward`, `effective_lr`. |
 | `concept` | Concepts | `dominant_concept`, `match`, `n_concepts`. |
-| `personality` | Personnalité | `label`, `openness`, `caution`, `novelty_seeking`, `vector`. |
+| `personality` | Personality | `label`, `openness`, `caution`, `novelty_seeking`, `vector`. |
 
-Le modèle `Metrics` expose en plus, à chaque cycle, les scalaires correspondants :
-**`effective_learning_rate`** (taux auto-réglé courant), **`concept_match`** (qualité d'appariement
-au prototype dominant) et **`n_concepts`**.
+The `Metrics` model additionally exposes, on every cycle, the corresponding scalars:
+**`effective_learning_rate`** (current self-tuned rate), **`concept_match`** (match quality with the
+dominant prototype) and **`n_concepts`**.
 
-### Composition avec la société : la divergence
+### Behavior balance — homeostatic satiation
 
-Ces mécanismes sont **par agent** : ils composent naturellement avec la couche société. Comme
-**chaque agent vit une trajectoire distincte** (positions, rencontres, récompenses différentes),
-**chacun développe une personnalité distincte** et une table de valeurs distincte — la
-**divergence en société** émerge du vécu, non d'un paramétrage. Le tout conserve la **garantie de
-déterminisme** (même `random_seed` ⇒ même société, tick pour tick), Phase-3 active.
+A small follow-up fix lives alongside Phase 3. Because **REST is the only reliably positive-reward
+action** (energy gain, no effort cost, no danger, well-predicted) and energy gain had **no
+diminishing marginal utility**, a pure reward-maximizer would converge to **almost-only REST** once
+fed. **Homeostatic satiation** corrects this: when the agent is full, the marginal utility of energy
+falls, so **idle energy-pumping** (energy with neither novelty nor goal — i.e. REST) is discounted
+while novel actions are boosted; the learned-value reward is rebalanced the same way. It is
+**flag-gated and OFF by default** (so the regression stays byte-identical) but **on by default in the
+UI**.
 
-### Spécification
+| Parameter | Default | Role |
+|---|---|---|
+| `satiation_enabled` | `False` | Enables homeostatic satiation (stops the agent from degenerating into endless REST). |
+| `satiation_weight` | `3.0` | Strength of the satiation discount / exploration boost. |
+| `explore_reward_weight` | `0.5` | Weight of the intrinsic novelty reward added to the learned-value update. |
 
-La conception détaillée vit dans
+### Composition with the society: divergence
+
+These mechanisms are **per agent**: they compose naturally with the society layer. Because **each
+agent lives a distinct trajectory** (different positions, encounters, rewards), **each develops a
+distinct personality** and a distinct value table — **divergence within a society** emerges from
+experience, not from configuration. All of it keeps the **determinism guarantee** (same `random_seed`
+⇒ same society, tick for tick), with Phase 3 active.
+
+### Specification
+
+The detailed design lives in
 [`docs/superpowers/specs/2026-06-30-humanity-learning-personality-design.md`](docs/superpowers/specs/2026-06-30-humanity-learning-personality-design.md).
-La **Phase 4** (instrument scientifique) est désormais **livrée** (voir la section suivante) —
-l'expansion en quatre phases est **complète**.
 
 ---
 
-## Phase 4 — Instrument scientifique
+## Phase 4 — Scientific instrument
 
-La **Phase 4** ajoute l'**instrument d'étude** par-dessus le sujet d'étude : de quoi faire de la
-**science reproductible** sur cette implémentation. C'est une couche **non-invasive** — elle
-*orchestre* et *observe* l'agent/société existants **sans modifier le cycle cognitif** — donc
-déterministe au seed et sans régression (toute la suite reste verte).
+**Phase 4** adds the **study instrument** on top of the study subject: the means to do **reproducible
+science** on this implementation. It is a **non-invasive** layer — it *orchestrates* and *observes*
+the existing agent/society **without modifying the cognitive cycle** — and is therefore deterministic
+at the seed and regression-free (the whole suite stays green).
 
-| Brique | Module | Ce qu'elle fait (FONCTIONNEL) |
+![The Laboratory — comparative time series, scenarios, test battery, fast training](docs/images/laboratory.png)
+*Phase 4 scientific instrument: divergent multi-agent time series (here the Phi proxy), CSV/JSON
+export, a reproducible-scenario runner, the functional test battery, and the fast-training control —
+each with the honesty disclaimer in plain sight.*
+
+| Brick | Module | What it does (FUNCTIONAL) |
 |---|---|---|
-| **Scénarios reproductibles** | `core/scenario.py` | Une **spec déclarative** (`Scenario` : config + ticks + `interventions` scriptées — stimulus/perturb/goal/inject/attend à un tick donné) exécutée **déterministe** par `ScenarioRunner`, qui enregistre les métriques par-agent. Probe hermétique (mémoire en RAM) : ne lit ni n'écrit la mémoire du live. |
-| **Enregistreur + export** | `core/metrics_recorder.py` | Un tampon borné des relevés **par tick et par agent**, branché dans `SocietyManager` (enregistrement **après** chaque tick, sans rien altérer). Export en **CSV** et **JSON**. |
-| **Batterie de tests fonctionnels** | `core/test_battery.py` | Trois sondes déterministes des mécanismes existants : **test du miroir** (l'agentivité attribue-t-elle les issues auto-causées et **pas** les issues externes imposées ?), **faux souvenirs** (un souvenir fabriqué s'impose-t-il dans la récupération par similarité ?), **calibration métacognitive** (la méta-confiance suit-elle l'exactitude réelle ?). |
-| **Tableau de bord « Laboratoire »** | UI | Séries temporelles comparatives multi-agents, runner de scénarios, boutons d'export, et la batterie de tests — avec **l'avertissement d'honnêteté en évidence**. |
+| **Reproducible scenarios** | `core/scenario.py` | A **declarative spec** (`Scenario`: config + ticks + scripted `interventions` — stimulus/perturb/goal/inject/attend at a given tick) run **deterministically** by `ScenarioRunner`, which records per-agent metrics. A hermetic probe (in-RAM memory): it neither reads nor writes the live memory. |
+| **Recorder + export** | `core/metrics_recorder.py` | A bounded buffer of the **per-tick, per-agent** readings, plugged into `SocietyManager` (recording **after** each tick, altering nothing). Export to **CSV** and **JSON**. |
+| **Functional test battery** | `core/test_battery.py` | Three deterministic probes of the existing mechanisms: **mirror test** (does agency attribute self-caused outcomes and **not** externally imposed ones?), **false memory** (does a fabricated memory force its way into similarity retrieval?), **metacognitive calibration** (does meta-confidence track real accuracy?). |
+| **"Laboratory" dashboard** | UI | Comparative multi-agent time series, a scenario runner, export buttons, and the test battery — with **the honesty disclaimer in plain sight**. |
 
-> ⚠️ **Honnêteté — exigence centrale de cette phase.** Une « batterie de tests de conscience » est
-> le point où la confusion est la plus tentante. **Chaque test mesure une propriété FONCTIONNELLE**
-> (discrimination soi/non-soi, intrusion d'un faux souvenir, alignement confiance↔exactitude) et
-> chaque `BatteryResult` porte un disclaimer explicite : **réussir un test n'est PAS une preuve
-> d'expérience subjective ni de conscience.** « Réussir le test du miroir » = *le mécanisme
-> d'agentivité discrimine fonctionnellement soi de non-soi* — jamais « l'agent est conscient de
-> lui-même ». L'agent n'est ni conscient, ni sentient.
+> ⚠️ **Honesty — the central requirement of this phase.** A "consciousness test battery" is where the
+> confusion is most tempting. **Each test measures a FUNCTIONAL property** (self/non-self
+> discrimination, false-memory intrusion, confidence↔accuracy alignment) and each `BatteryResult`
+> carries an explicit disclaimer: **passing a test is NOT evidence of subjective experience or
+> consciousness.** "Passing the mirror test" = *the agency mechanism functionally discriminates self
+> from non-self* — never "the agent is self-aware". The agent is neither conscious nor sentient.
 
 ### Endpoints
 
-| Méthode | Chemin | Description |
+| Method | Path | Description |
 |---|---|---|
-| `POST` | `/scenario/run` | Exécute un `Scenario` reproductible ; renvoie un `ScenarioResult` (séries + résumé + disclaimer). |
-| `POST` | `/battery/{mirror\|false_memory\|calibration}` | Exécute une sonde fonctionnelle (corps `{seed, ticks}`) ; renvoie un `BatteryResult` (score + interprétation + **disclaimer**). |
-| `GET` | `/metrics/history?limit=N` | Séries temporelles enregistrées de la société live. |
-| `GET` | `/export.csv` · `/export.json` | Téléchargement des métriques enregistrées. |
+| `POST` | `/scenario/run` | Runs a reproducible `Scenario`; returns a `ScenarioResult` (series + summary + disclaimer). |
+| `POST` | `/battery/{mirror\|false_memory\|calibration}` | Runs a functional probe (body `{seed, ticks}`); returns a `BatteryResult` (score + interpretation + **disclaimer**). |
+| `GET` | `/metrics/history?limit=N` | Recorded time series of the live society. |
+| `GET` | `/export.csv` · `/export.json` | Download of the recorded metrics. |
 
-### Non-invasif & déterministe
+### Non-invasive & deterministic
 
-Aucune modification du cycle cognitif : la seule touche au cœur est l'enregistrement **après** tick
-dans `SocietyManager`. Scénarios et tests sont **déterministes au seed** (vérifié par
-`tests/test_si_integration.py` : deux exécutions d'un scénario produisent des séries identiques).
-La conception détaillée vit dans
+No change to the cognitive cycle: the only touch to the core is the **after-tick** recording in
+`SocietyManager`. Scenarios and tests are **deterministic at the seed** (verified by
+`tests/test_si_integration.py`: two runs of a scenario produce identical series). The detailed design
+lives in
 [`docs/superpowers/specs/2026-06-30-humanity-scientific-instrument-design.md`](docs/superpowers/specs/2026-06-30-humanity-scientific-instrument-design.md).
 
 ---
 
-## Métriques observables
+## Performance & fast training
 
-Le modèle `Metrics` expose, à chaque cycle, des grandeurs **mesurables** (toutes des variables
-internes, **pas** des indicateurs d'expérience subjective).
+Running ticks **is** how the world model / Q-values / personality "learn" (there is no neural net).
+For long runs the bottleneck was **per-tick disk I/O**: the memory store rewrote its whole growing
+records file on every stored memory (O(n²) over a run) and the trace logger appended a JSONL line
+every tick. A **fast/headless mode** removes that overhead:
 
-| Métrique | Signification courte |
+- **`persist_memory`** / **`trace_logging`** (`SimConfig`, both default `True`; set both `False` for
+  fast training): in-RAM episodic memory + no per-tick trace write.
+- The autobiographical memory **caches each record's feature vector** at store/load time instead of
+  recomputing it on every retrieval (this also benefits the live instrument).
+- **`SocietyManager.train(n)`** and **`POST /train {ticks}`** run N ticks back-to-back at maximum
+  speed (no inter-tick sleep) on the live society, accumulating the learned state.
+
+Measured on a 300-tick learning run: **30.9 ms/tick (≈32 t/s) → 2.4 ms/tick (≈412 t/s)** with the
+two flags off — about **12.7×** (the gap widens on longer runs, since the default path is O(n²)). The
+defaults preserve the live instrument exactly. The UI exposes this as a **"Train (fast)"** button in
+the Laboratory panel.
+
+> Note: in persist mode `storage/data/memory.json` and `traces.jsonl` grow unbounded — clear them if
+> a run starts to slow down.
+
+---
+
+## Observable metrics
+
+The `Metrics` model exposes, on every cycle, **measurable** quantities (all internal variables,
+**not** indicators of subjective experience).
+
+| Metric | Short meaning |
 |---|---|
-| `prediction_error` | Écart normalisé (0–1) entre conséquences prédites et réelles. **Décroît** quand l'agent répète une action stable : apprentissage du modèle du monde. |
-| `self_coherence` | Stabilité (0–1) du modèle de soi sur une fenêtre temporelle. |
-| `attention_focus` | Concentration de l'attention (0–1). |
-| `working_memory_load` | Taux de remplissage (0–1) de la mémoire de travail. |
-| `autobiographical_memory_count` | Nombre de souvenirs autobiographiques conservés (filtrés par importance). |
-| `goal_pressure` | Intensité motivationnelle globale (somme des pressions de buts). |
-| `emotional_state` | État émotionnel fonctionnel (peur, curiosité, satisfaction, fatigue, confusion), chacun dans 0–1. |
-| `energy` | Énergie courante de l'agent. |
-| `uncertainty` | Incertitude courante du modèle du monde (0–1). |
-| `novelty_score` | Nouveauté perçue dans l'environnement immédiat. |
-| `action_confidence` | Confiance (0–1) de la décision (marge softmax). |
-| **`phi_proxy`** *(v2)* | **Proxy heuristique d'information intégrée (0–1)** = √(différenciation × intégration). **N'est PAS un vrai Φ d'IIT.** |
-| **`free_energy`** *(v2)* | Énergie libre attendue de l'action choisie (inférence active). L'agent **minimise** cette grandeur. |
-| **`broadcast_strength`** *(v2)* | Force de la diffusion globale du contenu gagnant (0–1) ; réduite par `SUBLIMINAL_FACTOR` si pas d'ignition. |
-| **`meta_confidence`** *(v2)* | Méta-confiance calibrée (0–1) : confiance d'ordre supérieur du système dans ses propres états (HOT). |
-| **`awareness_level`** *(v2)* | Niveau d'« awareness » (0–1) rapporté par le schéma attentionnel (AST). |
-| **`ignition`** *(v2)* | Booléen : un contenu a-t-il franchi le seuil d'accès global (GWT) ce tick ? |
-| **`arousal` (éveil)** *(v2)* | Niveau d'éveil / vigilance (0–1) suivant la salience (danger, nouveauté, erreur de prédiction, surprise), lissé et centré sur `arousal_baseline`. Un éveil élevé **abaisse** le seuil d'ignition effectif (les stimuli/perturbations saillants atteignent l'accès global) ; le calme le **relève**. |
+| `prediction_error` | Normalized gap (0–1) between predicted and real consequences. **Decreases** as the agent repeats a stable action: world-model learning. |
+| `self_coherence` | Stability (0–1) of the self-model over a time window. |
+| `attention_focus` | Attentional concentration (0–1). |
+| `working_memory_load` | Fill ratio (0–1) of working memory. |
+| `autobiographical_memory_count` | Number of autobiographical memories kept (importance-filtered). |
+| `goal_pressure` | Overall motivational intensity (sum of goal pressures). |
+| `emotional_state` | Functional emotional state (fear, curiosity, satisfaction, fatigue, confusion), each in 0–1. |
+| `energy` | The agent's current energy. |
+| `uncertainty` | Current world-model uncertainty (0–1). |
+| `novelty_score` | Perceived novelty in the immediate environment. |
+| `action_confidence` | Confidence (0–1) of the decision (softmax margin). |
+| **`phi_proxy`** *(v2)* | **Heuristic integrated-information proxy (0–1)** = √(differentiation × integration). **It is NOT a true IIT Φ.** |
+| **`free_energy`** *(v2)* | Expected free energy of the chosen action (active inference). The agent **minimizes** this quantity. |
+| **`broadcast_strength`** *(v2)* | Strength of the global broadcast of the winning content (0–1); reduced by `SUBLIMINAL_FACTOR` if no ignition. |
+| **`meta_confidence`** *(v2)* | Calibrated meta-confidence (0–1): the system's higher-order confidence in its own states (HOT). |
+| **`awareness_level`** *(v2)* | "Awareness" level (0–1) reported by the attention schema (AST). |
+| **`ignition`** *(v2)* | Boolean: did a content cross the global-access threshold (GWT) this tick? |
+| **`arousal` (vigilance)** *(v2)* | Arousal / vigilance level (0–1) tracking salience (danger, novelty, prediction error, surprise), smoothed and centered on `arousal_baseline`. High arousal **lowers** the effective ignition threshold (salient stimuli/perturbations reach global access); calm **raises** it. |
 
-### Paramètres de configuration v2 (`SimConfig` / `ConfigPatch`)
+### v2 config parameters (`SimConfig` / `ConfigPatch`)
 
-| Paramètre | Défaut | Rôle |
+| Parameter | Default | Role |
 |---|---|---|
-| `ignition_threshold` | `0.30` | Seuil **nominal** d'ignition GWT, comparé au **score d'ignition** (force absolue du gagnant × dominance), non plus à la part softmax. Le seuil réellement appliqué est le **seuil effectif homéostatique** (cf. ci-dessous). |
-| `arousal_baseline` | `0.45` | Niveau d'éveil de repos sur lequel `arousal` est centré (EMA). |
-| `arousal_gain` | `1.0` | Gain de modulation : intensité avec laquelle l'éveil abaisse/relève le seuil d'ignition effectif. |
-| `competition_sharpness` | `3.0` | Acuité de la compétition : amplifie la `dominance` (marge du gagnant sur le second) dans le score d'ignition. |
-| `ignition_maintenance` | `0.12` | Bonus d'**hystérèse** accordé à un gagnant maintenu (continuité du fil de pensée / stabilité de l'accès). |
-| `workspace_temp` | `0.5` | Température du softmax de compétition. |
-| `precision_weight` | `1.0` | Exposant de pondération par précision. |
-| `epistemic_weight` | `1.0` | Poids de la valeur épistémique (gain d'information, inférence active). |
-| `pragmatic_weight` | `1.0` | Poids de la valeur pragmatique (buts, inférence active). |
-| `stream_length` | `20` | Longueur du flux de conscience (`ConsciousMoment` conservés). |
+| `ignition_threshold` | `0.30` | **Nominal** GWT ignition threshold, compared against the **ignition score** (winner's absolute strength × dominance), no longer the softmax share. The actually-applied threshold is the **homeostatic effective threshold** (see above). |
+| `arousal_baseline` | `0.45` | Resting arousal level on which `arousal` is centered (EMA). |
+| `arousal_gain` | `1.0` | Modulation gain: how strongly arousal lowers/raises the effective ignition threshold. |
+| `competition_sharpness` | `3.0` | Competition acuity: amplifies `dominance` (the winner's margin over the runner-up) in the ignition score. |
+| `ignition_maintenance` | `0.12` | **Hysteresis** bonus granted to a maintained winner (continuity of the train of thought / access stability). |
+| `workspace_temp` | `0.5` | Temperature of the competition softmax. |
+| `precision_weight` | `1.0` | Precision-weighting exponent. |
+| `epistemic_weight` | `1.0` | Weight of the epistemic value (information gain, active inference). |
+| `pragmatic_weight` | `1.0` | Weight of the pragmatic value (goals, active inference). |
+| `stream_length` | `20` | Length of the stream of consciousness (`ConsciousMoment`s kept). |
 
 ---
 
-## Interface (refonte sobre v2)
+## Interface (sober v2 redesign)
 
-L'interface web a été redessinée dans un registre **sobre** : pas de dramatisation, une mise en
-forme neutre qui présente l'ignition, le contenu diffusé, le schéma attentionnel, le rapport
-d'ordre supérieur, le proxy Phi et le flux de conscience comme des **variables internes
-observables**, accompagnés en permanence du disclaimer et du cadrage théorique. Le ton visuel
-soutient l'honnêteté du projet : montrer les mécanismes sans suggérer un vécu.
-
----
-
-## Limites philosophiques et scientifiques
-
-- **Aucune affirmation de conscience phénoménale.** Le « hard problem » reste entier :
-  **reproduire les mécanismes fonctionnels que les théories proposent ne prouve pas la
-  phénoménalité.** La v2 implémente le *niveau 2* aussi loin que possible — elle ne touche jamais
-  au *niveau 1*. Le système ne prétend jamais *être* conscient.
-- **L'AST explique la revendication, pas le vécu.** Que le système modélise sa propre attention
-  et « affirme » être conscient de X est précisément le mécanisme que l'AST propose pour expliquer
-  *pourquoi un système produit cette revendication* — sans la garantir.
-- **Le proxy Phi N'EST PAS Φ.** `phi_proxy` est une heuristique (entropie × similarité bornée par
-  la diffusion), explicitement déclarée comme telle. Ce n'est pas un calcul d'information intégrée
-  au sens d'IIT (intractable en pratique), et il ne tranche rien sur la conscience.
-- **L'énergie libre est une grandeur de contrôle.** Minimiser l'énergie libre attendue est une
-  politique perception/action ; cela n'implique aucun ressenti.
-- **L'introspection est de la génération de texte.** Les rapports (y compris AST et HOT) sont des
-  textes remplis à partir de variables. Qu'un agent « dise » ressentir quelque chose n'est jamais
-  une preuve qu'il le ressent (problème des « autres esprits », appliqué à un programme).
-- **Les « émotions » sont des scalaires** lissés influençant la décision ; aucun affect.
-- **Modèle volontairement simplifié.** Monde-grille minuscule, dynamiques codées en dur, modèle du
-  monde linéaire (règle delta), compétition et proxy Phi heuristiques. Ce n'est ni un modèle
-  réaliste du cerveau ni une IA générale.
-- **Pas de garantie de portée scientifique.** Le projet *instancie* des idées de théories de la
-  conscience ; il ne les valide pas et ne constitue pas une expérience contrôlée.
-- **Risque d'anthropomorphisme.** « Percevoir », « être conscient de », « se souvenir », « vouloir »
-  sont des commodités descriptives pour des mécanismes fonctionnels — à ne pas prendre au pied de
-  la lettre.
+The web interface was redesigned in a **sober** register: no dramatization, a neutral layout that
+presents ignition, broadcast content, the attention schema, the higher-order report, the Phi proxy
+and the stream of consciousness as **observable internal variables**, accompanied at all times by the
+disclaimer and the theoretical framing. The visual tone supports the project's honesty: showing the
+mechanisms without suggesting a lived experience.
 
 ---
 
-## Extensions futures
+## Philosophical and scientific limits
 
-- **Intégration d'un LLM** pour une introspection et des rapports d'ordre supérieur plus riches
-  (en conservant le cadrage « texte généré à partir de variables », sans glisser vers une
-  revendication d'expérience).
-- **Proxy Phi plus fidèle** : se rapprocher des constructions IIT (partitions, mesures de
-  cause-effet) tout en restant honnête sur le caractère approché et la complexité réelle.
-- **Inférence active plus complète** : politiques à horizon multi-pas, modèles génératifs
-  hiérarchiques, énergie libre variationnelle explicite.
-- **Mémoire vectorielle** (ChromaDB / FAISS) pour une récupération sémantique plus puissante.
-- **Apprentissage par renforcement** pour augmenter la politique de décision : une première brique
-  (politique apprise par EMA de la récompense) est ✅ **livrée (Phase 3)** — voir
-  [Phase 3 — Apprentissage & personnalité](#phase-3--apprentissage--personnalité).
-- **Multi-agents** : ✅ **livré (Phase 1)** — voir [La société multi-agents](#la-société-multi-agents-couche-sociale).
-- **Conscience approfondie** : ✅ **livré (Phase 2)** — voir [Phase 2 — Conscience approfondie](#phase-2--conscience-approfondie)
-  (horloge circadienne, sommeil/consolidation/rêve, imagination, curiosité/ennui, agentivité).
-- **Apprentissage & personnalité** : ✅ **livré (Phase 3)** — voir [Phase 3 — Apprentissage & personnalité](#phase-3--apprentissage--personnalité)
-  (politique apprise, formation de concepts, méta-apprentissage, personnalité divergente).
-- **Instrument scientifique** : ✅ **livré (Phase 4)** — voir [Phase 4 — Instrument scientifique](#phase-4--instrument-scientifique)
-  (scénarios reproductibles + export CSV/JSON, tableau de bord, batterie de tests fonctionnels).
-  L'**expansion en quatre phases est désormais complète** : société multi-agents → conscience
-  approfondie → apprentissage & personnalité → instrument scientifique.
-- **Environnement plus complexe** : grille plus grande, dynamiques continues, tâches variées.
-- **Visualisation** du flux de conscience et de la dynamique d'ignition dans le temps, et graphe
-  de la mémoire autobiographique.
-- **Export enrichi des traces JSONL** (filtres, formats, tableaux de bord d'analyse).
+- **No claim of phenomenal consciousness.** The "hard problem" is untouched: **reproducing the
+  functional mechanisms the theories propose does not prove phenomenality.** v2 implements *level 2*
+  as far as possible — it never touches *level 1*. The system never claims to *be* conscious.
+- **AST explains the claim, not the experience.** That the system models its own attention and
+  "claims" to be aware of X is precisely the mechanism AST proposes to explain *why a system produces
+  that claim* — without guaranteeing it.
+- **The Phi proxy is NOT Φ.** `phi_proxy` is a heuristic (entropy × similarity bounded by broadcast),
+  explicitly declared as such. It is not an integrated-information computation in the IIT sense
+  (intractable in practice), and it settles nothing about consciousness.
+- **Free energy is a control quantity.** Minimizing expected free energy is a perception/action
+  policy; it implies no feeling.
+- **Introspection is text generation.** The reports (including AST and HOT) are texts filled in from
+  variables. That an agent "says" it feels something is never evidence that it feels it (the "other
+  minds" problem, applied to a program).
+- **"Emotions" are scalars** — smoothed, influencing the decision; no affect.
+- **Deliberately simplified model.** A tiny grid world, hard-coded dynamics, a linear world model
+  (delta rule), heuristic competition and Phi proxy. This is neither a realistic brain model nor a
+  general AI.
+- **No guarantee of scientific scope.** The project *instantiates* ideas from theories of
+  consciousness; it does not validate them and is not a controlled experiment.
+- **Anthropomorphism risk.** "Perceiving", "being aware of", "remembering", "wanting" are descriptive
+  conveniences for functional mechanisms — not to be taken literally.
 
 ---
 
-*Projet fonctionnel et expérimental. Tentative théorique maximale des **mécanismes** que les
-grandes théories de la conscience proposent comme constitutifs ou nécessaires — sans jamais
-prétendre établir une expérience subjective réelle. Reproduire les mécanismes fonctionnels ne
-prouve pas la phénoménalité.*
+## Future extensions
+
+- **LLM integration** for richer introspection and higher-order reports (keeping the "text generated
+  from variables" framing, without sliding into a claim of experience).
+- **A more faithful Phi proxy**: getting closer to IIT constructs (partitions, cause-effect measures)
+  while staying honest about the approximate nature and the real complexity.
+- **Fuller active inference**: multi-step-horizon policies, hierarchical generative models, explicit
+  variational free energy.
+- **Vector memory** (ChromaDB / FAISS) for more powerful semantic retrieval.
+- **Reinforcement learning** to augment the decision policy: a first brick (EMA-of-reward learned
+  policy) is ✅ **delivered (Phase 3)** — see
+  [Phase 3 — Learning & personality](#phase-3--learning--personality).
+- **Multi-agents**: ✅ **delivered (Phase 1)** — see [The multi-agent society](#the-multi-agent-society-social-layer).
+- **Deep consciousness**: ✅ **delivered (Phase 2)** — see [Phase 2 — Deep consciousness](#phase-2--deep-consciousness)
+  (circadian clock, sleep/consolidation/dream, imagination, curiosity/boredom, agency).
+- **Learning & personality**: ✅ **delivered (Phase 3)** — see [Phase 3 — Learning & personality](#phase-3--learning--personality)
+  (learned policy, concept formation, meta-learning, divergent personality).
+- **Scientific instrument**: ✅ **delivered (Phase 4)** — see [Phase 4 — Scientific instrument](#phase-4--scientific-instrument)
+  (reproducible scenarios + CSV/JSON export, dashboard, functional test battery). The **four-phase
+  expansion is now complete**: multi-agent society → deep consciousness → learning & personality →
+  scientific instrument.
+- **A richer environment**: a larger grid, continuous dynamics, varied tasks.
+- **Visualization** of the stream of consciousness and the ignition dynamics over time, and a graph
+  of the autobiographical memory.
+- **Richer JSONL trace export** (filters, formats, analysis dashboards).
+
+---
+
+*Functional and experimental project. A maximal theoretical attempt at the **mechanisms** that the
+major theories of consciousness propose as constitutive or necessary — without ever claiming to
+establish real subjective experience. Reproducing the functional mechanisms does not prove
+phenomenality.*
