@@ -134,6 +134,47 @@ class PersonalityState(BaseModel):
     vector: list[float] = Field(default_factory=list)
 
 
+class Intervention(BaseModel):
+    """A scripted scenario intervention applied at a given tick (Phase 4)."""
+    at_tick: int
+    type: str  # "stimulus" | "perturb" | "goal" | "inject" | "attend"
+    agent_id: int = 0
+    params: dict = Field(default_factory=dict)
+
+
+class Scenario(BaseModel):
+    """A declarative, reproducible scenario (Phase 4)."""
+    name: str = "scenario"
+    config: "ConfigPatch" = Field(default_factory=lambda: ConfigPatch())
+    ticks: int = 20
+    interventions: list[Intervention] = Field(default_factory=list)
+    seed: int | None = None
+
+
+class MetricSeries(BaseModel):
+    """A long-format metrics time series (Phase 4)."""
+    fields: list[str]
+    rows: list[dict] = Field(default_factory=list)
+
+
+class ScenarioResult(BaseModel):
+    """Result of running a scenario (Phase 4)."""
+    name: str
+    ticks: int
+    series: MetricSeries
+    summary: dict = Field(default_factory=dict)
+    disclaimer: str
+
+
+class BatteryResult(BaseModel):
+    """Result of a functional test-battery probe (Phase 4)."""
+    test: str
+    score: float
+    detail: dict = Field(default_factory=dict)
+    interpretation: str
+    disclaimer: str
+
+
 class Percept(BaseModel):
     object_id: int
     kind: str
@@ -450,6 +491,8 @@ class SimConfig(BaseModel):
     meta_lr_max: float = Field(default=0.6, ge=0.0, le=1.0)
     personality_enabled: bool = False
     personality_drift: float = Field(default=0.05, ge=0.0, le=1.0)
+    # scientific instrument (Phase 4)
+    metrics_history_max: int = Field(default=1000, ge=1)
 
 
 class ConfigPatch(BaseModel):
@@ -510,6 +553,7 @@ class ConfigPatch(BaseModel):
     meta_lr_max: float | None = None
     personality_enabled: bool | None = None
     personality_drift: float | None = None
+    metrics_history_max: int | None = None
 
 
 class GoalRequest(BaseModel):
@@ -558,3 +602,6 @@ class AttendRequest(BaseModel):
 class PerturbRequest(BaseModel):
     type: str                     # "choc" | "surprise" | "apaisement"
     magnitude: float = 1.0
+
+
+Scenario.model_rebuild()
