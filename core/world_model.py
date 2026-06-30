@@ -196,14 +196,15 @@ class WorldModel:
         return round(float(np.clip(mean_error, 0.0, 1.0)), 6)
 
     # --------------------------------------------------------------- update
-    def update(self, prediction: Prediction, result: StepResult) -> None:
+    def update(self, prediction: Prediction, result: StepResult, lr_override: float | None = None) -> None:
         """Delta-rule update of beliefs and uncertainty from an observed result.
 
         Repeated identical (action, outcome) pairs drive beliefs toward the
         observed values, so the per-action prediction error shrinks over time.
         """
         action_label = prediction.action.value
-        lr = float(self.config.learning_rate)
+        lr = float(self.config.learning_rate if lr_override is None else lr_override)
+        lr = float(max(0.0, min(1.0, lr)))
         belief = self.beliefs[action_label]
         actual = result.actual
 

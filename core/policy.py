@@ -100,6 +100,7 @@ class Policy:
         salient: list[SalientItem],
         config: SimConfig,
         imagined_best_action: ActionType | None = None,
+        learned_values: dict[str, float] | None = None,
     ) -> ActionDecision:
         """Score each predicted candidate and return the best as an ActionDecision."""
         pressure_by_need = {g.need: max(0.0, float(g.pressure)) for g in motivations}
@@ -153,6 +154,10 @@ class Policy:
             imagination_term = 0.3 if (imagined_best_action is not None
                                        and action == imagined_best_action) else 0.0
 
+            # Learned-value bonus: the action's learned Q value (additive; None => 0).
+            learned_term = (float(config.value_learning_weight) * float(learned_values.get(label, 0.0))
+                            if learned_values else 0.0)
+
             score = (
                 value_term
                 + pref_term
@@ -162,6 +167,7 @@ class Policy:
                 + novelty_term
                 + certainty_term
                 + imagination_term
+                + learned_term
             )
             scored.append((float(score), pred))
             candidate_scores[label] = float(score)
