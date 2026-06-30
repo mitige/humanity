@@ -10,7 +10,7 @@ BatteryResult carries this disclaimer.
 from __future__ import annotations
 
 from core.agent import CognitiveAgent
-from schemas.models import BatteryResult, PerturbRequest, SimConfig
+from schemas.models import BatteryResult, SimConfig
 
 BATTERY_DISCLAIMER = (
     "Functional measurement only: this probes whether the simulated mechanisms "
@@ -40,34 +40,49 @@ def _isolated_agent(config: SimConfig) -> CognitiveAgent:
 class ConsciousnessTestBattery:
     """Deterministic functional probes over the existing mechanisms."""
 
-    def mirror_test(self, seed: int = 42, ticks: int = 10) -> BatteryResult:
-        """Self/non-self discrimination via the agency signal.
+    def mirror_test(self, seed: int = 42, ticks: int = 12) -> BatteryResult:
+        """Self/non-self discrimination via the agency mechanism.
 
-        Block A: agency-enabled agent acting normally (outcomes follow its own
-        predictions => high agency). Block B: identical, but a 'surprise'
-        perturbation is injected each tick (outcomes are not self-caused => lower
-        agency). The index = mean agency(A) - mean agency(B).
+        For each tick of a normal run we take the agent's OWN chosen-action
+        prediction and score agency two ways through the real ``Agency`` mechanism:
+
+        * self-attributable: the actual outcome the agent's action produced
+          (``trace.agency`` — high agency, the effect matches its own prediction);
+        * non-self: the SAME prediction paired with an externally imposed outcome
+          the agent neither caused nor predicted (a large foreign effect — low
+          agency, the outcome does not match its prediction).
+
+        The index = mean(self) - mean(non-self). A clearly positive index means the
+        agency mechanism functionally attributes self-caused outcomes to the agent
+        while withholding that attribution from externally-imposed ones. This is a
+        FUNCTIONAL discrimination, not self-awareness.
         """
-        a = _isolated_agent(SimConfig(agency_enabled=True, world_noise=0.0, random_seed=int(seed)))
-        agency_a: list[float] = []
-        for _ in range(int(ticks)):
-            tr = a.cognitive_cycle()
-            if tr.agency is not None:
-                agency_a.append(float(tr.agency.agency))
+        from core.agency import Agency
+        from schemas.models import StepResult
 
-        b = _isolated_agent(SimConfig(agency_enabled=True, world_noise=0.0, random_seed=int(seed)))
-        agency_b: list[float] = []
+        agent = _isolated_agent(SimConfig(agency_enabled=True, world_noise=0.0, random_seed=int(seed)))
+        agency = Agency()
+        self_vals: list[float] = []
+        nonself_vals: list[float] = []
         for _ in range(int(ticks)):
-            b.perturb(PerturbRequest(type="surprise", magnitude=1.0))
-            tr = b.cognitive_cycle()
-            if tr.agency is not None:
-                agency_b.append(float(tr.agency.agency))
+            tr = agent.cognitive_cycle()
+            if tr.agency is None:
+                continue
+            self_vals.append(float(tr.agency.agency))
+            pred = tr.prediction
+            # An external outcome uncorrelated with (and far from) the agent's own
+            # prediction => the agent could not have caused/predicted it.
+            foreign = StepResult(
+                tick=int(tr.tick), action=pred.action, target_id=pred.target_id,
+                energy_delta=-float(pred.expected_energy_delta) - 9.0, new_energy=0.0,
+                events=[], actual={"goal_progress": -float(pred.expected_goal_progress) - 1.0})
+            nonself_vals.append(float(agency.compute(pred, foreign).agency))
 
-        ma, mb = _mean(agency_a), _mean(agency_b)
-        index = float(max(-1.0, min(1.0, ma - mb)))
-        interp = ("the agency mechanism discriminates self- from non-self-caused outcomes"
+        ms, mn = _mean(self_vals), _mean(nonself_vals)
+        index = float(max(-1.0, min(1.0, ms - mn)))
+        interp = ("the agency mechanism discriminates self-caused from externally-imposed outcomes"
                   if index > 0.1 else "no clear self/non-self discrimination at this setting")
         return BatteryResult(test="mirror", score=round(index, 4),
-                             detail={"agency_self": round(ma, 4), "agency_perturbed": round(mb, 4),
+                             detail={"agency_self": round(ms, 4), "agency_perturbed": round(mn, 4),
                                      "ticks": int(ticks)},
                              interpretation=interp, disclaimer=BATTERY_DISCLAIMER)
