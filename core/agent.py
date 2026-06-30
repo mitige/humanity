@@ -405,7 +405,22 @@ class CognitiveAgent:
 
         # Phase 3 — learn the value of the action just taken (gated).
         if cfg.learning_enabled:
-            reward = float(result.energy_delta) + float(result.actual.get("goal_progress", 0.0))
+            energy_delta = float(result.energy_delta)
+            goal_progress = float(result.actual.get("goal_progress", 0.0))
+            if cfg.satiation_enabled:
+                # Homeostatic reward: energy *gains* are discounted by how full the
+                # agent already is (marginal utility), losses always count, and
+                # experienced novelty is intrinsically rewarded — so the learner
+                # values exploration instead of converging on idle REST-pumping.
+                init_e = float(cfg.initial_energy) if cfg.initial_energy > 0 else 1.0
+                energy_frac = max(0.0, min(1.0, float(result.new_energy) / init_e))
+                novelty = float(result.actual.get("novelty", 0.0))
+                reward = (max(0.0, energy_delta) * (1.0 - energy_frac)
+                          + min(0.0, energy_delta)
+                          + goal_progress
+                          + float(cfg.explore_reward_weight) * novelty)
+            else:
+                reward = energy_delta + goal_progress
             self.policy_learner.update(decision.action.value, reward,
                                        lr=(effective_lr if cfg.meta_learning_enabled else cfg.value_learning_rate))
 

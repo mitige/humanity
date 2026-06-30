@@ -557,6 +557,7 @@
         imagination_enabled: true, curiosity_enabled: true, agency_enabled: true,
         learning_enabled: true, concepts_enabled: true,
         meta_learning_enabled: true, personality_enabled: true,
+        satiation_enabled: true,
       });
     } catch (e) { /* non-fatal: panel just stays at defaults */ }
   }

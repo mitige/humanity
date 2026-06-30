@@ -499,6 +499,13 @@ class SimConfig(BaseModel):
     # JSONL trace write — the dominant per-tick I/O cost.
     persist_memory: bool = True
     trace_logging: bool = True
+    # behaviour balance — homeostatic satiation. Default off (Phase-1 behaviour
+    # unchanged). When on, the marginal utility of energy falls as the agent fills
+    # up, so it stops degenerating into an endless REST/eat loop and explores when
+    # sated. Also rebalances the learned-value reward the same way.
+    satiation_enabled: bool = False
+    satiation_weight: float = Field(default=3.0, ge=0.0)
+    explore_reward_weight: float = Field(default=0.5, ge=0.0)
 
 
 class ConfigPatch(BaseModel):
@@ -562,6 +569,9 @@ class ConfigPatch(BaseModel):
     metrics_history_max: int | None = None
     persist_memory: bool | None = None
     trace_logging: bool | None = None
+    satiation_enabled: bool | None = None
+    satiation_weight: float | None = None
+    explore_reward_weight: float | None = None
 
 
 class GoalRequest(BaseModel):

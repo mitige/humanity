@@ -105,6 +105,14 @@ class Policy:
         """Score each predicted candidate and return the best as an ActionDecision."""
         pressure_by_need = {g.need: max(0.0, float(g.pressure)) for g in motivations}
 
+        # Satiation (gated): how full the agent is, in [0,1]. Used to discount the
+        # appeal of energy-gaining actions (REST especially) when already sated, so
+        # the agent does not collapse into an endless rest/eat loop.
+        satiation = 0.0
+        if config.satiation_enabled:
+            init_energy = float(config.initial_energy) if config.initial_energy > 0 else 1.0
+            satiation = max(0.0, min(1.0, float(self_model.energy) / init_energy))
+
         scored: list[tuple[float, Prediction]] = []
         candidate_scores: dict[str, float] = {}
 
@@ -158,6 +166,21 @@ class Policy:
             learned_term = (float(config.value_learning_weight) * float(learned_values.get(action.value, 0.0))
                             if learned_values else 0.0)
 
+            # Satiation (gated): when full, IDLE energy-pumping (energy gain with
+            # neither novelty nor goal progress — i.e. REST) is discounted, while
+            # novel actions are boosted. Eating (energy + goal + novelty) is spared,
+            # so a sated agent explores instead of resting endlessly. At low energy
+            # (satiation≈0) this vanishes and recovery stays attractive.
+            if config.satiation_enabled:
+                w = float(config.satiation_weight)
+                idle_energy = max(0.0, float(pred.expected_energy_delta)) * (
+                    1.0 - min(1.0, float(pred.expected_novelty) + float(pred.expected_goal_progress))
+                )
+                explore_boost = w * satiation * float(pred.expected_novelty)
+                satiation_term = w * satiation * idle_energy / 10.0 - explore_boost
+            else:
+                satiation_term = 0.0
+
             score = (
                 value_term
                 + pref_term
@@ -168,6 +191,7 @@ class Policy:
                 + certainty_term
                 + imagination_term
                 + learned_term
+                - satiation_term
             )
             scored.append((float(score), pred))
             candidate_scores[label] = float(score)
