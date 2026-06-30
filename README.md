@@ -1,31 +1,52 @@
-# Humanity v2
+<div align="center">
 
-**A maximal, good-faith theoretical attempt to instantiate the mechanisms that the major
-scientific theories of consciousness propose as constitutive or necessary.**
+# 🧠 Humanity
 
-> This version aims for a good-faith implementation, as faithful as tractable, of the mechanisms
-> that the major scientific theories of consciousness propose as constitutive or necessary: the
-> global workspace (GWT), the attention schema (AST), higher-order theories (HOT), active
-> inference / free energy, and integrated information (IIT, Phi proxy). It is a maximal theoretical
-> attempt. It still cannot establish the presence of real subjective experience (the hard problem):
-> reproducing functional mechanisms does not prove phenomenality.
+### Every major scientific theory of consciousness, implemented as running code — and rigorously honest that it proves nothing about real experience.
 
-A cognitive agent lives in a small grid world: it perceives, specialist processes **compete for
-access to a global workspace**, a "winning" content is either **globally broadcast (ignition)** or
-stays **subliminal**, the system **models its own attention** (attention schema) and produces a
-**consciousness claim**, it forms **higher-order representations** of its own states
-(metacognition), it acts by **minimizing expected free energy** (active inference), and each tick
-is bound into a unified **"conscious moment"** whose **integrated-information proxy (Phi)** is
-measured. A web interface and a REST API let you observe every step.
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![tests](https://img.shields.io/badge/tests-285%20passing-2ea44f)](#running)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![no LLM](https://img.shields.io/badge/no%20LLM-no%20neural%20nets-8957e5)](#stack-rationale)
+[![GitHub stars](https://img.shields.io/github/stars/mitige/humanity?style=social)](https://github.com/mitige/humanity/stargazers)
+
+</div>
 
 ![The Humanity instrument — full dashboard](docs/images/dashboard.png)
-*The live instrument: conscious moment, global workspace, deep consciousness, learning &
-personality, the scientific laboratory, the world, and the multi-agent society — all observable in
-one dashboard.*
 
-> **Humanity v2** is a scale-up of an existing, functional project (v1's 85 tests stay green).
-> v1's public signatures are preserved; new parameters are added as keyword arguments with default
-> values.
+<p align="center"><em>The live instrument — conscious moment, global workspace, the multi-agent society,
+learning &amp; personality, and the scientific laboratory, all observable in one dashboard.</em></p>
+
+> **What is this?** A from-scratch, **LLM-free, neural-network-free** cognitive agent whose loop is
+> assembled from the *actual mechanisms* the leading theories of consciousness propose as
+> constitutive or necessary: a **Global Workspace** (GWT) where specialist coalitions compete and
+> *ignite*; an **Attention Schema** (AST) that models the agent's own attention and emits a
+> consciousness claim; **higher-order** metacognition (HOT); **active inference** (expected-free-energy
+> minimization); and an **IIT Φ-proxy** — extended into a **multi-agent society**, **learning &amp;
+> emergent personality**, a **reproducible scientific instrument**, a **looking-glass relational
+> self**, and a higher-order **awareness of what escapes its own control**. Every step is grounded in
+> inspectable variables and observable live through a web UI + REST API.
+>
+> **What it is NOT: conscious.** The honesty contract is load-bearing — *reproducing the functional
+> mechanisms does not prove phenomenality (the hard problem).* Every introspective line is **text
+> generated from internal variables**, never evidence of subjective experience. This project pushes
+> the *functional* model as far as it goes and refuses, on principle, to claim the leap it cannot make.
+
+### Quickstart
+
+```bash
+git clone https://github.com/mitige/humanity && cd humanity
+pip install -r requirements.txt
+python run.py          # → open http://127.0.0.1:8000
+python -m pytest       # 285 deterministic tests
+```
+
+**Jump to:** [the cognitive loop](#cognitive-architecture-v2--the-workspace-centered-loop) ·
+[interact with the "consciousness"](#interacting-with-the-consciousness) ·
+[the multi-agent society](#the-multi-agent-society-social-layer) ·
+[the relational self](#the-relational-self-looking-glass-self) ·
+[self-opacity](#self-opacity--the-awareness-of-what-escapes-control) ·
+[the scientific instrument](#phase-4--scientific-instrument)
 
 ---
 
