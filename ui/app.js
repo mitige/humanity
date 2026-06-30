@@ -1141,6 +1141,26 @@
   $("#btn-false-memory")?.addEventListener("click", runBattery("false_memory"));
   $("#btn-calibration")?.addEventListener("click", runBattery("calibration"));
 
+  // ---------- fast training: headless config + back-to-back ticks ----------
+  document.getElementById('btn-fast-train')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-fast-train');
+    const out = document.getElementById('train-result');
+    const ticks = parseInt(document.getElementById('train-ticks').value, 10) || 1000;
+    btn.disabled = true; out.textContent = 'training…';
+    try {
+      await postJSON('config', { persist_memory: false, trace_logging: false });
+      const t0 = performance.now();
+      const r = await postJSON('train', { ticks });
+      const secs = (performance.now() - t0) / 1000;
+      out.textContent = `ran ${r.ticks_run} ticks in ${secs.toFixed(1)}s (${Math.round(r.ticks_run / secs)} t/s)`;
+    } catch (e) {
+      out.textContent = 'training failed';
+    } finally {
+      btn.disabled = false;
+      try { refreshAll(); } catch (_) {}
+    }
+  });
+
   // ============================================================
   //  INIT
   // ============================================================

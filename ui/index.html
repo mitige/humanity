@@ -221,6 +221,17 @@
       </div>
       <p id="lab-battery-result" class="report-voice"></p>
       <p id="lab-disclaimer" class="lab-disclaimer">Functional measurements only — these probes do NOT prove consciousness or subjective experience.</p>
+
+      <h3 class="sub">Fast training</h3>
+      <div class="lab-row">
+        <label class="tps-field" title="Number of ticks to run at maximum speed">
+          <span>ticks</span>
+          <input id="train-ticks" type="number" min="1" max="100000" step="100" value="1000" />
+        </label>
+        <button id="btn-fast-train" class="btn btn-accent">Train (fast)</button>
+        <span id="train-result" class="micro"></span>
+      </div>
+      <p class="micro">Disables per-tick disk I/O (in-RAM memory, no trace write) then runs the ticks back-to-back. Re-enable persistence via the toggles to resume the live instrument.</p>
     </section>
 
     <!-- ===================== GLOBAL WORKSPACE ===================== -->
@@ -446,6 +457,11 @@
         <label class="deep-toggle"><input type="checkbox" data-flag="concepts_enabled" checked /><span>concepts</span></label>
         <label class="deep-toggle"><input type="checkbox" data-flag="meta_learning_enabled" checked /><span>meta-learning</span></label>
         <label class="deep-toggle"><input type="checkbox" data-flag="personality_enabled" checked /><span>personality</span></label>
+      </div>
+      <h3 class="sub">Persistence</h3>
+      <div class="deep-toggles" id="persistence-toggles">
+        <label class="deep-toggle"><input type="checkbox" data-flag="persist_memory" checked /><span>persist memory</span></label>
+        <label class="deep-toggle"><input type="checkbox" data-flag="trace_logging" checked /><span>trace logging</span></label>
       </div>
       <p class="micro">Any change applies <span class="mono">POST /config</span> immediately.</p>
     </section>
