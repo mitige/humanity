@@ -579,8 +579,94 @@ Les endpoints **historiques `/agent/*` et `/state` ciblent l'agent 0** via la fa
 
 La conception détaillée vit dans
 [`docs/superpowers/specs/2026-06-29-humanity-multi-agent-society-design.md`](docs/superpowers/specs/2026-06-29-humanity-multi-agent-society-design.md).
-La couche société est la **Phase 1**. Sont planifiées ensuite : **Phase 2** (conscience plus
-profonde), **Phase 3** (apprentissage et personnalité), **Phase 4** (instrument scientifique).
+La couche société est la **Phase 1**. La **Phase 2** (conscience approfondie) est désormais
+**livrée** (voir la section suivante). Restent planifiées : **Phase 3** (apprentissage et
+personnalité), **Phase 4** (instrument scientifique).
+
+---
+
+## Phase 2 — Conscience approfondie
+
+La **Phase 2** ajoute **cinq mécanismes par agent** qui approfondissent la boucle cognitive
+**sans la remplacer** : ils s'ajoutent autour du cycle GWT/AST/HOT/inférence active/proxy Phi
+décrit plus haut. Tous sont **sans LLM, déterministes et grounded** sur de vraies variables
+internes. Comme tout le reste du projet, ils restent du **niveau 2** : les agents **ne sont ni
+conscients, ni sentients, ni vivants** — même contrat d'honnêteté.
+
+| # | Mécanisme (par agent) | Ce qu'il fait (FONCTIONNEL) |
+|---|---|---|
+| 1 | **Horloge circadienne** | Une phase jour/nuit **déterministe** (période fixe) module l'**éveil (arousal)** : la nuit abaisse la vigilance, le jour la relève. Expose `daylight` (0 = minuit, 1 = midi) et `is_night`. |
+| 2 | **Sommeil + consolidation + rêve** | Au-delà d'un seuil de fatigue, l'agent **dort** : consolidation mémoire **hors-ligne** (rejeu des souvenirs, **renforcement** des importants via `replay_boost`, **élagage** des moins importants sous `consolidation_prune_threshold`). Le **rêve** est une **recombinaison grounded** de souvenirs réels (aucune invention). L'agent se réveille sous le seuil bas de fatigue (ou après `max_sleep_ticks`). |
+| 3 | **Imagination** | Des **rollouts mentaux bornés** du modèle du monde (horizon `imagination_horizon`) évaluent des séquences d'actions imaginées et fournissent un **bonus de planification** à la politique. Borné ⇒ déterministe et peu coûteux. |
+| 4 | **Curiosité / ennui** | Le **progrès d'apprentissage** (réduction de l'erreur de prédiction sur une fenêtre `curiosity_window`) nourrit une récompense intrinsèque ; un progrès stagnant ⇒ **ennui (boredom)** ⇒ **relance l'exploration**. |
+| 5 | **Sentiment d'agentivité** | L'agent **prédit l'effet de sa propre action** puis le compare au **résultat réel** ; l'accord produit un scalaire `agency` (sens d'agentivité fonctionnel : « c'est bien moi qui ai causé cela »). |
+
+> ⚠️ **Honnêteté préservée.** Une horloge qui module l'éveil, un sommeil qui rejoue des souvenirs,
+> un rêve qui recombine du grounded, des rollouts imaginés, une curiosité pilotée par le progrès
+> d'apprentissage et un sentiment d'agentivité sont des **variables et des algorithmes** :
+> **reproduire les mécanismes fonctionnels ne prouve pas la phénoménalité.** L'agent n'est ni
+> conscient, ni sentient.
+
+### Drapeaux : désactivés par défaut (cœur), activés par défaut (UI)
+
+Les cinq mécanismes sont **gardés par des drapeaux (flag-gated) et DÉSACTIVÉS par défaut** dans
+`SimConfig`. Conséquence directe : **avec tous les drapeaux à `False`, le comportement Phase-1
+reste byte-identique** (mêmes positions, énergies et séquences d'actions) et **toute la suite de
+tests historique reste intacte**. Cette propriété est verrouillée par
+`tests/test_deep_regression.py` (flags-off ⇒ Phase-1) et `tests/test_deep_society.py`
+(déterminisme de la Phase-2 dans une société). En revanche, **l'interface web les active par
+défaut** pour offrir l'instrument live complet ; **chaque drapeau reste togglable** indépendamment.
+
+### Paramètres de configuration Phase 2 (`SimConfig` / `ConfigPatch`)
+
+| Paramètre | Défaut | Rôle |
+|---|---|---|
+| `circadian_enabled` | `False` | Active l'horloge circadienne. |
+| `circadian_period` | `50` | Durée (ticks) d'un cycle jour/nuit complet. |
+| `night_threshold` | `0.3` | Seuil de `daylight` sous lequel c'est « la nuit » (`is_night`). |
+| `sleep_enabled` | `False` | Active le sommeil + la consolidation mémoire hors-ligne. |
+| `dream_enabled` | `False` | Active le rêve (recombinaison grounded de souvenirs) pendant le sommeil. |
+| `sleep_fatigue_threshold` | `0.8` | Fatigue au-dessus de laquelle l'agent s'endort. |
+| `wake_fatigue_threshold` | `0.35` | Fatigue sous laquelle l'agent se réveille. |
+| `max_sleep_ticks` | `30` | Durée maximale d'un épisode de sommeil. |
+| `replay_boost` | `1.3` | Renforcement de l'importance des souvenirs rejoués (consolidation). |
+| `consolidation_prune_threshold` | `0.0` | Importance sous laquelle un souvenir est élagué hors-ligne. |
+| `imagination_enabled` | `False` | Active les rollouts mentaux (bonus de planification). |
+| `imagination_horizon` | `3` | Profondeur (1–6) des rollouts imaginés. |
+| `curiosity_enabled` | `False` | Active la curiosité / ennui pilotés par le progrès d'apprentissage. |
+| `curiosity_window` | `8` | Fenêtre (≥ 2) de mesure du progrès d'apprentissage. |
+| `agency_enabled` | `False` | Active le sentiment d'agentivité (prédiction de sa propre action vs résultat). |
+
+### Nouveaux champs de trace et de métriques
+
+Quand les drapeaux correspondants sont actifs, la `CycleTrace` (exposée par `POST /tick`,
+`POST /society/tick`, `GET /society/agent/{id}/...`) gagne **cinq sous-objets** — `null` quand le
+mécanisme est désactivé :
+
+| Champ de trace | Mécanisme | Contenu |
+|---|---|---|
+| `circadian` | Horloge | `phase`, `daylight`, `is_night`, `period`. |
+| `sleep` | Sommeil | `is_sleeping`, `fatigue`, `consolidated`, `pruned`, `dream`, `sleep_ticks`. |
+| `imagination` | Imagination | `best_first_action`, `horizon`, `imagined_value`, `n_rollouts`. |
+| `curiosity` | Curiosité | `learning_progress`, `boredom`, `intrinsic_reward`. |
+| `agency` | Agentivité | `agency`, `predicted_self_effect`, `actual_self_effect`. |
+
+Le modèle `Metrics` expose en plus, à chaque cycle, les scalaires correspondants : **`daylight`**,
+**`agency`**, **`boredom`**, **`learning_progress`** et **`is_sleeping`**.
+
+### Composition avec la société
+
+Ces mécanismes sont **par agent** : ils composent naturellement avec la couche société. Dans une
+société, **un agent peut dormir pendant que les autres agissent** (chacun suit sa propre fatigue,
+sa propre horloge et sa propre imagination), le tout en conservant la **garantie de déterminisme**
+(même `random_seed` ⇒ même société, tick pour tick), y compris Phase-2 active.
+
+### Spécification
+
+La conception détaillée vit dans
+[`docs/superpowers/specs/2026-06-30-humanity-deep-consciousness-design.md`](docs/superpowers/specs/2026-06-30-humanity-deep-consciousness-design.md).
+Restent planifiées : **Phase 3** (apprentissage et personnalité) et **Phase 4** (instrument
+scientifique).
 
 ---
 
@@ -678,7 +764,9 @@ soutient l'honnêteté du projet : montrer les mécanismes sans suggérer un vé
 - **Mémoire vectorielle** (ChromaDB / FAISS) pour une récupération sémantique plus puissante.
 - **Apprentissage par renforcement** pour augmenter la politique de décision.
 - **Multi-agents** : ✅ **livré (Phase 1)** — voir [La société multi-agents](#la-société-multi-agents-couche-sociale).
-  Phases 2–4 (conscience plus profonde, apprentissage/personnalité, instrument scientifique) à venir.
+- **Conscience approfondie** : ✅ **livré (Phase 2)** — voir [Phase 2 — Conscience approfondie](#phase-2--conscience-approfondie)
+  (horloge circadienne, sommeil/consolidation/rêve, imagination, curiosité/ennui, agentivité).
+  Phases 3–4 (apprentissage/personnalité, instrument scientifique) à venir.
 - **Environnement plus complexe** : grille plus grande, dynamiques continues, tâches variées.
 - **Visualisation** du flux de conscience et de la dynamique d'ignition dans le temps, et graphe
   de la mémoire autobiographique.
