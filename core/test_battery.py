@@ -110,3 +110,20 @@ class ConsciousnessTestBattery:
             interpretation=("a fabricated memory intrudes into similarity-based recall"
                             if intruded else "the fabricated memory does not intrude"),
             disclaimer=BATTERY_DISCLAIMER)
+
+    def calibration_test(self, seed: int = 42, ticks: int = 20) -> BatteryResult:
+        """Correlate metaconfidence with realized accuracy (1 - prediction error)."""
+        agent = _isolated_agent(SimConfig(world_noise=0.0, random_seed=int(seed)))
+        errs: list[float] = []
+        for _ in range(int(ticks)):
+            tr = agent.cognitive_cycle()
+            conf = float(tr.metacognition.meta_confidence)
+            acc = 1.0 - float(tr.metrics.prediction_error)
+            errs.append(abs(conf - acc))
+        mae = _mean(errs)
+        score = float(max(0.0, min(1.0, 1.0 - mae)))
+        interp = ("metaconfidence tracks accuracy (well calibrated)"
+                  if score > 0.7 else "metaconfidence only weakly tracks accuracy")
+        return BatteryResult(test="calibration", score=round(score, 4),
+                             detail={"n": int(ticks), "mean_abs_error": round(mae, 4)},
+                             interpretation=interp, disclaimer=BATTERY_DISCLAIMER)
