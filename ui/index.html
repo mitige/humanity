@@ -179,6 +179,50 @@
       </div>
     </section>
 
+    <!-- ===================== LABORATORY (Phase 4) ===================== -->
+    <section class="panel panel-lab" aria-labelledby="lab-title">
+      <div class="panel-head">
+        <h2 id="lab-title">Laboratory</h2>
+        <span class="src">Phase 4 · scientific instrument</span>
+      </div>
+
+      <div class="lab-chart-controls">
+        <label>metric
+          <select id="lab-metric">
+            <option value="energy">energy</option>
+            <option value="agency">agency</option>
+            <option value="phi_proxy">Φ proxy</option>
+            <option value="prediction_error">prediction error</option>
+            <option value="arousal">arousal</option>
+          </select>
+        </label>
+        <span class="src">GET /metrics/history</span>
+      </div>
+      <canvas id="lab-chart" width="560" height="220" aria-label="Metrics time series"></canvas>
+
+      <div class="lab-row">
+        <button id="btn-export-csv" class="btn btn-quiet">Export CSV</button>
+        <button id="btn-export-json" class="btn btn-quiet">Export JSON</button>
+      </div>
+
+      <h3 class="sub">Scenario</h3>
+      <textarea id="lab-scenario" rows="5" class="lab-scenario"
+        placeholder='{"name":"demo","config":{"n_agents":2},"ticks":20,"seed":7,"interventions":[{"at_tick":3,"type":"stimulus","params":{"kind":"hazard","intensity":2}}]}'></textarea>
+      <div class="lab-row">
+        <button id="btn-scenario-run" class="btn btn-accent">Run scenario</button>
+        <span id="lab-scenario-summary" class="micro"></span>
+      </div>
+
+      <h3 class="sub">Functional test battery</h3>
+      <div class="lab-row">
+        <button id="btn-mirror" class="btn btn-quiet">Mirror</button>
+        <button id="btn-false-memory" class="btn btn-quiet">False memory</button>
+        <button id="btn-calibration" class="btn btn-quiet">Calibration</button>
+      </div>
+      <p id="lab-battery-result" class="report-voice"></p>
+      <p id="lab-disclaimer" class="lab-disclaimer">Functional measurements only — these probes do NOT prove consciousness or subjective experience.</p>
+    </section>
+
     <!-- ===================== GLOBAL WORKSPACE ===================== -->
     <section class="panel panel-workspace" aria-labelledby="ws-title">
       <div class="panel-head">

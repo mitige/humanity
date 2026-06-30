@@ -774,6 +774,8 @@
       try { refreshDeep(state, lastTrace); } catch (e) { /* non-fatal */ }
       // learning & personality panel (Phase 3) — driven by the last /tick trace
       try { refreshLearning(lastTrace); } catch (e) { /* non-fatal */ }
+      // laboratory time series (Phase 4) — guarded so it can't break the loop
+      try { await refreshLabChart(); } catch (e) { /* non-fatal */ }
       // society view updates alongside the single-agent instrument
       refreshSociety();
     } catch (err) {
@@ -1030,6 +1032,114 @@
       refreshSociety();
     }).catch(() => {});
   });
+
+  // ============================================================
+  //  LABORATORY (Phase 4) — time series, scenarios, export, battery
+  // ============================================================
+  // Draw one polyline per agent for the selected metric, auto-scaling y to the
+  // metric's min/max over the window. Reads GET /metrics/history (last 200 rows).
+  async function refreshLabChart() {
+    const cv = $("#lab-chart");
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    const W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const metric = ($("#lab-metric") && $("#lab-metric").value) || "energy";
+    const d = await api("metrics/history?limit=200");
+    const rows = (d && d.series && d.series.rows) || [];
+    if (!rows.length) return;
+
+    // group rows by agent_id, preserving order
+    const byAgent = new Map();
+    rows.forEach((r) => {
+      const id = r.agent_id != null ? r.agent_id : 0;
+      let arr = byAgent.get(id);
+      if (!arr) { arr = []; byAgent.set(id, arr); }
+      arr.push(num(r[metric]));
+    });
+
+    // auto-scale y to the min/max of the selected metric across all agents
+    let lo = Infinity, hi = -Infinity;
+    byAgent.forEach((vals) => vals.forEach((v) => {
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }));
+    if (!isFinite(lo) || !isFinite(hi)) return;
+    if (hi - lo < 1e-9) { hi += 0.5; lo -= 0.5; }
+
+    const pad = 10;
+    const maxLen = Math.max(...Array.from(byAgent.values(), (a) => a.length));
+    const sx = (i) => pad + (maxLen <= 1 ? 0 : (i / (maxLen - 1)) * (W - 2 * pad));
+    const sy = (v) => H - pad - ((v - lo) / (hi - lo)) * (H - 2 * pad);
+
+    const palette = [
+      cssVar("--accent"), cssVar("--cool"), cssVar("--pos"),
+      cssVar("--curio"), cssVar("--neg"),
+    ];
+
+    let ai = 0;
+    byAgent.forEach((vals) => {
+      ctx.beginPath();
+      vals.forEach((v, i) => {
+        const x = sx(i), y = sy(v);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = palette[ai % palette.length] || cssVar("--ink-soft");
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ai++;
+    });
+  }
+
+  $("#lab-metric")?.addEventListener("change", () => {
+    refreshLabChart().catch(() => {});
+  });
+
+  $("#btn-export-csv")?.addEventListener("click", () => window.open("export.csv", "_blank"));
+  $("#btn-export-json")?.addEventListener("click", () => window.open("export.json", "_blank"));
+
+  $("#btn-scenario-run")?.addEventListener("click", async () => {
+    const out = $("#lab-scenario-summary");
+    let body;
+    try {
+      body = JSON.parse($("#lab-scenario").value);
+    } catch (e) {
+      if (out) out.textContent = "parse error: " + e.message;
+      return;
+    }
+    try {
+      const res = await postJSON("scenario/run", body);
+      const rows = (res && res.series && res.series.rows) || [];
+      const summary = res && res.summary != null
+        ? (typeof res.summary === "string" ? res.summary : JSON.stringify(res.summary))
+        : "";
+      if (out) out.textContent = summary + " · " + rows.length + " rows";
+    } catch (e) {
+      if (out) out.textContent = "run error: " + e.message;
+    }
+  });
+
+  function runBattery(name) {
+    return async () => {
+      try {
+        const r = await postJSON("battery/" + name, { seed: 42, ticks: 12 });
+        if ($("#lab-battery-result")) {
+          $("#lab-battery-result").textContent =
+            name + ": score=" + f3(r.score) + " — " + (r.interpretation || "");
+        }
+        // ALWAYS surface the server's exact honesty caveat
+        if ($("#lab-disclaimer") && r.disclaimer != null) {
+          $("#lab-disclaimer").textContent = r.disclaimer;
+        }
+      } catch (e) {
+        if ($("#lab-battery-result")) $("#lab-battery-result").textContent = name + " error: " + e.message;
+      }
+    };
+  }
+  $("#btn-mirror")?.addEventListener("click", runBattery("mirror"));
+  $("#btn-false-memory")?.addEventListener("click", runBattery("false_memory"));
+  $("#btn-calibration")?.addEventListener("click", runBattery("calibration"));
 
   // ============================================================
   //  INIT

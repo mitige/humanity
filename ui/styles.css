@@ -211,6 +211,7 @@ h1, h2, h3 { margin: 0; font-weight: 500; }
 .panel-hero      { grid-column: span 7; }
 .panel-deep      { grid-column: span 12; }
 .panel-learning  { grid-column: span 12; }
+.panel-lab       { grid-column: span 12; }
 .panel-workspace { grid-column: span 5; }
 .panel-metrics   { grid-column: span 12; }
 .panel-world     { grid-column: span 5; }
@@ -226,7 +227,7 @@ h1, h2, h3 { margin: 0; font-weight: 500; }
   .layout { grid-template-columns: repeat(6, 1fr); }
   .panel-hero, .panel-workspace, .panel-metrics, .panel-world,
   .panel-introspect, .panel-mem, .panel-config, .panel-deep,
-  .panel-learning { grid-column: span 6; }
+  .panel-learning, .panel-lab { grid-column: span 6; }
   .panel-ast { grid-column: span 6; }
   .panel-hot, .panel-self, .panel-wm { grid-column: span 3; }
 }
@@ -681,6 +682,57 @@ input[type="range"]::-moz-range-thumb {
 .trait-row .meter { height: 5px; }
 .trait-row .meter-fill { background: var(--curio); }
 .trait-v { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); text-align: right; }
+
+/* =====================================================================
+   LABORATORY (Phase 4) — time series / scenarios / export / battery
+   ===================================================================== */
+.lab-chart-controls {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.lab-chart-controls label {
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--ink-faint); display: inline-flex; align-items: center; gap: 8px;
+}
+.lab-chart-controls select {
+  font-family: var(--mono); font-size: 12px; color: var(--ink);
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 10px; outline: none; cursor: pointer; letter-spacing: 0;
+  text-transform: none;
+}
+.lab-chart-controls select:focus { border-color: var(--accent-soft); }
+
+#lab-chart {
+  width: 100%; height: auto; aspect-ratio: 560 / 220; display: block;
+  border-radius: 10px; background: var(--bg-inset, #11131a);
+  border: 1px solid var(--line);
+}
+
+.lab-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 12px;
+}
+.lab-row .micro { margin: 0; }
+
+.lab-scenario {
+  width: 100%; resize: vertical; margin-top: 4px;
+  background: var(--bg-inset); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 12px; color: var(--ink);
+  font-family: var(--mono); font-size: 12px; line-height: 1.5;
+  letter-spacing: 0; outline: none; transition: border-color 0.2s;
+}
+.lab-scenario:focus { border-color: var(--accent-soft); }
+.lab-scenario::placeholder { color: var(--ink-faint); }
+
+/* the honesty caveat must stand out — accent rule + emphasized text */
+.lab-disclaimer {
+  margin: 14px 0 0; padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-glow);
+  border-radius: 0 8px 8px 0;
+  font-size: 12px; line-height: 1.5; color: var(--ink);
+  font-weight: 600; letter-spacing: 0.01em;
+}
 
 /* =====================================================================
    COLOPHON
