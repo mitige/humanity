@@ -50,7 +50,6 @@ from core.world_model import WorldModel
 from schemas.models import (
     ActionDecision,
     ActionType,
-    AgencyState,
     AgentView,
     AskResponse,
     AttendRequest,
@@ -60,7 +59,6 @@ from schemas.models import (
     CognitiveInjection,
     ConfigPatch,
     ConsciousMoment,
-    CuriosityState,
     CycleTrace,
     EmotionState,
     ImaginationState,
@@ -688,8 +686,8 @@ class CognitiveAgent:
         # (no-op when circadian is disabled => daylight 1.0 => factor 1.0).
         daylight = (self._last_circadian.daylight
                     if (cfg.circadian_enabled and self._last_circadian is not None) else 1.0)
-        circ_factor = 0.5 + 0.5 * float(daylight)
-        target = min(AROUSAL_CEIL, max(AROUSAL_FLOOR, salience * circ_factor))
+        modulated = self.circadian.arousal_baseline(salience, daylight, cfg)
+        target = min(AROUSAL_CEIL, max(AROUSAL_FLOOR, modulated))
         self._arousal = float(
             min(
                 AROUSAL_CEIL,

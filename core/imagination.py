@@ -1,12 +1,12 @@
 # core/imagination.py
 """Imagination (Phase 2): a bounded, pure mental rollout over action sequences.
 
-FUNCTIONAL NOTE: the agent 'imagines' a short plan by repeatedly consulting its
-world model (a pure forward prediction; the real world is never touched) while
-tracking an imagined energy budget, so the rollout produces non-degenerate plans
-(e.g. act while energised, then rest). It returns the best first action and a
-discounted cumulative imagined value. This is approximate look-ahead, not a
-generative world simulator, and implies no subjective imagery.
+FUNCTIONAL NOTE: the agent 'imagines' by repeatedly consulting its world model
+(a pure forward prediction; the real world is never touched) under an imagined
+energy budget that shifts the value estimate across the horizon. It returns the
+best (energy-aware) first action and a discounted cumulative imagined value over
+a quasi-static situation. This is approximate look-ahead, not a generative world
+simulator, and implies no subjective imagery.
 """
 from __future__ import annotations
 
