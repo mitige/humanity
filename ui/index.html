@@ -348,6 +348,12 @@
         </div>
       </div>
       <p class="report-voice" id="hot-report">—</p>
+      <div class="stat" id="self-opacity" style="margin-top:14px;">
+        <span class="stat-k">outside access/control</span>
+        <div class="meter"><div class="meter-fill" id="opacity-fill"></div></div>
+        <span class="stat-v mono" id="opacity-val">—</span>
+        <span class="report-note" id="opacity-report" style="margin:6px 0 0;"></span>
+      </div>
     </section>
 
     <!-- ===================== INTROSPECTION ===================== -->
@@ -451,6 +457,7 @@
         <label class="deep-toggle"><input type="checkbox" data-flag="imagination_enabled" checked /><span>imagination</span></label>
         <label class="deep-toggle"><input type="checkbox" data-flag="curiosity_enabled" checked /><span>curiosity</span></label>
         <label class="deep-toggle"><input type="checkbox" data-flag="agency_enabled" checked /><span>agency</span></label>
+        <label class="deep-toggle" title="Self-opacity: a higher-order readout of what escaped the agent's access/control this tick"><input type="checkbox" data-flag="self_opacity_enabled" checked /><span>self-opacity</span></label>
       </div>
       <h3 class="sub">Learning &amp; personality (Phase 3)</h3>
       <div class="deep-toggles" id="lp-toggles">

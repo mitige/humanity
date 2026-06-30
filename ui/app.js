@@ -568,6 +568,7 @@
         meta_learning_enabled: true, personality_enabled: true,
         satiation_enabled: true,
         social_mirror_enabled: true,
+        self_opacity_enabled: true,
       });
     } catch (e) { /* non-fatal: panel just stays at defaults */ }
   }
@@ -652,6 +653,28 @@
 
     const plan = tr.imagination && tr.imagination.best_first_action;
     if ($("#imagined-plan")) $("#imagined-plan").textContent = plan ? String(plan) : "—";
+  }
+
+  // self-opacity (HOT, level-2) — a higher-order readout of how much of the tick
+  // formed OUTSIDE the agent's access/control (the subliminal remainder, an
+  // outcome it did not cause, an error it did not anticipate). Functional
+  // measure only — NOT a claim of consciousness. Rides on lastTrace.self_opacity;
+  // when null (flag off / no tick yet) the readout degrades to "—" / width 0.
+  function renderSelfOpacity(trace) {
+    const so = trace && trace.self_opacity;
+    const fill = $("#opacity-fill");
+    const val = $("#opacity-val");
+    const rep = $("#opacity-report");
+    if (!so) {
+      if (fill) fill.style.width = "0";
+      if (val) val.textContent = "—";
+      if (rep) rep.textContent = "";
+      return;
+    }
+    const frac = clamp01(num(so.uncontrolled_fraction));
+    if (fill) fill.style.width = (frac * 100).toFixed(1) + "%";
+    if (val) val.textContent = f2(frac);
+    if (rep) rep.innerHTML = so.report ? esc(so.report) : "";
   }
 
   // ============================================================
@@ -785,6 +808,8 @@
       try { refreshDeep(state, lastTrace); } catch (e) { /* non-fatal */ }
       // learning & personality panel (Phase 3) — driven by the last /tick trace
       try { refreshLearning(lastTrace); } catch (e) { /* non-fatal */ }
+      // self-opacity readout (HOT, level-2) — rides on the last /tick trace
+      try { renderSelfOpacity(lastTrace); } catch (e) { /* non-fatal */ }
       // laboratory time series (Phase 4) — guarded so it can't break the loop
       try { await refreshLabChart(); } catch (e) { /* non-fatal */ }
       // society view updates alongside the single-agent instrument
@@ -839,6 +864,8 @@
     try { refreshDeep(trace.metrics, trace); } catch (e) { /* non-fatal */ }
     // learning & personality panel (Phase 3) — full trace carries learning/concept/personality
     try { refreshLearning(trace); } catch (e) { /* non-fatal */ }
+    // self-opacity readout (HOT, level-2) — what escaped the agent's access/control
+    try { renderSelfOpacity(trace); } catch (e) { /* non-fatal */ }
   }
 
   // ============================================================
