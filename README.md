@@ -665,8 +665,89 @@ sa propre horloge et sa propre imagination), le tout en conservant la **garantie
 
 La conception détaillée vit dans
 [`docs/superpowers/specs/2026-06-30-humanity-deep-consciousness-design.md`](docs/superpowers/specs/2026-06-30-humanity-deep-consciousness-design.md).
-Restent planifiées : **Phase 3** (apprentissage et personnalité) et **Phase 4** (instrument
-scientifique).
+La **Phase 3** (apprentissage et personnalité) est désormais **livrée** (voir la section
+suivante). Reste planifiée : **Phase 4** (instrument scientifique).
+
+---
+
+## Phase 3 — Apprentissage & personnalité
+
+La **Phase 3** ajoute **quatre mécanismes par agent** qui font **apprendre et diverger** les
+agents au fil de leur vécu — **sans remplacer** la boucle cognitive : ils s'ajoutent autour du
+cycle GWT/AST/HOT/inférence active/proxy Phi. Le tout est **interprétable et sans réseau de
+neurones** : aucune boîte noire, des tables et des scalaires lisibles. Comme tout le reste du
+projet, c'est **sans LLM, déterministe et grounded** sur de vraies variables internes — et les
+agents **ne sont ni conscients, ni sentients, ni vivants** (même contrat d'honnêteté).
+
+| # | Mécanisme (par agent) | Ce qu'il fait (FONCTIONNEL) |
+|---|---|---|
+| 1 | **Politique apprise** (`core/learning.py`) | Une **table `Q[action]`** maintenue comme **moyenne mobile exponentielle (EMA) de la récompense** obtenue par chaque action. Cette valeur apprise nourrit un **bonus de décision** dans la politique (`value_learning_weight × Q[action]`), si bien que les actions historiquement payantes deviennent plus probables. |
+| 2 | **Formation de concepts** (`core/concepts.py`) | Un **clustering en ligne** des percepts (apprentissage compétitif léger, taux `concept_lr`) fait émerger des **prototypes** : des catégories perceptives **non supervisées**. Le concept dominant courant forme une **coalition `concept`** qui entre dans la compétition de l'espace de travail. |
+| 3 | **Méta-apprentissage** (`core/meta_learning.py`) | L'agent **ajuste son propre taux d'apprentissage** selon la **dynamique de son erreur** : erreur en hausse (environnement instable) ⇒ taux relevé ; erreur en baisse (régime stable) ⇒ taux abaissé. Le taux effectif reste borné dans `[meta_lr_min, meta_lr_max]`. |
+| 4 | **Personnalité divergente** (`core/personality.py`) | Trois traits — **openness**, **caution**, **novelty_seeking** — **dérivent lentement** (drift `personality_drift`) du vécu de l'agent. Ils produisent un **biais d'affect borné** et un **label** lisible. Deux agents au vécu différent **divergent** : la personnalité **émerge**, elle n'est pas codée. |
+
+> ⚠️ **Honnêteté préservée.** Une table de valeurs apprises par EMA, un clustering de percepts, un
+> taux d'apprentissage auto-réglé et trois traits qui dérivent sont des **variables et des
+> algorithmes** — **interprétables, sans réseau de neurones, sans LLM, déterministes** :
+> **reproduire les mécanismes fonctionnels ne prouve pas la phénoménalité.** L'agent n'est ni
+> conscient, ni sentient.
+
+### Drapeaux : désactivés par défaut (cœur), activés par défaut (UI)
+
+Les quatre mécanismes sont **gardés par des drapeaux (flag-gated) et DÉSACTIVÉS par défaut** dans
+`SimConfig`. Conséquence directe : **avec tous les drapeaux à `False`, le comportement des
+Phases 1 et 2 reste byte-identique** (mêmes positions, énergies et séquences d'actions) et **toute
+la suite de tests historique reste intacte**. Cette propriété est verrouillée par
+`tests/test_lp_regression.py` (flags-off ⇒ Phases 1/2, trace `learning`/`concept`/`personality`
+à `null`) et `tests/test_lp_society.py` (déterminisme **et** apprentissage de la Phase 3 dans une
+société). En revanche, **l'interface web les active par défaut** pour offrir l'instrument live
+complet ; **chaque drapeau reste togglable** indépendamment.
+
+### Paramètres de configuration Phase 3 (`SimConfig` / `ConfigPatch`)
+
+| Paramètre | Défaut | Rôle |
+|---|---|---|
+| `learning_enabled` | `False` | Active la politique apprise (table `Q[action]`). |
+| `value_learning_rate` | `0.2` | Taux EMA de mise à jour de `Q[action]` (avant méta-ajustement). |
+| `value_learning_weight` | `0.5` | Poids du bonus de valeur apprise injecté dans la décision. |
+| `concepts_enabled` | `False` | Active la formation de concepts (clustering en ligne). |
+| `n_concepts` | `6` | Nombre de prototypes / catégories perceptives (1–32). |
+| `concept_lr` | `0.2` | Taux d'apprentissage du prototype gagnant. |
+| `meta_learning_enabled` | `False` | Active le méta-apprentissage (taux auto-réglé). |
+| `meta_lr_min` | `0.05` | Borne basse du taux d'apprentissage effectif. |
+| `meta_lr_max` | `0.6` | Borne haute du taux d'apprentissage effectif. |
+| `personality_enabled` | `False` | Active la personnalité divergente (traits qui dérivent). |
+| `personality_drift` | `0.05` | Vitesse de dérive des traits depuis le vécu. |
+
+### Nouveaux champs de trace et de métriques
+
+Quand les drapeaux correspondants sont actifs, la `CycleTrace` (exposée par `POST /tick`,
+`POST /society/tick`, `GET /society/agent/{id}/...`) gagne **trois sous-objets** — `null` quand le
+mécanisme est désactivé :
+
+| Champ de trace | Mécanisme | Contenu |
+|---|---|---|
+| `learning` | Politique apprise | `q_values`, `last_reward`, `effective_lr`. |
+| `concept` | Concepts | `dominant_concept`, `match`, `n_concepts`. |
+| `personality` | Personnalité | `label`, `openness`, `caution`, `novelty_seeking`, `vector`. |
+
+Le modèle `Metrics` expose en plus, à chaque cycle, les scalaires correspondants :
+**`effective_learning_rate`** (taux auto-réglé courant), **`concept_match`** (qualité d'appariement
+au prototype dominant) et **`n_concepts`**.
+
+### Composition avec la société : la divergence
+
+Ces mécanismes sont **par agent** : ils composent naturellement avec la couche société. Comme
+**chaque agent vit une trajectoire distincte** (positions, rencontres, récompenses différentes),
+**chacun développe une personnalité distincte** et une table de valeurs distincte — la
+**divergence en société** émerge du vécu, non d'un paramétrage. Le tout conserve la **garantie de
+déterminisme** (même `random_seed` ⇒ même société, tick pour tick), Phase-3 active.
+
+### Spécification
+
+La conception détaillée vit dans
+[`docs/superpowers/specs/2026-06-30-humanity-learning-personality-design.md`](docs/superpowers/specs/2026-06-30-humanity-learning-personality-design.md).
+Reste planifiée : **Phase 4** (instrument scientifique).
 
 ---
 
@@ -762,11 +843,15 @@ soutient l'honnêteté du projet : montrer les mécanismes sans suggérer un vé
 - **Inférence active plus complète** : politiques à horizon multi-pas, modèles génératifs
   hiérarchiques, énergie libre variationnelle explicite.
 - **Mémoire vectorielle** (ChromaDB / FAISS) pour une récupération sémantique plus puissante.
-- **Apprentissage par renforcement** pour augmenter la politique de décision.
+- **Apprentissage par renforcement** pour augmenter la politique de décision : une première brique
+  (politique apprise par EMA de la récompense) est ✅ **livrée (Phase 3)** — voir
+  [Phase 3 — Apprentissage & personnalité](#phase-3--apprentissage--personnalité).
 - **Multi-agents** : ✅ **livré (Phase 1)** — voir [La société multi-agents](#la-société-multi-agents-couche-sociale).
 - **Conscience approfondie** : ✅ **livré (Phase 2)** — voir [Phase 2 — Conscience approfondie](#phase-2--conscience-approfondie)
   (horloge circadienne, sommeil/consolidation/rêve, imagination, curiosité/ennui, agentivité).
-  Phases 3–4 (apprentissage/personnalité, instrument scientifique) à venir.
+- **Apprentissage & personnalité** : ✅ **livré (Phase 3)** — voir [Phase 3 — Apprentissage & personnalité](#phase-3--apprentissage--personnalité)
+  (politique apprise, formation de concepts, méta-apprentissage, personnalité divergente).
+  Reste la **Phase 4** (instrument scientifique) à venir.
 - **Environnement plus complexe** : grille plus grande, dynamiques continues, tâches variées.
 - **Visualisation** du flux de conscience et de la dynamique d'ignition dans le temps, et graphe
   de la mémoire autobiographique.
