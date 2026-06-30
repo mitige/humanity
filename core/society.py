@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 
 from core.agent import CognitiveAgent
+from core.metrics_recorder import MetricsRecorder
 from core.shared_world import SharedWorld
 from schemas.models import ConfigPatch, CycleTrace, RunRequest, SimConfig
 
@@ -30,13 +31,16 @@ class SocietyManager:
             i: CognitiveAgent(self.config, agent_id=i, shared_world=self.world)
             for i in self.world.agents
         }
+        self.recorder = MetricsRecorder(int(self.config.metrics_history_max))
 
     # ------------------------------------------------------------- ticking
     def tick(self) -> list[CycleTrace]:
         """Run one society tick: each agent cycles once, in ascending id order."""
         traces: list[CycleTrace] = []
         for aid in sorted(self.agents):
-            traces.append(self.agents[aid].cognitive_cycle())
+            trace = self.agents[aid].cognitive_cycle()
+            self.recorder.record(aid, trace.metrics)
+            traces.append(trace)
         self.world.advance_tick()
         return traces
 
