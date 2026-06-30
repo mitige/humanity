@@ -468,6 +468,15 @@
       box.appendChild(el("span", "v", v));
     });
 
+    // relational self (social mirror) — only present when social_mirror_enabled
+    // AND the agent has observers; the self-model is shaped by how others regard it.
+    const rs = s.relational_self;
+    if (rs) {
+      box.appendChild(el("span", "k", "Social mirror"));
+      box.appendChild(el("span", "v",
+        `regarded ${f2(rs.reflected_appraisal)} · seen by ${f0(rs.n_observers)} · presence ${f2(rs.social_presence)}`));
+    }
+
     const goals = $("#self-goals");
     goals.innerHTML = "";
     const list = s.active_goals || [];
@@ -558,6 +567,7 @@
         learning_enabled: true, concepts_enabled: true,
         meta_learning_enabled: true, personality_enabled: true,
         satiation_enabled: true,
+        social_mirror_enabled: true,
       });
     } catch (e) { /* non-fatal: panel just stays at defaults */ }
   }
@@ -1121,10 +1131,10 @@
     }
   });
 
-  function runBattery(name) {
+  function runBattery(name, body) {
     return async () => {
       try {
-        const r = await postJSON("battery/" + name, { seed: 42, ticks: 12 });
+        const r = await postJSON("battery/" + name, body || { seed: 42, ticks: 12 });
         if ($("#lab-battery-result")) {
           $("#lab-battery-result").textContent =
             name + ": score=" + f3(r.score) + " — " + (r.interpretation || "");
@@ -1141,6 +1151,7 @@
   $("#btn-mirror")?.addEventListener("click", runBattery("mirror"));
   $("#btn-false-memory")?.addEventListener("click", runBattery("false_memory"));
   $("#btn-calibration")?.addEventListener("click", runBattery("calibration"));
+  $("#btn-relational-self")?.addEventListener("click", runBattery("relational_self", { seed: 7, ticks: 40 }));
 
   // ---------- fast training: headless config + back-to-back ticks ----------
   document.getElementById('btn-fast-train')?.addEventListener('click', async () => {
