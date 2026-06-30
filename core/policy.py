@@ -155,7 +155,7 @@ class Policy:
                                        and action == imagined_best_action) else 0.0
 
             # Learned-value bonus: the action's learned Q value (additive; None => 0).
-            learned_term = (float(config.value_learning_weight) * float(learned_values.get(label, 0.0))
+            learned_term = (float(config.value_learning_weight) * float(learned_values.get(action.value, 0.0))
                             if learned_values else 0.0)
 
             score = (

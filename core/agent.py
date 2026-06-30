@@ -28,6 +28,7 @@ from core.constants import (
 from core.attention_schema import AttentionSchema
 from core.autobiographical_memory import AutobiographicalMemory
 from core.communication import build_message_content, message_coalition
+from core.concepts import ConceptFormation
 from core.curiosity import Curiosity
 from core.dialogue import IntrospectiveDialogue
 from core.emotion import EmotionModel
@@ -35,8 +36,11 @@ from core.global_workspace import GlobalWorkspace
 from core.imagination import Imagination
 from core.integration import IntegrationMonitor
 from core.introspection import DISCLAIMER_EN, Introspection
+from core.learning import PolicyLearner
+from core.meta_learning import MetaLearner
 from core.metacognition import Metacognition
 from core.motivation import MotivationSystem
+from core.personality import PersonalityModel
 from core.perception import Perception
 from core.policy import Policy
 from core.self_model import SelfModel
@@ -57,6 +61,7 @@ from schemas.models import (
     CircadianState,
     Coalition,
     CognitiveInjection,
+    ConceptState,
     ConfigPatch,
     ConsciousMoment,
     CycleTrace,
@@ -64,10 +69,12 @@ from schemas.models import (
     ImaginationState,
     IntegrationState,
     IntrospectionReport,
+    LearningState,
     MemoryRecord,
     MetacognitiveState,
     Metrics,
     Percept,
+    PersonalityState,
     PerturbRequest,
     Prediction,
     RunRequest,
@@ -166,6 +173,13 @@ class CognitiveAgent:
         self._pending_imagination: ImaginationState | None = None
         self._pending_dream: str | None = None
 
+        # Phase 3: learning & personality (active only when their flags are on).
+        self.policy_learner = PolicyLearner()
+        self.concepts = ConceptFormation(config)
+        self.meta_learner = MetaLearner()
+        self.personality = PersonalityModel()
+        self._concept_state: ConceptState | None = None
+
     # ------------------------------------------------------------------ #
     # The cognitive cycle
     # ------------------------------------------------------------------ #
@@ -198,6 +212,24 @@ class CognitiveAgent:
         # 2) Perceive: encode raw observation into relative percepts.
         seen_counts = self._shared_world.seen_counts if self._shared_world is not None else self.world.seen_counts
         percepts: list[Percept] = self.perception.encode(observation, seen_counts)
+
+        # Phase 3 — concept formation (gated): cluster a normalized percept feature
+        # vector into emergent prototypes; the dominant concept bids in the workspace.
+        concept_state = None
+        if cfg.concepts_enabled:
+            if percepts:
+                import numpy as _np
+                cvec = [
+                    float(_np.mean([p.danger for p in percepts])),
+                    float(_np.mean([p.novelty for p in percepts])),
+                    float(_np.mean([p.utility for p in percepts])),
+                    float(min(1.0, _np.mean([p.energy_value for p in percepts]) / 10.0)),
+                    float(min(1.0, _np.mean([p.distance for p in percepts]) / max(1, cfg.grid_size))),
+                ]
+            else:
+                cvec = []
+            concept_state = self.concepts.observe(cvec, cfg)
+        self._concept_state = concept_state
 
         # 3) Motivation needs the *previous* self-model / emotion / error.
         self_state: SelfModelState = self.self_model.snapshot()
@@ -325,6 +357,7 @@ class CognitiveAgent:
             salient,
             cfg,
             imagined_best_action=imagined_best,
+            learned_values=(self.policy_learner.values() if cfg.learning_enabled else None),
         )
 
         # The prediction backing the chosen action (for trace + error).
@@ -359,9 +392,20 @@ class CognitiveAgent:
                 min(1.0, max(0.0, current_error + self._pending_surprise))
             )
             self._pending_surprise = 0.0
-        self.world_model.update(chosen_prediction, result)
+        # Phase 3 — meta-learning (gated): adapt the effective learning rate.
+        effective_lr = float(cfg.learning_rate)
+        if cfg.meta_learning_enabled:
+            effective_lr = self.meta_learner.effective_lr(cfg.learning_rate, list(self._recent_errors), cfg)
+        self.world_model.update(chosen_prediction, result,
+                                lr_override=(effective_lr if cfg.meta_learning_enabled else None))
         self._recent_errors.append(float(current_error))
         error_reduction = prev_error - current_error
+
+        # Phase 3 — learn the value of the action just taken (gated).
+        if cfg.learning_enabled:
+            reward = float(result.energy_delta) + float(result.actual.get("goal_progress", 0.0))
+            self.policy_learner.update(decision.action.value, reward,
+                                       lr=(effective_lr if cfg.meta_learning_enabled else cfg.value_learning_rate))
 
         # 12) Emotion update from this tick's signals.
         emotion = self.emotion_model.update(
@@ -396,6 +440,16 @@ class CognitiveAgent:
                 "curiosity": float(min(1.0, emotion.curiosity + 0.3 * curiosity_state.boredom)),
                 "satisfaction": float(min(1.0, emotion.satisfaction + 0.3 * curiosity_state.intrinsic_reward)),
             })
+
+        # Phase 3 — personality (gated): drift traits with lived experience, then
+        # apply a bounded affect bias so divergent histories yield divergent agents.
+        personality_state = None
+        if cfg.personality_enabled:
+            personality_state = self.personality.update(
+                novelty_experienced=float(result.actual.get("novelty", 0.0)),
+                danger_experienced=float(result.actual.get("danger", 0.0)),
+                drift=float(cfg.personality_drift))
+            emotion = self.personality.modulate(emotion)
 
         # Phase 2 — sense of agency (gated): did my own action unfold as predicted?
         agency_state = self.agency.compute(chosen_prediction, result) if cfg.agency_enabled else None
@@ -502,6 +556,9 @@ class CognitiveAgent:
             learning_progress=round(float(curiosity_state.learning_progress), 4) if curiosity_state else 0.0,
             daylight=round(float(circadian.daylight), 4) if circadian else 1.0,
             is_sleeping=bool(sleeping),
+            effective_learning_rate=round(float(effective_lr), 6),
+            concept_match=round(float(concept_state.match), 4) if concept_state else 0.0,
+            n_concepts=int(concept_state.n_concepts) if concept_state else 0,
         )
 
         # Publish this agent's social signal so others can perceive it.
@@ -535,6 +592,13 @@ class CognitiveAgent:
                 consolidated=int(consolidated), pruned=int(pruned),
                 dream=dream_text, sleep_ticks=int(self.sleep_cycle.sleep_ticks))
 
+        learning_state = None
+        if cfg.learning_enabled or cfg.meta_learning_enabled:
+            learning_state = LearningState(
+                q_values=self.policy_learner.values(),
+                last_reward=round(float(self.policy_learner.last_reward), 4),
+                effective_lr=round(float(effective_lr), 6))
+
         # 19) Assemble the trace (with the 5 new sub-objects) and persist.
         trace = CycleTrace(
             tick=result.tick,
@@ -560,6 +624,9 @@ class CognitiveAgent:
             imagination=imagination_state,
             curiosity=curiosity_state,
             agency=agency_state,
+            learning=learning_state,
+            concept=concept_state,
+            personality=personality_state,
         )
         self.trace_logger.log(trace)
 
@@ -864,6 +931,15 @@ class CognitiveAgent:
             coalitions.append(self.global_workspace.make_coalition(
                 "dream", str(self._pending_dream), activation=0.7, precision=0.5,
                 vector=[0.0, 0.0, 0.0, 0.0]))
+
+        # Phase 3 — concept coalition: the dominant recognized concept (gated).
+        if cfg.concepts_enabled and self._concept_state is not None \
+                and self._concept_state.dominant_concept is not None:
+            cs = self._concept_state
+            coalitions.append(self.global_workspace.make_coalition(
+                "concept", f"concept #{cs.dominant_concept}",
+                activation=float(max(0.0, min(1.0, cs.match))), precision=0.6,
+                vector=[float(cs.match), 0.0, 0.0, 0.0]))
 
         return coalitions
 
