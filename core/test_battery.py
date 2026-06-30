@@ -112,6 +112,51 @@ class ConsciousnessTestBattery:
                             if intruded else "the fabricated memory does not intrude"),
             disclaimer=BATTERY_DISCLAIMER)
 
+    def relational_self_test(self, seed: int = 7, ticks: int = 40) -> BatteryResult:
+        """Relational self: does social relation give the self-model a constituent
+        an isolated agent lacks?
+
+        Runs the SAME agent (agent 0) in a **society** vs in **isolation**, both
+        with the social mirror on, and measures the social anchor that emerges
+        socially (how regarded the agent is by the others who model it) and is
+        absent in isolation. A clearly positive score means the self-model acquires
+        a social constituent — the regard of others — that the isolated self never
+        develops. This is the FUNCTIONAL counterpart of "the self is partly
+        constituted through the other"; it is NOT self-awareness, and the agent is
+        not conscious.
+        """
+        from core.society import SocietyManager
+
+        def run(n_agents: int):
+            mgr = SocietyManager(SimConfig(
+                n_agents=n_agents, world_noise=0.1, random_seed=int(seed),
+                social_mirror_enabled=True, persist_memory=False, trace_logging=False))
+            presence, appraisal, conf = [], [], []
+            for _ in range(int(ticks)):
+                mgr.tick()
+                s = mgr.agents[0].self_model.snapshot()
+                rs = s.relational_self
+                presence.append(float(rs.social_presence) if rs else 0.0)
+                appraisal.append(float(rs.reflected_appraisal) if rs else 0.5)
+                conf.append(float(s.confidence))
+            return _mean(presence), _mean(appraisal), _mean(conf)
+
+        soc_p, soc_a, soc_c = run(5)
+        iso_p, iso_a, iso_c = run(1)
+        score = float(max(0.0, min(1.0, soc_p - iso_p)))
+        interp = ("in a society the self-model acquires a social constituent (the regard of "
+                  "others) that the isolated agent lacks — a relational self emerges"
+                  if score > 0.05 else
+                  "agents did not come into mutual view at this setting; no social self emerged")
+        return BatteryResult(
+            test="relational_self", score=round(score, 4),
+            detail={"social": {"social_presence": round(soc_p, 4),
+                               "reflected_appraisal": round(soc_a, 4), "confidence": round(soc_c, 4)},
+                    "isolated": {"social_presence": round(iso_p, 4),
+                                 "reflected_appraisal": round(iso_a, 4), "confidence": round(iso_c, 4)},
+                    "ticks": int(ticks)},
+            interpretation=interp, disclaimer=BATTERY_DISCLAIMER)
+
     def calibration_test(self, seed: int = 42, ticks: int = 20) -> BatteryResult:
         """Correlate metaconfidence with realized accuracy (1 - prediction error)."""
         agent = _isolated_agent(SimConfig(world_noise=0.0, random_seed=int(seed)))

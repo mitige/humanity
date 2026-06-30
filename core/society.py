@@ -41,8 +41,33 @@ class SocietyManager:
             trace = self.agents[aid].cognitive_cycle()
             self.recorder.record(aid, trace.metrics)
             traces.append(trace)
+        # Relational self: from this tick's theory-of-mind state, compute how each
+        # agent is regarded by the others and hand it back for the NEXT tick
+        # (one-tick deferred => order-independent => deterministic).
+        if self.config.social_mirror_enabled:
+            self._update_reflected_appraisals()
         self.world.advance_tick()
         return traces
+
+    def _models_of(self, aid: int) -> list:
+        """The OtherMind records the *other* agents currently hold about ``aid``."""
+        out = []
+        for bid, ag in self.agents.items():
+            if bid == aid:
+                continue
+            for m in ag.theory_of_mind.all_models():
+                if m.agent_id == aid:
+                    out.append(m)
+        return out
+
+    def _update_reflected_appraisals(self) -> None:
+        """Set each agent's ``incoming_appraisal`` from how the others regard it."""
+        from core.social_self import reflected_appraisal
+        now = int(self.world.tick)
+        n_others = max(0, len(self.agents) - 1)
+        for aid in self.agents:
+            self.agents[aid].incoming_appraisal = reflected_appraisal(
+                self._models_of(aid), n_others, now_tick=now)
 
     async def async_tick(self) -> list[CycleTrace]:
         async with self._lock:

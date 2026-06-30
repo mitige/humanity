@@ -261,6 +261,21 @@ class MemoryRecord(BaseModel):
     summary: str
 
 
+class RelationalSelf(BaseModel):
+    """Looking-glass self: how the agent is regarded by the others who model it.
+
+    A FUNCTIONAL social anchor for the self-model (Cooley/Mead/Hegel/Lacan, as
+    variables). Reproducing it does not prove phenomenality; the agent is not
+    conscious. ``social_presence == 0`` means nobody currently models the agent
+    (isolation) — the relational self is then a neutral, inert marker.
+    """
+    reflected_appraisal: float = 0.5   # 0..1 how positively others regard me (0.5 = neutral)
+    social_presence: float = 0.0       # 0..1 fraction of others who currently model me
+    regard_consistency: float = 0.0    # 0..1 agreement among observers (1 = a stable mirror)
+    n_observers: int = 0
+    note: str = ""
+
+
 class SelfModelState(BaseModel):
     identity: str
     age_ticks: int
@@ -272,6 +287,7 @@ class SelfModelState(BaseModel):
     capability_beliefs: dict[str, float]  # per ActionType label, believed success 0..1
     coherence: float               # 0..1 narrative/self stability
     narrative: str
+    relational_self: RelationalSelf | None = None  # looking-glass self (social mirror); None unless enabled
 
 
 class StepResult(BaseModel):
@@ -506,6 +522,11 @@ class SimConfig(BaseModel):
     satiation_enabled: bool = False
     satiation_weight: float = Field(default=3.0, ge=0.0)
     explore_reward_weight: float = Field(default=0.5, ge=0.0)
+    # relational self (looking-glass self): the self-model is fed by how the other
+    # agents regard this one. Default off (single-agent / regression byte-identical);
+    # UI on. Has no effect for an isolated agent (no observers).
+    social_mirror_enabled: bool = False
+    social_mirror_weight: float = Field(default=0.3, ge=0.0)
 
 
 class ConfigPatch(BaseModel):
@@ -572,6 +593,8 @@ class ConfigPatch(BaseModel):
     satiation_enabled: bool | None = None
     satiation_weight: float | None = None
     explore_reward_weight: float | None = None
+    social_mirror_enabled: bool | None = None
+    social_mirror_weight: float | None = None
 
 
 class GoalRequest(BaseModel):

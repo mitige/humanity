@@ -19,6 +19,7 @@ from schemas.models import (
     ActionType,
     EmotionState,
     GoalPressure,
+    RelationalSelf,
     SelfModelState,
     SimConfig,
 )
@@ -81,6 +82,7 @@ class SelfModel:
         goals: list[GoalPressure],
         tick: int,
         conscious_contents: str | None = None,
+        reflected: RelationalSelf | None = None,
     ) -> None:
         """Update self-state from the latest cycle outcome.
 
@@ -113,6 +115,18 @@ class SelfModel:
         s.mood = _clip_unit(
             CONFIDENCE_EMA * mood_target + (1.0 - CONFIDENCE_EMA) * s.mood
         )
+
+        # Relational self (looking-glass self / social mirror): when enabled, the
+        # regard of the other agents co-shapes confidence and mood. The overlay is
+        # scaled by how *seen* the agent is, so an isolated agent (social_presence
+        # == 0) is left numerically unchanged — only the marker is stored.
+        if self.config.social_mirror_enabled and reflected is not None:
+            s.relational_self = reflected
+            w = _clip01(float(self.config.social_mirror_weight) * float(reflected.social_presence))
+            if w > 0.0:
+                s.confidence = _clip01(
+                    (1.0 - w) * s.confidence + w * float(reflected.reflected_appraisal))
+                s.mood = _clip_unit(s.mood + w * (float(reflected.reflected_appraisal) - 0.5))
 
         # Reward signal for preference learning: energy change + goal progress.
         goal_progress = float(result.actual.get("goal_progress", 0.0))

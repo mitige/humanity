@@ -165,6 +165,10 @@ class CognitiveAgent:
         self._last_social: SocialState | None = None
         self._last_visible_agents: list[AgentView] = []
         self._last_audible_messages: list = []
+        # Relational self (social mirror): how others regard this agent, supplied
+        # one-tick-deferred by the SocietyManager and consumed in the self-model
+        # update. None for an isolated agent or when the flag is off.
+        self.incoming_appraisal = None  # RelationalSelf | None
 
         # Phase 2: deep-consciousness mechanisms (active only when their flags are on).
         self.circadian = Circadian()
@@ -493,6 +497,9 @@ class CognitiveAgent:
         self._stream.append(conscious_moment)
 
         # 15) Self-model update; fold the conscious contents into the narrative.
+        #     When the social mirror is on, the regard of the other agents (a
+        #     looking-glass self, supplied by the society) co-shapes the self-model.
+        reflected = self.incoming_appraisal if cfg.social_mirror_enabled else None
         self.self_model.update(
             decision=decision,
             result=result,
@@ -501,6 +508,7 @@ class CognitiveAgent:
             goals=goals,
             tick=result.tick,
             conscious_contents=conscious_moment.contents,
+            reflected=reflected,
         )
         self_state_after = self.self_model.snapshot()
         if agency_state is not None:

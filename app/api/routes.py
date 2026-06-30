@@ -394,7 +394,7 @@ async def post_scenario_run(scenario: Scenario) -> ScenarioResult:
 
 @router.post("/battery/{test_name}", response_model=BatteryResult)
 async def post_battery(test_name: str, req: _BatteryReq) -> BatteryResult:
-    """Run a functional test-battery probe (mirror | false_memory | calibration)."""
+    """Run a functional probe (mirror | false_memory | calibration | relational_self)."""
     battery = ConsciousnessTestBattery()
     if test_name == "mirror":
         return battery.mirror_test(seed=req.seed, ticks=req.ticks)
@@ -402,6 +402,10 @@ async def post_battery(test_name: str, req: _BatteryReq) -> BatteryResult:
         return battery.false_memory_test(seed=req.seed, ticks=req.ticks)
     if test_name == "calibration":
         return battery.calibration_test(seed=req.seed, ticks=req.ticks)
+    if test_name == "relational_self":
+        # this probe runs isolated-vs-society and needs enough ticks for the
+        # agents to come into mutual view.
+        return battery.relational_self_test(seed=req.seed, ticks=max(int(req.ticks), 30))
     raise HTTPException(status_code=404, detail=f"unknown test '{test_name}'")
 
 
