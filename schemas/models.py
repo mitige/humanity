@@ -111,6 +111,29 @@ class AgencyState(BaseModel):
     actual_self_effect: float = 0.0
 
 
+class LearningState(BaseModel):
+    """Learned action values + effective learning rate (Phase 3)."""
+    q_values: dict[str, float] = Field(default_factory=dict)
+    last_reward: float = 0.0
+    effective_lr: float = 0.2
+
+
+class ConceptState(BaseModel):
+    """Online concept formation snapshot (Phase 3)."""
+    dominant_concept: int | None = None
+    match: float = 0.0
+    n_concepts: int = 0
+
+
+class PersonalityState(BaseModel):
+    """Emergent personality profile (Phase 3)."""
+    label: str = "nascent"
+    openness: float = 0.5
+    caution: float = 0.5
+    novelty_seeking: float = 0.5
+    vector: list[float] = Field(default_factory=list)
+
+
 class Percept(BaseModel):
     object_id: int
     kind: str
@@ -257,6 +280,9 @@ class Metrics(BaseModel):
     learning_progress: float = 0.0
     daylight: float = 1.0
     is_sleeping: bool = False
+    effective_learning_rate: float = 0.2
+    concept_match: float = 0.0
+    n_concepts: int = 0
 
 
 class Coalition(BaseModel):
@@ -350,6 +376,9 @@ class CycleTrace(BaseModel):
     imagination: ImaginationState | None = None
     curiosity: CuriosityState | None = None
     agency: AgencyState | None = None
+    learning: LearningState | None = None
+    concept: ConceptState | None = None
+    personality: PersonalityState | None = None
 
 
 class SimConfig(BaseModel):
@@ -409,6 +438,18 @@ class SimConfig(BaseModel):
     curiosity_enabled: bool = False
     curiosity_window: int = Field(default=8, ge=2)
     agency_enabled: bool = False
+    # learning & personality (Phase 3) — default OFF => Phases-1/2-identical
+    learning_enabled: bool = False
+    value_learning_rate: float = Field(default=0.2, ge=0.0, le=1.0)
+    value_learning_weight: float = Field(default=0.5, ge=0.0)
+    concepts_enabled: bool = False
+    n_concepts: int = Field(default=6, ge=1, le=32)
+    concept_lr: float = Field(default=0.2, ge=0.0, le=1.0)
+    meta_learning_enabled: bool = False
+    meta_lr_min: float = Field(default=0.05, ge=0.0, le=1.0)
+    meta_lr_max: float = Field(default=0.6, ge=0.0, le=1.0)
+    personality_enabled: bool = False
+    personality_drift: float = Field(default=0.05, ge=0.0, le=1.0)
 
 
 class ConfigPatch(BaseModel):
@@ -458,6 +499,17 @@ class ConfigPatch(BaseModel):
     curiosity_enabled: bool | None = None
     curiosity_window: int | None = None
     agency_enabled: bool | None = None
+    learning_enabled: bool | None = None
+    value_learning_rate: float | None = None
+    value_learning_weight: float | None = None
+    concepts_enabled: bool | None = None
+    n_concepts: int | None = None
+    concept_lr: float | None = None
+    meta_learning_enabled: bool | None = None
+    meta_lr_min: float | None = None
+    meta_lr_max: float | None = None
+    personality_enabled: bool | None = None
+    personality_drift: float | None = None
 
 
 class GoalRequest(BaseModel):
