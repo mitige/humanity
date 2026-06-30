@@ -44,11 +44,16 @@ class AutobiographicalMemory:
         self.config = config
         self._store = store
         self._records: list[MemoryRecord] = []
+        # Cached feature vectors, kept in lock-step with ``self._records`` (a
+        # record's perception never changes, so its vector is computed once at
+        # store/load time instead of being recomputed on every retrieval).
+        self._vectors: list[np.ndarray] = []
         self._next_id: int = 1
         if store is not None:
             loaded = store.load_records()
             if loaded:
                 self._records = list(loaded)
+                self._vectors = [self.feature_vector(r.perception) for r in loaded]
                 self._next_id = max(r.id for r in loaded) + 1
 
     # ------------------------------------------------------------------ #
@@ -64,14 +69,20 @@ class AutobiographicalMemory:
         """
         if not percepts:
             return np.zeros(_FEATURE_DIM, dtype=float)
-        danger = np.mean([p.danger for p in percepts])
-        novelty = np.mean([p.novelty for p in percepts])
-        utility = np.mean([p.utility for p in percepts])
-        energy_value = np.mean([p.energy_value for p in percepts])
-        distance = np.mean([p.distance for p in percepts])
-        count = float(len(percepts))
+        # Single pure-Python pass: for the tiny percept lists this is markedly
+        # faster than five separate ``np.mean`` calls (a per-tick hot path during
+        # retrieval), and yields the same means.
+        danger = novelty = utility = energy_value = distance = 0.0
+        for p in percepts:
+            danger += p.danger
+            novelty += p.novelty
+            utility += p.utility
+            energy_value += p.energy_value
+            distance += p.distance
+        inv = 1.0 / len(percepts)
         return np.array(
-            [danger, novelty, utility, energy_value, distance, count],
+            [danger * inv, novelty * inv, utility * inv, energy_value * inv,
+             distance * inv, float(len(percepts))],
             dtype=float,
         )
 
@@ -173,10 +184,11 @@ class AutobiographicalMemory:
         if record.importance < self.config.memory_importance_threshold:
             return None
 
-        # Assign a fresh monotonic id and append.
+        # Assign a fresh monotonic id and append (caching its feature vector).
         record = record.model_copy(update={"id": self._next_id})
         self._next_id += 1
         self._records.append(record)
+        self._vectors.append(self.feature_vector(record.perception))
 
         if self._store is not None:
             self._store.save_records(self._records)
@@ -194,10 +206,11 @@ class AutobiographicalMemory:
         if k <= 0 or not self._records:
             return []
         query = self.feature_vector(percepts)
-        scored: list[tuple[float, MemoryRecord]] = []
-        for record in self._records:
-            vector = self.feature_vector(record.perception)
-            scored.append((_cosine_similarity(query, vector), record))
+        # Use the cached per-record vectors (no recomputation per retrieval).
+        scored: list[tuple[float, MemoryRecord]] = [
+            (_cosine_similarity(query, vector), record)
+            for record, vector in zip(self._records, self._vectors)
+        ]
         scored.sort(key=lambda item: item[0], reverse=True)
         return [record for _, record in scored[:k]]
 
@@ -224,10 +237,14 @@ class AutobiographicalMemory:
                 record.importance = round(new_imp, 6)
                 boosted += 1
         before = len(self._records)
-        kept = [r for r in self._records if r.importance >= float(prune_threshold)]
-        pruned = before - len(kept)
+        thr = float(prune_threshold)
+        kept_pairs = [
+            (r, v) for r, v in zip(self._records, self._vectors) if r.importance >= thr
+        ]
+        pruned = before - len(kept_pairs)
         if pruned > 0:
-            self._records = kept
+            self._records = [r for r, _ in kept_pairs]
+            self._vectors = [v for _, v in kept_pairs]
             if self._store is not None:
                 self._store.save_records(self._records)
         return boosted, pruned

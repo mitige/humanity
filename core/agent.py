@@ -112,9 +112,10 @@ class CognitiveAgent:
         self.perception = Perception()
         self.attention = Attention()
         self.working_memory = WorkingMemory(config)
-        # Persistence + episodic memory.
+        # Persistence + episodic memory. ``persist_memory=False`` keeps memory
+        # in-RAM (no per-store full-file rewrite) for fast/headless training.
         if not preserve_identity or not hasattr(self, "memory_store"):
-            self.memory_store = MemoryStore()
+            self.memory_store = MemoryStore() if config.persist_memory else None
         self.memory = AutobiographicalMemory(config, store=self.memory_store)
         self.emotion_model = EmotionModel()
         self.motivation = MotivationSystem(config)
@@ -629,7 +630,10 @@ class CognitiveAgent:
             concept=concept_state,
             personality=personality_state,
         )
-        self.trace_logger.log(trace)
+        # Per-tick JSONL trace write is the second-largest per-tick I/O cost;
+        # ``trace_logging=False`` skips it for fast/headless training.
+        if cfg.trace_logging:
+            self.trace_logger.log(trace)
 
         # Update rolling state for the next tick.
         self._prev_prediction_error = prev_error

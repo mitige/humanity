@@ -493,6 +493,12 @@ class SimConfig(BaseModel):
     personality_drift: float = Field(default=0.05, ge=0.0, le=1.0)
     # scientific instrument (Phase 4)
     metrics_history_max: int = Field(default=1000, ge=1)
+    # performance — fast/headless training. Defaults preserve the live instrument
+    # (persist memory across restarts, log every trace). Set both False for fast
+    # training runs: in-RAM memory (no per-store full-file rewrite) and no per-tick
+    # JSONL trace write — the dominant per-tick I/O cost.
+    persist_memory: bool = True
+    trace_logging: bool = True
 
 
 class ConfigPatch(BaseModel):
@@ -554,6 +560,8 @@ class ConfigPatch(BaseModel):
     personality_enabled: bool | None = None
     personality_drift: float | None = None
     metrics_history_max: int | None = None
+    persist_memory: bool | None = None
+    trace_logging: bool | None = None
 
 
 class GoalRequest(BaseModel):

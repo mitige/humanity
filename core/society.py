@@ -48,6 +48,17 @@ class SocietyManager:
         async with self._lock:
             return self.tick()
 
+    def train(self, ticks: int) -> dict:
+        """Run ``ticks`` society ticks back-to-back as fast as possible (no
+        inter-tick sleep) — a fast headless training primitive that advances and
+        accumulates the live society's learned state. Pair with
+        ``persist_memory=False`` + ``trace_logging=False`` for maximum throughput.
+        """
+        n = max(0, int(ticks))
+        for _ in range(n):
+            self.tick()
+        return {"ticks_run": n, "tick": int(self.world.tick), "n_agents": len(self.agents)}
+
     async def run(self, req: RunRequest) -> None:
         if self.running:
             return

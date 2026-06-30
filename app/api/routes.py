@@ -367,6 +367,25 @@ class _BatteryReq(BaseModel):
     ticks: int = 12
 
 
+class _TrainReq(BaseModel):
+    ticks: int = 200
+
+
+@router.post("/train")
+async def post_train(req: _TrainReq) -> dict:
+    """Fast headless training: run N ticks back-to-back on the live society at
+    maximum speed (no inter-tick sleep), advancing/accumulating its learned state.
+
+    For maximum throughput first disable per-tick disk I/O via
+    ``POST /config {"persist_memory": false, "trace_logging": false}``.
+    """
+    mgr = _manager()
+    async with mgr._lock:
+        result = mgr.train(req.ticks)
+    result["disclaimer"] = DISCLAIMER_EN
+    return result
+
+
 @router.post("/scenario/run", response_model=ScenarioResult)
 async def post_scenario_run(scenario: Scenario) -> ScenarioResult:
     """Run a reproducible scripted scenario and return its metrics time series."""
