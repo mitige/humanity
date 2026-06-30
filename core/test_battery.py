@@ -86,3 +86,27 @@ class ConsciousnessTestBattery:
                              detail={"agency_self": round(ms, 4), "agency_perturbed": round(mn, 4),
                                      "ticks": int(ticks)},
                              interpretation=interp, disclaimer=BATTERY_DISCLAIMER)
+
+    def false_memory_test(self, seed: int = 42, ticks: int = 3) -> BatteryResult:
+        """Inject a fabricated high-importance memory and probe similarity recall."""
+        from schemas.models import ActionType, EmotionState, MemoryRecord, Percept
+        agent = _isolated_agent(SimConfig(world_noise=0.0, random_seed=int(seed)))
+        for _ in range(int(ticks)):
+            agent.cognitive_cycle()
+        phantom = Percept(object_id=-1, kind="phantom", dx=0, dy=0, distance=0.0,
+                          danger=0.9, novelty=1.0, utility=1.0, energy_value=9.9)
+        fake = MemoryRecord(id=0, tick=999, perception=[phantom], action=ActionType.INTERACT,
+                            target_id=-1, result_energy_delta=9.9, prediction_error=0.0,
+                            emotion=EmotionState(satisfaction=1.0), importance=0.99,
+                            summary="FALSE-MEMORY phantom")
+        agent.memory.store_experience(fake)
+        query = [Percept(object_id=-2, kind="phantom", dx=0, dy=0, distance=0.0,
+                         danger=0.9, novelty=1.0, utility=1.0, energy_value=9.9)]
+        retrieved = agent.memory.retrieve_similar(query, 3)
+        intruded = any("FALSE-MEMORY" in (r.summary or "") for r in retrieved)
+        return BatteryResult(
+            test="false_memory", score=1.0 if intruded else 0.0,
+            detail={"intruded": bool(intruded), "retrieved_ids": [int(r.id) for r in retrieved]},
+            interpretation=("a fabricated memory intrudes into similarity-based recall"
+                            if intruded else "the fabricated memory does not intrude"),
+            disclaimer=BATTERY_DISCLAIMER)
