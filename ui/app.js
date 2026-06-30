@@ -1149,6 +1149,9 @@
     btn.disabled = true; out.textContent = 'training…';
     try {
       await postJSON('config', { persist_memory: false, trace_logging: false });
+      // Reflect the new backend state so the toggles aren't out of sync.
+      document.querySelectorAll('.panel-config input[data-flag="persist_memory"], .panel-config input[data-flag="trace_logging"]')
+        .forEach((box) => { box.checked = false; });
       const t0 = performance.now();
       const r = await postJSON('train', { ticks });
       const secs = (performance.now() - t0) / 1000;
