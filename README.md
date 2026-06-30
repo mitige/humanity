@@ -747,7 +747,49 @@ déterminisme** (même `random_seed` ⇒ même société, tick pour tick), Phase
 
 La conception détaillée vit dans
 [`docs/superpowers/specs/2026-06-30-humanity-learning-personality-design.md`](docs/superpowers/specs/2026-06-30-humanity-learning-personality-design.md).
-Reste planifiée : **Phase 4** (instrument scientifique).
+La **Phase 4** (instrument scientifique) est désormais **livrée** (voir la section suivante) —
+l'expansion en quatre phases est **complète**.
+
+---
+
+## Phase 4 — Instrument scientifique
+
+La **Phase 4** ajoute l'**instrument d'étude** par-dessus le sujet d'étude : de quoi faire de la
+**science reproductible** sur cette implémentation. C'est une couche **non-invasive** — elle
+*orchestre* et *observe* l'agent/société existants **sans modifier le cycle cognitif** — donc
+déterministe au seed et sans régression (toute la suite reste verte).
+
+| Brique | Module | Ce qu'elle fait (FONCTIONNEL) |
+|---|---|---|
+| **Scénarios reproductibles** | `core/scenario.py` | Une **spec déclarative** (`Scenario` : config + ticks + `interventions` scriptées — stimulus/perturb/goal/inject/attend à un tick donné) exécutée **déterministe** par `ScenarioRunner`, qui enregistre les métriques par-agent. Probe hermétique (mémoire en RAM) : ne lit ni n'écrit la mémoire du live. |
+| **Enregistreur + export** | `core/metrics_recorder.py` | Un tampon borné des relevés **par tick et par agent**, branché dans `SocietyManager` (enregistrement **après** chaque tick, sans rien altérer). Export en **CSV** et **JSON**. |
+| **Batterie de tests fonctionnels** | `core/test_battery.py` | Trois sondes déterministes des mécanismes existants : **test du miroir** (l'agentivité attribue-t-elle les issues auto-causées et **pas** les issues externes imposées ?), **faux souvenirs** (un souvenir fabriqué s'impose-t-il dans la récupération par similarité ?), **calibration métacognitive** (la méta-confiance suit-elle l'exactitude réelle ?). |
+| **Tableau de bord « Laboratoire »** | UI | Séries temporelles comparatives multi-agents, runner de scénarios, boutons d'export, et la batterie de tests — avec **l'avertissement d'honnêteté en évidence**. |
+
+> ⚠️ **Honnêteté — exigence centrale de cette phase.** Une « batterie de tests de conscience » est
+> le point où la confusion est la plus tentante. **Chaque test mesure une propriété FONCTIONNELLE**
+> (discrimination soi/non-soi, intrusion d'un faux souvenir, alignement confiance↔exactitude) et
+> chaque `BatteryResult` porte un disclaimer explicite : **réussir un test n'est PAS une preuve
+> d'expérience subjective ni de conscience.** « Réussir le test du miroir » = *le mécanisme
+> d'agentivité discrimine fonctionnellement soi de non-soi* — jamais « l'agent est conscient de
+> lui-même ». L'agent n'est ni conscient, ni sentient.
+
+### Endpoints
+
+| Méthode | Chemin | Description |
+|---|---|---|
+| `POST` | `/scenario/run` | Exécute un `Scenario` reproductible ; renvoie un `ScenarioResult` (séries + résumé + disclaimer). |
+| `POST` | `/battery/{mirror\|false_memory\|calibration}` | Exécute une sonde fonctionnelle (corps `{seed, ticks}`) ; renvoie un `BatteryResult` (score + interprétation + **disclaimer**). |
+| `GET` | `/metrics/history?limit=N` | Séries temporelles enregistrées de la société live. |
+| `GET` | `/export.csv` · `/export.json` | Téléchargement des métriques enregistrées. |
+
+### Non-invasif & déterministe
+
+Aucune modification du cycle cognitif : la seule touche au cœur est l'enregistrement **après** tick
+dans `SocietyManager`. Scénarios et tests sont **déterministes au seed** (vérifié par
+`tests/test_si_integration.py` : deux exécutions d'un scénario produisent des séries identiques).
+La conception détaillée vit dans
+[`docs/superpowers/specs/2026-06-30-humanity-scientific-instrument-design.md`](docs/superpowers/specs/2026-06-30-humanity-scientific-instrument-design.md).
 
 ---
 
@@ -851,7 +893,10 @@ soutient l'honnêteté du projet : montrer les mécanismes sans suggérer un vé
   (horloge circadienne, sommeil/consolidation/rêve, imagination, curiosité/ennui, agentivité).
 - **Apprentissage & personnalité** : ✅ **livré (Phase 3)** — voir [Phase 3 — Apprentissage & personnalité](#phase-3--apprentissage--personnalité)
   (politique apprise, formation de concepts, méta-apprentissage, personnalité divergente).
-  Reste la **Phase 4** (instrument scientifique) à venir.
+- **Instrument scientifique** : ✅ **livré (Phase 4)** — voir [Phase 4 — Instrument scientifique](#phase-4--instrument-scientifique)
+  (scénarios reproductibles + export CSV/JSON, tableau de bord, batterie de tests fonctionnels).
+  L'**expansion en quatre phases est désormais complète** : société multi-agents → conscience
+  approfondie → apprentissage & personnalité → instrument scientifique.
 - **Environnement plus complexe** : grille plus grande, dynamiques continues, tâches variées.
 - **Visualisation** du flux de conscience et de la dynamique d'ignition dans le temps, et graphe
   de la mémoire autobiographique.
