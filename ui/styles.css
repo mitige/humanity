@@ -210,6 +210,7 @@ h1, h2, h3 { margin: 0; font-weight: 500; }
 }
 .panel-hero      { grid-column: span 7; }
 .panel-deep      { grid-column: span 12; }
+.panel-learning  { grid-column: span 12; }
 .panel-workspace { grid-column: span 5; }
 .panel-metrics   { grid-column: span 12; }
 .panel-world     { grid-column: span 5; }
@@ -224,7 +225,8 @@ h1, h2, h3 { margin: 0; font-weight: 500; }
 @media (max-width: 1180px) {
   .layout { grid-template-columns: repeat(6, 1fr); }
   .panel-hero, .panel-workspace, .panel-metrics, .panel-world,
-  .panel-introspect, .panel-mem, .panel-config, .panel-deep { grid-column: span 6; }
+  .panel-introspect, .panel-mem, .panel-config, .panel-deep,
+  .panel-learning { grid-column: span 6; }
   .panel-ast { grid-column: span 6; }
   .panel-hot, .panel-self, .panel-wm { grid-column: span 3; }
 }
@@ -635,6 +637,50 @@ input[type="range"]::-moz-range-thumb {
 }
 .deep-toggle:hover { border-color: var(--ink-ghost); color: var(--ink); }
 .deep-toggle input { accent-color: var(--accent); cursor: pointer; margin: 0; }
+
+/* =====================================================================
+   LEARNING & PERSONALITY (Phase 3) — Q-values / concept / personality
+   ===================================================================== */
+.lp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+@media (max-width: 480px) { .lp-grid { grid-template-columns: 1fr; } }
+
+.lp-cell {
+  background: var(--bg-3);
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+  padding: 14px 14px 12px;
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
+}
+.lp-wide { grid-column: 1 / -1; }
+
+/* learned action-value bars */
+#q-bars { gap: 7px; max-height: 220px; }
+#q-bars .empty { padding: 6px 2px; }
+.q-row { display: grid; grid-template-columns: 110px 1fr 44px; align-items: center; gap: 10px; }
+.q-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.02em;
+  color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-bar { height: 14px; background: var(--bg-inset); border: 1px solid var(--line-soft);
+  border-radius: 4px; overflow: hidden; position: relative; }
+.q-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.5s cubic-bezier(0.2,0.7,0.2,1), background 0.3s; }
+.q-fill.neg { background: var(--neg); }
+.q-val { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); text-align: right; }
+
+/* personality card */
+.personality-card .deep-v { font-family: var(--serif); font-size: 17px; color: var(--ink);
+  text-transform: capitalize; }
+.personality-traits { display: flex; flex-direction: column; gap: 9px; margin-top: 4px; }
+.trait-row { display: grid; grid-template-columns: 110px 1fr 40px; align-items: center; gap: 10px; }
+.trait-k { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); }
+.trait-row .meter { height: 5px; }
+.trait-row .meter-fill { background: var(--curio); }
+.trait-v { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); text-align: right; }
 
 /* =====================================================================
    COLOPHON

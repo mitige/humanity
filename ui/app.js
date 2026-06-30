@@ -547,13 +547,16 @@
   // ============================================================
   //  DEEP CONSCIOUSNESS (Phase 2) — circadian / sleep / agency / curiosity
   // ============================================================
-  // The six Phase-2 flags default to ON so the live instrument is Phase-2.
-  // POST them once on load (mirrors the checked-by-default toggles).
+  // The six Phase-2 flags + four Phase-3 flags default to ON so the live
+  // instrument shows the deep + learning/personality layers. POST them once on
+  // load (mirrors the checked-by-default toggles in the Settings panel).
   async function applyDeepDefaults() {
     try {
       await postJSON("config", {
         circadian_enabled: true, sleep_enabled: true, dream_enabled: true,
         imagination_enabled: true, curiosity_enabled: true, agency_enabled: true,
+        learning_enabled: true, concepts_enabled: true,
+        meta_learning_enabled: true, personality_enabled: true,
       });
     } catch (e) { /* non-fatal: panel just stays at defaults */ }
   }
@@ -641,6 +644,94 @@
   }
 
   // ============================================================
+  //  LEARNING & PERSONALITY (Phase 3) — Q-values / concept / personality
+  // ============================================================
+  // refreshLearning — drives the Phase-3 panel from a CycleTrace. The learned
+  // values (trace.learning.q_values), dominant concept (trace.concept) and the
+  // emergent personality (trace.personality) only exist when the Phase-3 flags
+  // are on; when learning is null the trace lacks the layer entirely, so the
+  // panel keeps its placeholders rather than rendering empties.
+  function refreshLearning(trace) {
+    const tr = trace || {};
+
+    // learned action values -> labeled bars, scaled to the largest |value|
+    const learning = tr.learning;
+    const qbox = $("#q-bars");
+    if (qbox && learning && learning.q_values) {
+      qbox.innerHTML = "";
+      const entries = Object.entries(learning.q_values);
+      // strongest-first so the dominant action reads at the top
+      entries.sort((a, b) => num(b[1]) - num(a[1]));
+      const maxAbs = Math.max(1e-6, ...entries.map(([, v]) => Math.abs(num(v))));
+      if (!entries.length) {
+        qbox.appendChild(el("div", "empty", "No learned values yet."));
+      } else {
+        const frag = document.createDocumentFragment();
+        entries.forEach(([action, value]) => {
+          const v = num(value);
+          const row = el("div", "q-row");
+          row.appendChild(el("span", "q-label", esc(action)));
+          const barWrap = el("div", "q-bar");
+          const fill = el("div", "q-fill" + (v < 0 ? " neg" : ""));
+          fill.style.width = (clamp01(Math.abs(v) / maxAbs) * 100).toFixed(1) + "%";
+          barWrap.appendChild(fill);
+          row.appendChild(barWrap);
+          row.appendChild(el("span", "q-val mono", f2(v)));
+          frag.appendChild(row);
+        });
+        qbox.appendChild(frag);
+      }
+    }
+
+    // dominant concept (id + match strength) and concept count
+    const concept = tr.concept;
+    const cstate = $("#concept-state");
+    if (cstate) {
+      if (concept) {
+        const dom = concept.dominant_concept;
+        cstate.textContent = (dom != null ? "#" + dom : "—") +
+          " · match " + f2(concept.match) +
+          " · " + num(concept.n_concepts) + " concepts";
+      } else {
+        cstate.textContent = "—";
+      }
+    }
+
+    // effective learning rate — prefer metrics, fall back to the learning state
+    const m = tr.metrics || {};
+    const elr = m.effective_learning_rate != null
+      ? m.effective_learning_rate
+      : (learning ? learning.effective_lr : null);
+    if ($("#elr-val")) $("#elr-val").textContent = elr != null ? f3(elr) : "—";
+
+    // personality: label + the three named traits as small meters
+    const p = tr.personality;
+    const plabel = $("#personality-label");
+    if (plabel) plabel.textContent = p && p.label ? p.label : "nascent";
+    const ptraits = $("#personality-traits");
+    if (ptraits) {
+      ptraits.innerHTML = "";
+      const traits = p
+        ? [["openness", p.openness], ["caution", p.caution], ["novelty seeking", p.novelty_seeking]]
+        : [["openness", null], ["caution", null], ["novelty seeking", null]];
+      const frag = document.createDocumentFragment();
+      traits.forEach(([name, val]) => {
+        const t = clamp01(num(val));
+        const row = el("div", "trait-row");
+        row.appendChild(el("span", "trait-k", esc(name)));
+        const meter = el("div", "meter");
+        const fill = el("div", "meter-fill");
+        fill.style.width = (t * 100).toFixed(1) + "%";
+        meter.appendChild(fill);
+        row.appendChild(meter);
+        row.appendChild(el("span", "trait-v mono", val != null ? f2(t) : "—"));
+        frag.appendChild(row);
+      });
+      ptraits.appendChild(frag);
+    }
+  }
+
+  // ============================================================
   //  REFRESH (poll /state + agent endpoints)
   // ============================================================
   async function refreshAll() {
@@ -681,6 +772,8 @@
       if (intro) renderIntrospection(intro);
       // deep-consciousness panel (Phase 2) — guarded so it can't break the loop
       try { refreshDeep(state, lastTrace); } catch (e) { /* non-fatal */ }
+      // learning & personality panel (Phase 3) — driven by the last /tick trace
+      try { refreshLearning(lastTrace); } catch (e) { /* non-fatal */ }
       // society view updates alongside the single-agent instrument
       refreshSociety();
     } catch (err) {
@@ -731,6 +824,8 @@
     }
     // deep panel: prefer trace.metrics (carries daylight/agency/boredom/is_sleeping)
     try { refreshDeep(trace.metrics, trace); } catch (e) { /* non-fatal */ }
+    // learning & personality panel (Phase 3) — full trace carries learning/concept/personality
+    try { refreshLearning(trace); } catch (e) { /* non-fatal */ }
   }
 
   // ============================================================
@@ -844,10 +939,11 @@
   });
 
   // ============================================================
-  //  DEEP-CONSCIOUSNESS TOGGLES -> POST /config
+  //  FLAG TOGGLES -> POST /config  (Phase-2 deep + Phase-3 learning/personality)
   // ============================================================
-  // checked by default (matches applyDeepDefaults); each flips one Phase-2 flag.
-  document.querySelectorAll("#deep-toggles input[data-flag]").forEach((box) => {
+  // checked by default (matches applyDeepDefaults); each flips one feature flag.
+  // covers both the #deep-toggles (Phase 2) and #lp-toggles (Phase 3) groups.
+  document.querySelectorAll(".panel-config input[data-flag]").forEach((box) => {
     box.checked = true;
     box.addEventListener("change", async () => {
       const flag = box.dataset.flag;

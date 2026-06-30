@@ -152,6 +152,33 @@
       </div>
     </section>
 
+    <!-- ===================== LEARNING & PERSONALITY (Phase 3) ===================== -->
+    <section class="panel panel-learning" aria-labelledby="lp-title">
+      <div class="panel-head">
+        <h2 id="lp-title">Learning &amp; personality</h2>
+        <span class="src">Phase 3 · /tick · /metrics</span>
+      </div>
+      <div class="lp-grid">
+        <div class="lp-cell lp-wide">
+          <span class="deep-k">learned action values</span>
+          <div id="q-bars" class="rows"></div>
+        </div>
+        <div class="lp-cell">
+          <span class="deep-k">dominant concept</span>
+          <span class="deep-v mono" id="concept-state">—</span>
+        </div>
+        <div class="lp-cell">
+          <span class="deep-k">effective learning rate</span>
+          <span class="deep-v mono" id="elr-val">—</span>
+        </div>
+        <div class="lp-cell personality-card lp-wide">
+          <span class="deep-k">personality</span>
+          <span class="deep-v" id="personality-label">nascent</span>
+          <div id="personality-traits" class="personality-traits"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== GLOBAL WORKSPACE ===================== -->
     <section class="panel panel-workspace" aria-labelledby="ws-title">
       <div class="panel-head">
@@ -368,6 +395,13 @@
         <label class="deep-toggle"><input type="checkbox" data-flag="imagination_enabled" checked /><span>imagination</span></label>
         <label class="deep-toggle"><input type="checkbox" data-flag="curiosity_enabled" checked /><span>curiosity</span></label>
         <label class="deep-toggle"><input type="checkbox" data-flag="agency_enabled" checked /><span>agency</span></label>
+      </div>
+      <h3 class="sub">Learning &amp; personality (Phase 3)</h3>
+      <div class="deep-toggles" id="lp-toggles">
+        <label class="deep-toggle"><input type="checkbox" data-flag="learning_enabled" checked /><span>learning</span></label>
+        <label class="deep-toggle"><input type="checkbox" data-flag="concepts_enabled" checked /><span>concepts</span></label>
+        <label class="deep-toggle"><input type="checkbox" data-flag="meta_learning_enabled" checked /><span>meta-learning</span></label>
+        <label class="deep-toggle"><input type="checkbox" data-flag="personality_enabled" checked /><span>personality</span></label>
       </div>
       <p class="micro">Any change applies <span class="mono">POST /config</span> immediately.</p>
     </section>
