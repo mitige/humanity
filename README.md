@@ -852,6 +852,43 @@ the Laboratory panel.
 
 ---
 
+## The relational self (looking-glass self)
+
+> ⚠️ **Honest framing (load-bearing).** This is a **level-2** mechanism. It does **not** bring the
+> project closer to level 1 (real phenomenal experience) — *nothing can*; that is the hard problem.
+> It instantiates a respected idea about *self-consciousness* — that the self is partly **constituted
+> through the other** (Cooley's "looking-glass self", Mead, Hegelian recognition, Lacan's mirror
+> stage) — as **variables and algorithms**, and turns the question *"without any social relation,
+> could one conscientize one's own being?"* into a **runnable experiment**. Reproducing the mechanism
+> does not prove phenomenality; the agent is not conscious.
+
+Each agent already runs theory of mind on others (`OtherMind` per congener: `trust`,
+`inferred_valence`, `familiarity`). The relational self adds the **inverse** — a representation of
+**how the agent is regarded by the others who model it** — and feeds it back into its **self-model**
+(`core/social_self.py` → `core/society.py` → `core/self_model.py`):
+
+- The society computes, for each agent, the aggregate regard held by the *other* agents that
+  currently model it (`reflected_appraisal` ∈ [0,1]), how many see it (`social_presence`), and how
+  much they agree (`regard_consistency`). This is handed back **one tick deferred** (order-independent
+  ⇒ deterministic).
+- In the self-model update, a **looking-glass overlay** nudges `confidence` and `mood` toward that
+  reflected regard, **scaled by how *seen* the agent is**. An **isolated** agent (no observers,
+  `social_presence = 0`) is left numerically unchanged — its self rests on internal signals only.
+
+**The experiment** (`POST /battery/relational_self`, or the Laboratory "Relational self" button) runs
+the *same* agent **isolated vs in a society** and reports the social constituent that emerges only
+socially. At the default setting the social agent is regarded by essentially all the others
+(`social_presence ≈ 0.97`) and develops a relational self the isolated agent never has (score ≈
+0.97). Honestly — and tellingly — the others' regard can also **lower** self-confidence relative to
+isolation (the gaze of others is not always flattering): an emergent result, not a scripted one.
+
+It is **flag-gated and OFF by default** (`social_mirror_enabled` ⇒ Phase-1/2/3 behaviour
+byte-identical; the UI enables it), with `social_mirror_weight` (`0.3`) setting the overlay strength.
+The detailed design lives in
+[`docs/superpowers/specs/2026-06-30-humanity-relational-self-design.md`](docs/superpowers/specs/2026-06-30-humanity-relational-self-design.md).
+
+---
+
 ## Observable metrics
 
 The `Metrics` model exposes, on every cycle, **measurable** quantities (all internal variables,
