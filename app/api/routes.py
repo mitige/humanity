@@ -14,11 +14,15 @@ import asyncio
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 
 from core.agent import get_manager
 from core.society import SocietyManager
 from core.constants import THEORY_FRAMING_EN, THEORY_FRAMING_FR
+from core.scenario import ScenarioRunner
+from core.test_battery import ConsciousnessTestBattery
+from schemas.models import Scenario, ScenarioResult, BatteryResult
 from schemas.models import (
     AskRequest,
     AskResponse,
@@ -353,6 +357,55 @@ async def get_society_agent_introspection(agent_id: int) -> IntrospectionReport:
 async def get_society_agent_workspace(agent_id: int) -> WorkspaceState:
     """Return one agent's latest workspace competition outcome."""
     return _require_agent(agent_id).workspace_state()
+
+
+# --------------------------------------------------------------------------- #
+# Scientific-instrument endpoints (Phase 4)
+# --------------------------------------------------------------------------- #
+class _BatteryReq(BaseModel):
+    seed: int = 42
+    ticks: int = 12
+
+
+@router.post("/scenario/run", response_model=ScenarioResult)
+async def post_scenario_run(scenario: Scenario) -> ScenarioResult:
+    """Run a reproducible scripted scenario and return its metrics time series."""
+    return ScenarioRunner().run(scenario)
+
+
+@router.post("/battery/{test_name}", response_model=BatteryResult)
+async def post_battery(test_name: str, req: _BatteryReq) -> BatteryResult:
+    """Run a functional test-battery probe (mirror | false_memory | calibration)."""
+    battery = ConsciousnessTestBattery()
+    if test_name == "mirror":
+        return battery.mirror_test(seed=req.seed, ticks=req.ticks)
+    if test_name == "false_memory":
+        return battery.false_memory_test(seed=req.seed)
+    if test_name == "calibration":
+        return battery.calibration_test(seed=req.seed, ticks=req.ticks)
+    raise HTTPException(status_code=404, detail=f"unknown test '{test_name}'")
+
+
+@router.get("/metrics/history")
+async def get_metrics_history(limit: int = Query(default=500, ge=1, le=100000)) -> dict:
+    """Return the live society's recorded metrics time series."""
+    series = _manager().recorder.series(limit)
+    return {"series": series.model_dump(), "disclaimer": DISCLAIMER_EN}
+
+
+@router.get("/export.csv")
+async def get_export_csv() -> Response:
+    """Download the live society's recorded metrics as CSV."""
+    csv_text = _manager().recorder.to_csv()
+    return Response(content=csv_text, media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=humanity_metrics.csv"})
+
+
+@router.get("/export.json")
+async def get_export_json() -> Response:
+    """Download the live society's recorded metrics as JSON."""
+    return Response(content=_manager().recorder.to_json(), media_type="application/json",
+                    headers={"Content-Disposition": "attachment; filename=humanity_metrics.json"})
 
 
 @router.websocket("/ws/society")
