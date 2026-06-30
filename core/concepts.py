@@ -35,6 +35,8 @@ class ConceptFormation:
         if cid is None or (sim < _SPAWN_SIM_BELOW and n < int(config.n_concepts)):
             self.prototypes.append(x.copy())
             return ConceptState(dominant_concept=n, match=1.0, n_concepts=n + 1)
+        # At capacity (or a close-enough match): assimilate to the nearest
+        # prototype and drift it toward this percept — intentionally no new spawn.
         lr = float(max(0.0, min(1.0, config.concept_lr)))
         self.prototypes[cid] = self.prototypes[cid] + lr * (x - self.prototypes[cid])
         return ConceptState(dominant_concept=int(cid), match=round(float(sim), 4), n_concepts=n)

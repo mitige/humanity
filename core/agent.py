@@ -16,6 +16,8 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 
+import numpy as np
+
 from core.agency import Agency
 from core.attention import Attention
 from core.circadian import Circadian
@@ -218,13 +220,12 @@ class CognitiveAgent:
         concept_state = None
         if cfg.concepts_enabled:
             if percepts:
-                import numpy as _np
                 cvec = [
-                    float(_np.mean([p.danger for p in percepts])),
-                    float(_np.mean([p.novelty for p in percepts])),
-                    float(_np.mean([p.utility for p in percepts])),
-                    float(min(1.0, _np.mean([p.energy_value for p in percepts]) / 10.0)),
-                    float(min(1.0, _np.mean([p.distance for p in percepts]) / max(1, cfg.grid_size))),
+                    float(np.mean([p.danger for p in percepts])),
+                    float(np.mean([p.novelty for p in percepts])),
+                    float(np.mean([p.utility for p in percepts])),
+                    float(min(1.0, np.mean([p.energy_value for p in percepts]) / 10.0)),
+                    float(min(1.0, np.mean([p.distance for p in percepts]) / max(1, cfg.grid_size))),
                 ]
             else:
                 cvec = []
