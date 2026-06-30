@@ -58,6 +58,8 @@
   let pollTimer = null;
   let lastGrid = 12;
   let lastTick = -1;
+  // most recent CycleTrace (from POST /tick) — holds Phase-2 imagination/sleep detail
+  let lastTrace = null;
 
   // client-side metric history for sparklines
   const HISTORY = {};
@@ -543,6 +545,102 @@
   }
 
   // ============================================================
+  //  DEEP CONSCIOUSNESS (Phase 2) — circadian / sleep / agency / curiosity
+  // ============================================================
+  // The six Phase-2 flags default to ON so the live instrument is Phase-2.
+  // POST them once on load (mirrors the checked-by-default toggles).
+  async function applyDeepDefaults() {
+    try {
+      await postJSON("config", {
+        circadian_enabled: true, sleep_enabled: true, dream_enabled: true,
+        imagination_enabled: true, curiosity_enabled: true, agency_enabled: true,
+      });
+    } catch (e) { /* non-fatal: panel just stays at defaults */ }
+  }
+
+  // circadian dial: a ring with a lit arc proportional to daylight (1 = noon).
+  function drawCircadianDial(daylight) {
+    const cv = $("#circadian-dial");
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    const W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2, r = Math.min(W, H) / 2 - 10;
+    const lit = clamp01(num(daylight));
+
+    // night track (full ring)
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.lineWidth = 9;
+    ctx.strokeStyle = cssVar("--bg-inset");
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = cssVar("--line");
+    ctx.stroke();
+
+    // lit (daylight) arc — starts at top (-90°), spans clockwise by daylight fraction
+    if (lit > 0) {
+      const start = -Math.PI / 2;
+      const end = start + lit * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, start, end);
+      ctx.lineWidth = 9;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = cssVar("--accent");
+      ctx.stroke();
+      ctx.lineCap = "butt";
+    }
+
+    // center readout: sun (high daylight) vs moon (low)
+    ctx.fillStyle = lit >= 0.5 ? cssVar("--accent") : cssVar("--cool");
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = cssVar("--ink");
+    ctx.font = "600 14px " + (cssVar("--mono") || "monospace");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = cssVar("--bg-inset");
+    ctx.fillText((lit * 100).toFixed(0) + "%", cx, cy);
+  }
+
+  // refreshDeep — drives the deep-consciousness panel from the latest readings.
+  // The Phase-2 scalars (daylight/is_sleeping/agency/boredom) live on the Metrics
+  // payload, which /state nests under state.metrics and /tick exposes as
+  // trace.metrics; accept either shape. The imagined plan / dream come from the
+  // most recent /tick trace's imagination.best_first_action and sleep.dream.
+  function refreshDeep(source, trace) {
+    const src = source || {};
+    // unwrap: prefer explicit metrics, else the object itself (it may already be metrics)
+    const s = src.metrics || src;
+    const tr = trace || lastTrace || {};
+
+    drawCircadianDial(s.daylight != null ? s.daylight : 1);
+
+    const asleep = !!s.is_sleeping;
+    const ss = $("#sleep-state");
+    if (ss) {
+      ss.textContent = asleep ? "asleep" : "awake";
+      ss.classList.toggle("is-asleep", asleep);
+    }
+    const dream = tr.sleep && tr.sleep.dream ? tr.sleep.dream : "";
+    if ($("#dream-line")) $("#dream-line").textContent = dream;
+
+    const agency = clamp01(num(s.agency));
+    if ($("#agency-fill")) $("#agency-fill").style.width = (agency * 100).toFixed(1) + "%";
+    if ($("#agency-val")) $("#agency-val").textContent = f2(agency);
+
+    const boredom = clamp01(num(s.boredom));
+    if ($("#boredom-fill")) $("#boredom-fill").style.width = (boredom * 100).toFixed(1) + "%";
+    if ($("#boredom-val")) $("#boredom-val").textContent = f2(boredom);
+
+    const plan = tr.imagination && tr.imagination.best_first_action;
+    if ($("#imagined-plan")) $("#imagined-plan").textContent = plan ? String(plan) : "—";
+  }
+
+  // ============================================================
   //  REFRESH (poll /state + agent endpoints)
   // ============================================================
   async function refreshAll() {
@@ -581,6 +679,8 @@
       if (self) renderSelfModel(self);
       renderMemories(mem || []);
       if (intro) renderIntrospection(intro);
+      // deep-consciousness panel (Phase 2) — guarded so it can't break the loop
+      try { refreshDeep(state, lastTrace); } catch (e) { /* non-fatal */ }
       // society view updates alongside the single-agent instrument
       refreshSociety();
     } catch (err) {
@@ -592,6 +692,7 @@
   // After a manual tick we have a full CycleTrace — apply it for the richest update.
   function applyTrace(trace) {
     if (!trace) return;
+    lastTrace = trace;  // retain for the deep panel (imagined plan / dream)
     if (trace.observation) {
       drawWorld({
         grid_size: lastGrid,
@@ -628,6 +729,8 @@
         : trace.working_memory.length / 5;
       renderWorkingMemory(trace.working_memory, load);
     }
+    // deep panel: prefer trace.metrics (carries daylight/agency/boredom/is_sleeping)
+    try { refreshDeep(trace.metrics, trace); } catch (e) { /* non-fatal */ }
   }
 
   // ============================================================
@@ -741,6 +844,20 @@
   });
 
   // ============================================================
+  //  DEEP-CONSCIOUSNESS TOGGLES -> POST /config
+  // ============================================================
+  // checked by default (matches applyDeepDefaults); each flips one Phase-2 flag.
+  document.querySelectorAll("#deep-toggles input[data-flag]").forEach((box) => {
+    box.checked = true;
+    box.addEventListener("change", async () => {
+      const flag = box.dataset.flag;
+      try {
+        await postJSON("config", { [flag]: box.checked });
+      } catch (e) { setStatus("error", "Config error"); }
+    });
+  });
+
+  // ============================================================
   //  SOCIETY VIEW (multi-agent) — GET /society
   // ============================================================
   let SOC_SELECTED = 0;
@@ -823,5 +940,7 @@
   // ============================================================
   ensureMetricCells();
   drawWorld(null);
-  refreshAll();
+  drawCircadianDial(1);
+  // turn the six Phase-2 mechanisms on, then take the first reading
+  applyDeepDefaults().finally(refreshAll);
 })();

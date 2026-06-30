@@ -119,6 +119,39 @@
       </div>
     </section>
 
+    <!-- ===================== DEEP CONSCIOUSNESS (Phase 2) ===================== -->
+    <section class="panel panel-deep" aria-labelledby="deep-title">
+      <div class="panel-head">
+        <h2 id="deep-title">Deep consciousness</h2>
+        <span class="src">Phase 2 · /tick · /state</span>
+      </div>
+      <div class="deep-grid">
+        <div class="deep-cell">
+          <canvas id="circadian-dial" width="120" height="120" aria-label="Circadian day/night dial"></canvas>
+          <span class="deep-k">circadian</span>
+        </div>
+        <div class="deep-cell">
+          <span class="deep-k">sleep</span>
+          <span class="deep-v" id="sleep-state">awake</span>
+          <span class="deep-dream" id="dream-line"></span>
+        </div>
+        <div class="deep-cell">
+          <span class="deep-k">agency</span>
+          <div class="meter"><div class="meter-fill" id="agency-fill"></div></div>
+          <span class="stat-v mono" id="agency-val">0.00</span>
+        </div>
+        <div class="deep-cell">
+          <span class="deep-k">boredom / curiosity</span>
+          <div class="meter"><div class="meter-fill" id="boredom-fill"></div></div>
+          <span class="stat-v mono" id="boredom-val">0.00</span>
+        </div>
+        <div class="deep-cell deep-wide">
+          <span class="deep-k">imagined plan</span>
+          <span class="deep-v mono" id="imagined-plan">—</span>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== GLOBAL WORKSPACE ===================== -->
     <section class="panel panel-workspace" aria-labelledby="ws-title">
       <div class="panel-head">
@@ -326,6 +359,15 @@
           <span class="slider-label">World noise <b class="slider-val">0.10</b></span>
           <input type="range" min="0" max="1" step="0.01" value="0.1" />
         </label>
+      </div>
+      <h3 class="sub">Deep consciousness (Phase 2)</h3>
+      <div class="deep-toggles" id="deep-toggles">
+        <label class="deep-toggle"><input type="checkbox" data-flag="circadian_enabled" checked /><span>circadian</span></label>
+        <label class="deep-toggle"><input type="checkbox" data-flag="sleep_enabled" checked /><span>sleep</span></label>
+        <label class="deep-toggle"><input type="checkbox" data-flag="dream_enabled" checked /><span>dream</span></label>
+        <label class="deep-toggle"><input type="checkbox" data-flag="imagination_enabled" checked /><span>imagination</span></label>
+        <label class="deep-toggle"><input type="checkbox" data-flag="curiosity_enabled" checked /><span>curiosity</span></label>
+        <label class="deep-toggle"><input type="checkbox" data-flag="agency_enabled" checked /><span>agency</span></label>
       </div>
       <p class="micro">Any change applies <span class="mono">POST /config</span> immediately.</p>
     </section>
