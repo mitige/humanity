@@ -16,7 +16,9 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 
+from core.agency import Agency
 from core.attention import Attention
+from core.circadian import Circadian
 from core.constants import (
     AROUSAL_CEIL,
     AROUSAL_EMA,
@@ -26,9 +28,11 @@ from core.constants import (
 from core.attention_schema import AttentionSchema
 from core.autobiographical_memory import AutobiographicalMemory
 from core.communication import build_message_content, message_coalition
+from core.curiosity import Curiosity
 from core.dialogue import IntrospectiveDialogue
 from core.emotion import EmotionModel
 from core.global_workspace import GlobalWorkspace
+from core.imagination import Imagination
 from core.integration import IntegrationMonitor
 from core.introspection import DISCLAIMER_EN, Introspection
 from core.metacognition import Metacognition
@@ -37,6 +41,7 @@ from core.perception import Perception
 from core.policy import Policy
 from core.self_model import SelfModel
 from core.shared_world import SharedWorld
+from core.sleep import SleepCycle
 from core.social_emotion import apply_contagion, update_trust
 from core.theory_of_mind import TheoryOfMind
 from core.working_memory import WorkingMemory
@@ -45,16 +50,20 @@ from core.world_model import WorldModel
 from schemas.models import (
     ActionDecision,
     ActionType,
+    AgencyState,
     AgentView,
     AskResponse,
     AttendRequest,
     AttentionSchemaState,
+    CircadianState,
     Coalition,
     CognitiveInjection,
     ConfigPatch,
     ConsciousMoment,
+    CuriosityState,
     CycleTrace,
     EmotionState,
+    ImaginationState,
     IntegrationState,
     IntrospectionReport,
     MemoryRecord,
@@ -67,6 +76,7 @@ from schemas.models import (
     SalientItem,
     SelfModelState,
     SimConfig,
+    SleepState,
     SocialState,
     WorldObject,
     WorldStimulus,
@@ -148,6 +158,16 @@ class CognitiveAgent:
         self._last_visible_agents: list[AgentView] = []
         self._last_audible_messages: list = []
 
+        # Phase 2: deep-consciousness mechanisms (active only when their flags are on).
+        self.circadian = Circadian()
+        self.sleep_cycle = SleepCycle()
+        self.imagination = Imagination()
+        self.curiosity = Curiosity()
+        self.agency = Agency()
+        self._last_circadian: CircadianState | None = None
+        self._pending_imagination: ImaginationState | None = None
+        self._pending_dream: str | None = None
+
     # ------------------------------------------------------------------ #
     # The cognitive cycle
     # ------------------------------------------------------------------ #
@@ -158,6 +178,14 @@ class CognitiveAgent:
         produced from the live internal variables of this tick.
         """
         cfg = self.config
+
+        # Phase 2 — circadian phase + sleep decision (gated). Computed first so the
+        # arousal update and coalition builder can read them this tick.
+        cur_tick = self._shared_world.tick if self._shared_world is not None else self.world.tick
+        circadian = self.circadian.state(cur_tick, cfg) if cfg.circadian_enabled else None
+        self._last_circadian = circadian
+        is_night = bool(circadian.is_night) if circadian is not None else False
+        sleeping = self.sleep_cycle.evaluate(float(self.last_emotion.fatigue), is_night, cfg)
 
         # 1) Observe — from the shared world when in a society, else the solo world.
         if self._shared_world is not None:
@@ -276,6 +304,19 @@ class CognitiveAgent:
             config=cfg,
         )
 
+        # Phase 2 — imagination (gated, awake only): a bounded mental rollout whose
+        # preferred first action gives the policy a forward-looking bonus.
+        imagination_state = None
+        imagined_best = None
+        if cfg.imagination_enabled and not sleeping:
+            cur_energy = (self._shared_world.agents[self.agent_id].energy
+                          if self._shared_world is not None else self.world.agent_energy)
+            imagination_state = self.imagination.plan(
+                self.world_model, observation, candidates,
+                current_energy=float(cur_energy), initial_energy=float(cfg.initial_energy),
+                config=cfg)
+            imagined_best = imagination_state.best_first_action
+
         # 9) Policy: choose an action (active inference; value == -EFE).
         decision: ActionDecision = self.policy.choose_action(
             predictions,
@@ -285,10 +326,24 @@ class CognitiveAgent:
             self.last_emotion,
             salient,
             cfg,
+            imagined_best_action=imagined_best,
         )
 
         # The prediction backing the chosen action (for trace + error).
         chosen_prediction = self._prediction_for(predictions, decision)
+
+        # Phase 2 — sleep override (gated): the agent rests; offline consolidation
+        # + dreaming run instead of purposeful action.
+        dream_text = None
+        consolidated = pruned = 0
+        if sleeping:
+            decision = ActionDecision(
+                action=ActionType.REST, target_id=None, direction=None,
+                confidence=1.0, rationale="Asleep: resting; offline memory consolidation.",
+                candidate_scores={})
+            chosen_prediction = self._prediction_for(predictions, decision)
+            consolidated, pruned = self.sleep_cycle.consolidate(self.memory, cfg)
+            dream_text = self.sleep_cycle.dream(self.memory, cfg)
 
         # 10) Act on the world.
         if self._shared_world is not None:
@@ -334,6 +389,19 @@ class CognitiveAgent:
                 if av.distance <= 1.5:
                     update_trust(self.theory_of_mind.model_of(av.id), reward_sign, rate=0.25)
 
+        # Phase 2 — curiosity/boredom from learning progress (gated): boredom boosts
+        # novelty seeking; intrinsic reward lifts satisfaction.
+        curiosity_state = None
+        if cfg.curiosity_enabled:
+            curiosity_state = self.curiosity.update(list(self._recent_errors), cfg)
+            emotion = emotion.model_copy(update={
+                "curiosity": float(min(1.0, emotion.curiosity + 0.3 * curiosity_state.boredom)),
+                "satisfaction": float(min(1.0, emotion.satisfaction + 0.3 * curiosity_state.intrinsic_reward)),
+            })
+
+        # Phase 2 — sense of agency (gated): did my own action unfold as predicted?
+        agency_state = self.agency.compute(chosen_prediction, result) if cfg.agency_enabled else None
+
         # 13) Emotion already updated above; now compute the IIT-inspired
         #     integration proxy over the (post-competition) coalitions.
         integration = self.integration_monitor.phi_proxy(
@@ -366,6 +434,9 @@ class CognitiveAgent:
             conscious_contents=conscious_moment.contents,
         )
         self_state_after = self.self_model.snapshot()
+        if agency_state is not None:
+            self.self_model._apply_agency(agency_state.agency)
+            self_state_after = self.self_model.snapshot()
         # Re-bind valence with the freshly updated mood for consistency.
         conscious_moment.valence = float(self_state_after.mood)
 
@@ -428,6 +499,11 @@ class CognitiveAgent:
             awareness_level=round(float(attention_schema.awareness_level), 4),
             ignition=bool(workspace.ignited),
             arousal=round(float(workspace.arousal), 4),
+            agency=round(float(agency_state.agency), 4) if agency_state else 0.0,
+            boredom=round(float(curiosity_state.boredom), 4) if curiosity_state else 0.0,
+            learning_progress=round(float(curiosity_state.learning_progress), 4) if curiosity_state else 0.0,
+            daylight=round(float(circadian.daylight), 4) if circadian else 1.0,
+            is_sleeping=bool(sleeping),
         )
 
         # Publish this agent's social signal so others can perceive it.
@@ -454,6 +530,13 @@ class CognitiveAgent:
         else:
             self._last_social = None
 
+        sleep_state = None
+        if cfg.sleep_enabled:
+            sleep_state = SleepState(
+                is_sleeping=bool(sleeping), fatigue=round(float(emotion.fatigue), 4),
+                consolidated=int(consolidated), pruned=int(pruned),
+                dream=dream_text, sleep_ticks=int(self.sleep_cycle.sleep_ticks))
+
         # 19) Assemble the trace (with the 5 new sub-objects) and persist.
         trace = CycleTrace(
             tick=result.tick,
@@ -474,6 +557,11 @@ class CognitiveAgent:
             conscious_moment=conscious_moment,
             integration=integration,
             social=self._last_social,
+            circadian=circadian,
+            sleep=sleep_state,
+            imagination=imagination_state,
+            curiosity=curiosity_state,
+            agency=agency_state,
         )
         self.trace_logger.log(trace)
 
@@ -486,6 +574,8 @@ class CognitiveAgent:
         self._last_introspection = introspection
         self._last_metacognition = metacognition
         self._last_workspace = workspace
+        self._pending_imagination = imagination_state
+        self._pending_dream = dream_text
         return trace
 
     @staticmethod
@@ -594,7 +684,12 @@ class CognitiveAgent:
         # baseline in calm stretches (raising the ignition bar) and rise above it
         # when salient (lowering the bar). ``arousal_baseline`` is the reference
         # level at which the ignition threshold is nominal, not a floor.
-        target = min(AROUSAL_CEIL, max(AROUSAL_FLOOR, salience))
+        # Phase 2: circadian modulation — daylight scales vigilance down at night
+        # (no-op when circadian is disabled => daylight 1.0 => factor 1.0).
+        daylight = (self._last_circadian.daylight
+                    if (cfg.circadian_enabled and self._last_circadian is not None) else 1.0)
+        circ_factor = 0.5 + 0.5 * float(daylight)
+        target = min(AROUSAL_CEIL, max(AROUSAL_FLOOR, salience * circ_factor))
         self._arousal = float(
             min(
                 AROUSAL_CEIL,
@@ -757,6 +852,20 @@ class CognitiveAgent:
             if best_msg is not None:
                 other = self.theory_of_mind.model_of(best_msg.sender_id)
                 coalitions.append(message_coalition(best_msg, other))
+
+        # Phase 2 — imagination coalition (faint background projection; one-tick latency).
+        if cfg.imagination_enabled and self._pending_imagination is not None:
+            im = self._pending_imagination
+            label = im.best_first_action.value if im.best_first_action is not None else "none"
+            coalitions.append(self.global_workspace.make_coalition(
+                "imagination", f"imagining: {label}",
+                activation=float(max(0.0, min(1.0, 0.3 + 0.2 * im.imagined_value))),
+                precision=0.5, vector=[float(im.imagined_value), 0.0, 0.0, 0.0]))
+        # Phase 2 — dream coalition while asleep (internally generated content).
+        if cfg.dream_enabled and self._pending_dream:
+            coalitions.append(self.global_workspace.make_coalition(
+                "dream", str(self._pending_dream), activation=0.7, precision=0.5,
+                vector=[0.0, 0.0, 0.0, 0.0]))
 
         return coalitions
 
