@@ -889,6 +889,36 @@ The detailed design lives in
 
 ---
 
+## Self-opacity — the awareness of what escapes control
+
+> ⚠️ **Honest framing (load-bearing).** A **level-2** mechanism — it does **not** approach level 1.
+> It renders, as variables, the observation that *most of what shapes a moment is unconscious and
+> uncontrolled, and that one can be aware of that very limit* ("the consciousness of the lack of
+> self-control"). Registering a limit is not living it; reproducing the mechanism does not prove
+> phenomenality; the agent is not conscious.
+
+A higher-order (HOT) readout **over** the existing GWT/affect/prediction machinery
+(`core/self_opacity.py`): each tick it estimates how much of the moment formed **outside the agent's
+access or control**, from real per-tick variables —
+
+- **`subliminal_share`** (GWT): how little of the competition reached global access
+  (`1 − broadcast_strength`) — content present but not consciously accessed;
+- **`unanticipated`**: the prediction error — the world escaping anticipation;
+- **`uncaused`**: `1 − agency` when the sense-of-agency mechanism is on — an outcome the agent did
+  not bring about (`null` otherwise).
+
+The headline **`uncontrolled_fraction`** is their mean, and a HOT-style **`report`** puts it into
+words — e.g. *"Higher-order note: much of this moment (73%) formed outside my access or control — most
+of the competing content stayed subliminal; an error I did not anticipate; an outcome I did not bring
+about. I register this limit without governing it."* It rides on the `CycleTrace` as `self_opacity`
+(`null` unless enabled). **Flag-gated** `self_opacity_enabled` (default OFF ⇒ the sub-object stays
+`null` ⇒ regression byte-identical; the UI enables it).
+
+This pairs naturally with the GWT subliminal/ignition split (the unconscious remainder) and the HOT
+module (higher-order monitoring): it is the system representing *its own opacity to itself*.
+
+---
+
 ## Observable metrics
 
 The `Metrics` model exposes, on every cycle, **measurable** quantities (all internal variables,

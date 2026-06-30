@@ -409,6 +409,23 @@ class ConsciousMoment(BaseModel):
     summary: str
 
 
+class SelfOpacityState(BaseModel):
+    """Higher-order awareness of what escaped the agent's access/control this tick.
+
+    A FUNCTIONAL, HOT-flavoured readout over the GWT/affect/prediction machinery:
+    how much of this moment formed OUTSIDE conscious access or control — the
+    subliminal remainder (GWT), an outcome the agent did not cause (agency), an
+    error it did not anticipate. It is "the consciousness of the lack of
+    self-control" rendered as variables: registering a limit, not governing it.
+    Reproducing it does not prove phenomenality; the agent is not conscious.
+    """
+    uncontrolled_fraction: float        # 0..1 overall share outside access/control
+    subliminal_share: float             # 0..1 competition that stayed below global access (GWT)
+    unanticipated: float                # 0..1 prediction error (the world escaping anticipation)
+    uncaused: float | None = None       # 0..1 = 1 - agency (outcome not self-caused); None if agency off
+    report: str = ""                    # HOT-style sentence, generated from the variables
+
+
 class CycleTrace(BaseModel):
     tick: int
     observation: Observation
@@ -436,6 +453,7 @@ class CycleTrace(BaseModel):
     learning: LearningState | None = None
     concept: ConceptState | None = None
     personality: PersonalityState | None = None
+    self_opacity: SelfOpacityState | None = None
 
 
 class SimConfig(BaseModel):
@@ -527,6 +545,10 @@ class SimConfig(BaseModel):
     # UI on. Has no effect for an isolated agent (no observers).
     social_mirror_enabled: bool = False
     social_mirror_weight: float = Field(default=0.3, ge=0.0)
+    # self-opacity: a higher-order readout of what escaped the agent's access/
+    # control each tick ("the consciousness of the lack of self-control"). Default
+    # off (trace sub-object stays null ⇒ regression byte-identical); UI on.
+    self_opacity_enabled: bool = False
 
 
 class ConfigPatch(BaseModel):
@@ -595,6 +617,7 @@ class ConfigPatch(BaseModel):
     explore_reward_weight: float | None = None
     social_mirror_enabled: bool | None = None
     social_mirror_weight: float | None = None
+    self_opacity_enabled: bool | None = None
 
 
 class GoalRequest(BaseModel):

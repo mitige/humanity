@@ -46,6 +46,7 @@ from core.personality import PersonalityModel
 from core.perception import Perception
 from core.policy import Policy
 from core.self_model import SelfModel
+from core.self_opacity import assess_self_opacity
 from core.shared_world import SharedWorld
 from core.sleep import SleepCycle
 from core.social_emotion import apply_contagion, update_trust
@@ -625,6 +626,17 @@ class CognitiveAgent:
                 effective_lr=round(float(effective_lr), 6))
 
         # 19) Assemble the trace (with the 5 new sub-objects) and persist.
+        # Self-opacity (gated): a higher-order readout of what escaped access/
+        # control this tick — the subliminal remainder (GWT), an outcome not
+        # self-caused (agency), an error not anticipated. None unless enabled.
+        self_opacity_state = None
+        if cfg.self_opacity_enabled:
+            self_opacity_state = assess_self_opacity(
+                workspace=workspace,
+                prediction_error=current_error,
+                agency=(agency_state.agency if agency_state is not None else None),
+            )
+
         trace = CycleTrace(
             tick=result.tick,
             observation=observation,
@@ -652,6 +664,7 @@ class CognitiveAgent:
             learning=learning_state,
             concept=concept_state,
             personality=personality_state,
+            self_opacity=self_opacity_state,
         )
         # Per-tick JSONL trace write is the second-largest per-tick I/O cost;
         # ``trace_logging=False`` skips it for fast/headless training.
