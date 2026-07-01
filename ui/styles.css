@@ -729,6 +729,13 @@ input[type="range"]::-moz-range-thumb {
 .lab-scenario:focus { border-color: var(--accent-soft); }
 .lab-scenario::placeholder { color: var(--ink-faint); }
 
+/* checkpoints — per-row Load/Delete actions */
+#ckpt-list { margin-top: 12px; }
+.ckpt-actions { display: flex; gap: 8px; margin-top: 4px; }
+.ckpt-actions .btn { padding: 4px 12px; }
+/* compact inline buttons: drop the .micro top margin when it's also a .btn */
+.btn.micro { margin: 0; font-size: 11px; color: var(--ink-soft); }
+
 /* the honesty caveat must stand out — accent rule + emphasized text */
 .lab-disclaimer {
   margin: 14px 0 0; padding: 10px 14px;

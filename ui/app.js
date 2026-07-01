@@ -53,6 +53,25 @@
   const postJSON = (path, body) =>
     api(path, { method: "POST", body: JSON.stringify(body || {}) });
 
+  // ---------- settings persistence (localStorage) ----------
+  // The Settings panel's choices persist across reloads under one key, so the
+  // instrument stays as the user last set it instead of resetting to hardcoded
+  // defaults every load. All access is guarded: if localStorage is unavailable
+  // (private mode) we silently fall back to defaults and never throw.
+  const SETTINGS_KEY = "humanity.settings";
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function saveSettings(obj) {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(obj)); } catch (e) { /* ignore */ }
+  }
+  function persistSetting(patch) {
+    saveSettings({ ...(loadSettings() || {}), ...patch });
+  }
+
   // ---------- state ----------
   let running = false;
   let pollTimer = null;
@@ -557,21 +576,51 @@
   //  DEEP CONSCIOUSNESS (Phase 2) — circadian / sleep / agency / curiosity
   // ============================================================
   // The six Phase-2 flags + four Phase-3 flags default to ON so the live
-  // instrument shows the deep + learning/personality layers. POST them once on
-  // load (mirrors the checked-by-default toggles in the Settings panel).
+  // instrument shows the deep + learning/personality layers. These are the
+  // hardcoded first-run defaults for the Settings-panel toggles; once the user
+  // changes anything, the persisted set (localStorage) supersedes them.
+  const SETTINGS_DEFAULTS = {
+    circadian_enabled: true, sleep_enabled: true, dream_enabled: true,
+    imagination_enabled: true, curiosity_enabled: true, agency_enabled: true,
+    learning_enabled: true, concepts_enabled: true,
+    meta_learning_enabled: true, personality_enabled: true,
+    satiation_enabled: true,
+    social_mirror_enabled: true,
+    self_opacity_enabled: true,
+    individuation_enabled: true,
+  };
+
+  // applyControlStates — reflect a config object into the Settings-panel DOM so
+  // the controls visually match what's actually applied. Flags -> checkboxes;
+  // slider values -> range inputs (+ their printed value badge). Only keys
+  // present in cfg are touched, so partial saved sets leave other controls alone.
+  function applyControlStates(cfg) {
+    if (!cfg) return;
+    document.querySelectorAll(".panel-config input[data-flag]").forEach((box) => {
+      const flag = box.dataset.flag;
+      if (Object.prototype.hasOwnProperty.call(cfg, flag)) box.checked = !!cfg[flag];
+    });
+    document.querySelectorAll("#config-sliders .slider-row").forEach((row) => {
+      const key = row.dataset.key;
+      if (!Object.prototype.hasOwnProperty.call(cfg, key)) return;
+      const input = row.querySelector("input");
+      const valEl = row.querySelector(".slider-val");
+      if (input) input.value = cfg[key];
+      if (valEl) valEl.textContent = fmtSlider(row.dataset.fmt, cfg[key]);
+    });
+  }
+
+  // applyDeepDefaults — on load, apply the SAVED settings if any (so the panel
+  // restores exactly what the user last set), else apply+persist the hardcoded
+  // defaults (first run). Then reflect the applied set into the controls.
   async function applyDeepDefaults() {
+    const saved = loadSettings();
+    const cfg = saved || { ...SETTINGS_DEFAULTS };
     try {
-      await postJSON("config", {
-        circadian_enabled: true, sleep_enabled: true, dream_enabled: true,
-        imagination_enabled: true, curiosity_enabled: true, agency_enabled: true,
-        learning_enabled: true, concepts_enabled: true,
-        meta_learning_enabled: true, personality_enabled: true,
-        satiation_enabled: true,
-        social_mirror_enabled: true,
-        self_opacity_enabled: true,
-        individuation_enabled: true,
-      });
+      await postJSON("config", cfg);
+      if (!saved) saveSettings(cfg);   // persist defaults on first run
     } catch (e) { /* non-fatal: panel just stays at defaults */ }
+    applyControlStates(cfg);
   }
 
   // circadian dial: a ring with a lit arc proportional to daylight (1 = noon).
@@ -1001,7 +1050,9 @@
       clearTimeout(configDebounce);
       configDebounce = setTimeout(async () => {
         try {
-          const out = await postJSON("config", currentConfigPatch());
+          const patch = currentConfigPatch();
+          const out = await postJSON("config", patch);
+          persistSetting(patch);   // remember the slider values across reloads
           const snap = out && (out.state ? out.state.world : (out.world || out.snapshot));
           if (snap) drawWorld(snap);
           // reflect a possibly-changed ignition threshold on the workspace line
@@ -1021,11 +1072,11 @@
   // checked by default (matches applyDeepDefaults); each flips one feature flag.
   // covers both the #deep-toggles (Phase 2) and #lp-toggles (Phase 3) groups.
   document.querySelectorAll(".panel-config input[data-flag]").forEach((box) => {
-    box.checked = true;
     box.addEventListener("change", async () => {
       const flag = box.dataset.flag;
       try {
         await postJSON("config", { [flag]: box.checked });
+        persistSetting({ [flag]: box.checked });   // survive reload
       } catch (e) { setStatus("error", "Config error"); }
     });
   });
@@ -1225,9 +1276,11 @@
     btn.disabled = true; out.textContent = 'training…';
     try {
       await postJSON('config', { persist_memory: false, trace_logging: false });
-      // Reflect the new backend state so the toggles aren't out of sync.
+      // Reflect the new backend state so the toggles aren't out of sync, and
+      // persist it so a reload doesn't silently re-enable per-tick disk I/O.
       document.querySelectorAll('.panel-config input[data-flag="persist_memory"], .panel-config input[data-flag="trace_logging"]')
         .forEach((box) => { box.checked = false; });
+      persistSetting({ persist_memory: false, trace_logging: false });
       const t0 = performance.now();
       const r = await postJSON('train', { ticks });
       const secs = (performance.now() - t0) / 1000;
@@ -1237,6 +1290,97 @@
     } finally {
       btn.disabled = false;
       try { refreshAll(); } catch (_) {}
+    }
+  });
+
+  // ---------- checkpoints: save / list / load / delete a full run ----------
+  // On-demand only (never polled): refreshed once on init and after each
+  // save/load/delete. A checkpoint captures the whole run (world, agents,
+  // learned state, memory, RNG); Load restores the live run in place.
+  function setCkptStatus(msg) {
+    const s = document.getElementById("ckpt-status");
+    if (s) s.textContent = msg || "";
+  }
+
+  async function refreshCheckpoints() {
+    const box = document.getElementById("ckpt-list");
+    if (!box) return;
+    let data;
+    try {
+      data = await api("checkpoint/list");
+    } catch (e) {
+      setCkptStatus("list failed");
+      return;
+    }
+    const list = (data && data.checkpoints) || [];
+    box.innerHTML = "";
+    if (!list.length) {
+      box.appendChild(el("div", "empty", "No checkpoints saved."));
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    list.forEach((c) => {
+      const name = c.name != null ? String(c.name) : "";
+      const row = el("div", "row");
+      const top = el("div", "row-top");
+      const title = el("span", "row-title");
+      title.textContent = name;
+      const tag = el("span", "row-tag");
+      tag.textContent = "tick " + num(c.tick) + " · " + num(c.n_agents) + " agents";
+      top.appendChild(title);
+      top.appendChild(tag);
+
+      const sub = el("div", "row-sub");
+      sub.textContent = (c.saved_at != null ? String(c.saved_at) : "—") +
+        (c.bytes != null ? " · " + num(c.bytes) + " B" : "");
+
+      const actions = el("div", "ckpt-actions");
+      const loadBtn = el("button", "btn btn-quiet micro");
+      loadBtn.textContent = "Load";
+      loadBtn.addEventListener("click", async () => {
+        setCkptStatus("loading " + name + "…");
+        try {
+          const r = await postJSON("checkpoint/load", { name });
+          setCkptStatus("loaded " + name + " @ tick " + num(r && r.tick));
+          refreshAll();   // repaint the restored run
+        } catch (e) {
+          setCkptStatus("load failed");
+        }
+      });
+      const delBtn = el("button", "btn btn-quiet micro");
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", async () => {
+        setCkptStatus("deleting " + name + "…");
+        try {
+          await postJSON("checkpoint/delete", { name });
+          setCkptStatus("deleted " + name);
+          refreshCheckpoints();
+        } catch (e) {
+          setCkptStatus("delete failed");
+        }
+      });
+      actions.appendChild(loadBtn);
+      actions.appendChild(delBtn);
+
+      row.appendChild(top);
+      row.appendChild(sub);
+      row.appendChild(actions);
+      frag.appendChild(row);
+    });
+    box.appendChild(frag);
+  }
+
+  document.getElementById("btn-ckpt-save")?.addEventListener("click", async () => {
+    const input = document.getElementById("ckpt-name");
+    const name = (input && input.value.trim()) || "run";
+    setCkptStatus("saving…");
+    try {
+      const r = await postJSON("checkpoint/save", { name });
+      setCkptStatus("saved " + (r && r.name != null ? r.name : name) +
+        " @ tick " + num(r && r.tick));
+      refreshCheckpoints();
+    } catch (e) {
+      setCkptStatus("save failed");
     }
   });
 
@@ -1274,6 +1418,8 @@
   ensureMetricCells();
   drawWorld(null);
   drawCircadianDial(1);
-  // turn the six Phase-2 mechanisms on, then take the first reading
+  // apply the saved settings (or first-run defaults), then take the first reading
   applyDeepDefaults().finally(refreshAll);
+  // load the checkpoint list once (on-demand only — not in the polling loop)
+  refreshCheckpoints();
 })();

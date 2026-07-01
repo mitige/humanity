@@ -233,6 +233,16 @@
         <span id="train-result" class="micro"></span>
       </div>
       <p class="micro">Disables per-tick disk I/O (in-RAM memory, no trace write) then runs the ticks back-to-back. Re-enable persistence via the toggles to resume the live instrument.</p>
+
+      <h3 class="sub">Checkpoints</h3>
+      <div class="lab-row">
+        <label class="tps-field" title="Checkpoint name"><span>name</span>
+          <input id="ckpt-name" type="text" value="run" /></label>
+        <button id="btn-ckpt-save" class="btn btn-accent">Save run</button>
+        <span id="ckpt-status" class="micro"></span>
+      </div>
+      <div id="ckpt-list" class="rows"></div>
+      <p class="micro">Save the full run (world, agents, learned state, memory, RNG). Load one to resume exactly where it was — until you Reset.</p>
     </section>
 
     <!-- ===================== GLOBAL WORKSPACE ===================== -->
