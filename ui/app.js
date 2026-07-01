@@ -569,6 +569,7 @@
         satiation_enabled: true,
         social_mirror_enabled: true,
         self_opacity_enabled: true,
+        individuation_enabled: true,
       });
     } catch (e) { /* non-fatal: panel just stays at defaults */ }
   }
@@ -675,6 +676,38 @@
     if (fill) fill.style.width = (frac * 100).toFixed(1) + "%";
     if (val) val.textContent = f2(frac);
     if (rep) rep.innerHTML = so.report ? esc(so.report) : "";
+  }
+
+  // individuation ("becoming someone", LEVEL-2 functional) — how far the agent
+  // has grown into a coherent, distinctive, continuous, self-authoring self.
+  // Rides on lastTrace.individuation; NOT a claim of phenomenal consciousness or
+  // personhood. When null (flag off / no tick yet) the readout degrades to "—" /
+  // width 0 / empty report, consistent with the other optional readouts.
+  function renderIndividuation(trace) {
+    const iv = trace && trace.individuation;
+    // [id, value-key] for the four sub-meters
+    const subs = [
+      ["#indiv-coh", "coherence"],
+      ["#indiv-dis", "distinctiveness"],
+      ["#indiv-con", "continuity"],
+      ["#indiv-agy", "agency"],
+    ];
+    const setBar = (id, v) => {
+      const fill = $(id + "-fill");
+      const val = $(id + "-val");
+      if (fill) fill.style.width = v == null ? "0" : (clamp01(num(v)) * 100).toFixed(1) + "%";
+      if (val) val.textContent = v == null ? "—" : f2(v);
+    };
+    const rep = $("#indiv-report");
+    if (!iv) {
+      setBar("#indiv", null);
+      subs.forEach(([id]) => setBar(id, null));
+      if (rep) rep.textContent = "";
+      return;
+    }
+    setBar("#indiv", iv.index);
+    subs.forEach(([id, key]) => setBar(id, iv[key]));
+    if (rep) rep.textContent = iv.report || "";
   }
 
   // ============================================================
@@ -810,6 +843,8 @@
       try { refreshLearning(lastTrace); } catch (e) { /* non-fatal */ }
       // self-opacity readout (HOT, level-2) — rides on the last /tick trace
       try { renderSelfOpacity(lastTrace); } catch (e) { /* non-fatal */ }
+      // individuation ("becoming someone", level-2) — rides on the last /tick trace
+      try { renderIndividuation(lastTrace); } catch (e) { /* non-fatal */ }
       // laboratory time series (Phase 4) — guarded so it can't break the loop
       try { await refreshLabChart(); } catch (e) { /* non-fatal */ }
       // society view updates alongside the single-agent instrument
@@ -866,6 +901,8 @@
     try { refreshLearning(trace); } catch (e) { /* non-fatal */ }
     // self-opacity readout (HOT, level-2) — what escaped the agent's access/control
     try { renderSelfOpacity(trace); } catch (e) { /* non-fatal */ }
+    // individuation ("becoming someone", level-2) — how far a coherent self has formed
+    try { renderIndividuation(trace); } catch (e) { /* non-fatal */ }
   }
 
   // ============================================================

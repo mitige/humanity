@@ -380,6 +380,37 @@
         <span class="src">GET /agent/self-model</span>
       </div>
       <div id="self-model" class="kv"></div>
+
+      <h3 class="sub">Becoming someone</h3>
+      <div class="stat" id="individuation">
+        <span class="stat-k">individuation</span>
+        <div class="meter"><div class="meter-fill" id="indiv-fill"></div></div>
+        <span class="stat-v mono" id="indiv-val">—</span>
+      </div>
+      <div class="indiv-subs">
+        <div class="stat">
+          <span class="stat-k">coherence</span>
+          <div class="meter"><div class="meter-fill" id="indiv-coh-fill"></div></div>
+          <span class="stat-v mono" id="indiv-coh-val">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-k">distinctiveness</span>
+          <div class="meter"><div class="meter-fill" id="indiv-dis-fill"></div></div>
+          <span class="stat-v mono" id="indiv-dis-val">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-k">continuity</span>
+          <div class="meter"><div class="meter-fill" id="indiv-con-fill"></div></div>
+          <span class="stat-v mono" id="indiv-con-val">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-k">agency</span>
+          <div class="meter"><div class="meter-fill" id="indiv-agy-fill"></div></div>
+          <span class="stat-v mono" id="indiv-agy-val">—</span>
+        </div>
+      </div>
+      <p class="report-note" id="indiv-report" style="margin:10px 0 0;"></p>
+
       <h3 class="sub">Active goals</h3>
       <div id="self-goals" class="chips"></div>
       <form id="goal-form" class="goal-form" title="POST /agent/goal">
@@ -474,6 +505,7 @@
         <label class="deep-toggle"><input type="checkbox" data-flag="personality_enabled" checked /><span>personality</span></label>
         <label class="deep-toggle" title="Homeostatic satiation: stops the agent from degenerating into endless REST"><input type="checkbox" data-flag="satiation_enabled" checked /><span>satiation</span></label>
         <label class="deep-toggle" title="Relational self: the self-model is shaped by how the other agents regard this one (needs a society)"><input type="checkbox" data-flag="social_mirror_enabled" checked /><span>social mirror</span></label>
+        <label class="deep-toggle" title="Individuation: how far the agent has grown into a coherent, distinctive, continuous self (become someone). Functional — NOT consciousness."><input type="checkbox" data-flag="individuation_enabled" checked /><span>individuation</span></label>
       </div>
       <h3 class="sub">Persistence</h3>
       <div class="deep-toggles" id="persistence-toggles">

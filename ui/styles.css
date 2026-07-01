@@ -535,6 +535,11 @@ h1, h2, h3 { margin: 0; font-weight: 500; }
 
 .narrative-note:empty { display: none; }
 
+/* individuation ("becoming someone") — prominent index + 2x2 compact sub-meters */
+#individuation { margin-top: 2px; }
+.indiv-subs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; margin-top: 12px; }
+#indiv-report:empty { display: none; }
+
 /* rows (working memory + memories) */
 .rows { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 2px; }
 .rows::-webkit-scrollbar { width: 5px; }
