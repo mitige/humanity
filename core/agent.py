@@ -36,6 +36,7 @@ from core.dialogue import IntrospectiveDialogue
 from core.emotion import EmotionModel
 from core.global_workspace import GlobalWorkspace
 from core.imagination import Imagination
+from core.individuation import compute_individuation
 from core.integration import IntegrationMonitor
 from core.introspection import DISCLAIMER_EN, Introspection
 from core.learning import PolicyLearner
@@ -188,6 +189,15 @@ class CognitiveAgent:
         self.personality = PersonalityModel()
         self._concept_state: ConceptState | None = None
 
+        # "Become someone": a standing individuation drive. The full state is
+        # recomputed each tick and fed one-tick-deferred to the motivation drive;
+        # enabling it also installs the explicit goal on the self-model.
+        self._last_individuation = None  # IndividuationState | None
+        if config.individuation_enabled:
+            self.self_model.set_goal("become someone")
+            self._last_individuation = compute_individuation(
+                self.self_model.snapshot(), memory_count=len(self.memory._records))
+
     # ------------------------------------------------------------------ #
     # The cognitive cycle
     # ------------------------------------------------------------------ #
@@ -251,6 +261,9 @@ class CognitiveAgent:
             cfg,
             n_visible_agents=len(visible_agents),
             society_size=(len(self._shared_world.agents) if self._shared_world is not None else 1),
+            individuation_index=(self._last_individuation.index
+                                 if (cfg.individuation_enabled and self._last_individuation is not None)
+                                 else None),
         )
 
         # 4) Attention: select salient items under the capacity bottleneck.
@@ -626,6 +639,19 @@ class CognitiveAgent:
                 effective_lr=round(float(effective_lr), 6))
 
         # 19) Assemble the trace (with the 5 new sub-objects) and persist.
+        # Individuation ("become someone", gated): recompute how far the agent has
+        # grown into a coherent, distinctive, continuous, self-authoring self from
+        # this tick's fresh self-model / personality / agency / life-story. Stored
+        # for the next tick's drive and reported on the trace. None unless enabled.
+        individuation_state = None
+        if cfg.individuation_enabled:
+            self._last_individuation = compute_individuation(
+                self_state_after,
+                personality=personality_state,
+                agency=(agency_state.agency if agency_state is not None else None),
+                memory_count=len(self.memory._records))
+            individuation_state = self._last_individuation
+
         # Self-opacity (gated): a higher-order readout of what escaped access/
         # control this tick — the subliminal remainder (GWT), an outcome not
         # self-caused (agency), an error not anticipated. None unless enabled.
@@ -665,6 +691,7 @@ class CognitiveAgent:
             concept=concept_state,
             personality=personality_state,
             self_opacity=self_opacity_state,
+            individuation=individuation_state,
         )
         # Per-tick JSONL trace write is the second-largest per-tick I/O cost;
         # ``trace_logging=False`` skips it for fast/headless training.

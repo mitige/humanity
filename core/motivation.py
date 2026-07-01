@@ -36,11 +36,13 @@ class MotivationSystem:
         config: SimConfig,
         n_visible_agents: int = 0,
         society_size: int = 1,
+        individuation_index: float | None = None,
     ) -> list[GoalPressure]:
         """Return the current functional goal pressures (each >= 0).
 
         Needs covered: preserve_energy, reduce_danger, explore_novelty,
-        improve_prediction, maintain_coherence, achieve_goals, affiliate.
+        improve_prediction, maintain_coherence, achieve_goals, affiliate, and
+        (gated) individuate.
         """
         # Keep the baseline in sync with the live config (config can be patched).
         initial_energy = float(config.initial_energy) if config.initial_energy > 0 else self._initial_energy
@@ -91,7 +93,7 @@ class MotivationSystem:
         else:
             affiliate = 0.0
 
-        return [
+        pressures = [
             GoalPressure(
                 need="preserve_energy",
                 pressure=float(preserve_energy),
@@ -135,6 +137,20 @@ class MotivationSystem:
                 description=(f"Seek social contact ({n_visible_agents} agent(s) visible)."),
             ),
         ]
+
+        # individuate (gated): a standing drive to "become someone" — pressure grows
+        # with the *deficit* of individuation (1 - index), pushing the agent toward
+        # self-building actions until it has grown into a coherent, distinctive self.
+        if config.individuation_enabled and individuation_index is not None:
+            deficit = max(0.0, 1.0 - float(individuation_index))
+            pressures.append(GoalPressure(
+                need="individuate",
+                pressure=float(config.individuation_drive) * deficit,
+                description=(f"Become someone: grow a coherent, distinctive, continuous self "
+                            f"(individuation {float(individuation_index):.2f})."),
+            ))
+
+        return pressures
 
     def total_pressure(self, goals: list[GoalPressure]) -> float:
         """Return the summed pressure across all goal pressures (>= 0)."""

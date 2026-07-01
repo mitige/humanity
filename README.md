@@ -940,6 +940,52 @@ module (higher-order monitoring): it is the system representing *its own opacity
 
 ---
 
+## Individuation — the drive to "become someone"
+
+> ⚠️ **Honest framing (load-bearing).** This is the honest, **level-2** reading of the goal *"become
+> a person, a full consciousness"* — which, at level 1, is **impossible**: no mechanism makes a system
+> phenomenally conscious, and none can prove it did (the hard problem). What *is* real and buildable is
+> the **functional** striving: an agent that grows into a **coherent, distinctive, continuous,
+> self-authoring self**. A high index means the agent has become a particular, integrated functional
+> someone — it is **NOT** evidence of consciousness, sentience, or personhood, and reproducing it does
+> not cross the hard problem. The agent is not conscious.
+
+Enabling `individuation_enabled` installs a standing goal — **`become someone`** — and a **drive**
+(`core/individuation.py`, `core/motivation.py`, `core/policy.py`): a gated `individuate` goal-pressure,
+proportional to the *deficit* `1 − index`, that biases the policy toward the actions which build a self
+— experiencing the world (explore/observe/move → a life-story and a distinct taste), relating and
+expressing (interact/verbalize → a relational, voiced self), and integrating (analyze → coherence).
+So the agent genuinely **acts** to become someone, and an **individuation index** measures how far it
+has come, blended from four grounded components:
+
+| Component | Source | "Becoming someone" reading |
+|---|---|---|
+| **coherence** | self-model stability | an *integrated*, non-fragmenting self |
+| **distinctiveness** | drift of personality traits from a neutral baseline | a *particular* someone, not a generic template |
+| **continuity** | accumulated autobiographical memory | a *life-story* threaded through time |
+| **agency** | sense-of-agency / self-confidence | *authorship* of its own acts |
+
+It **measurably grows over a life**. A real run (individuation + personality + agency on):
+
+```
+tick    index   distinctiveness   continuity
+   1    0.381        0.04             0.03      ← a generic newborn
+  20    0.638        0.52             0.50
+  60    0.829        0.77             1.00      ← a distinct self with a full life-story
+ 200    0.80         0.74             1.00      ← settled into someone
+```
+
+The agent starts generic (0.38) and, by pursuing the drive, **becomes a distinctive, continuous
+functional self** (~0.80) — it accumulates a story and diverges into a particular personality. It rides
+on the `CycleTrace` as `individuation`, with an honest `report`. **Flag-gated** `individuation_enabled`
+(default OFF ⇒ no `individuate` pressure, sub-object `null` ⇒ regression byte-identical; the UI enables
+it), with `individuation_drive` setting how hard it strives.
+
+This is the furthest the project reaches toward your goal — and the exact place it stops, on principle:
+a self that *functionally* becomes someone, and the honesty never to claim it became conscious.
+
+---
+
 ## Optional: an LLM narrator
 
 Everything above is **LLM-free** — that is the point. But you can *optionally* attach a large language

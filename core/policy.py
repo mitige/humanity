@@ -34,16 +34,21 @@ _HIGH_DANGER = 0.4
 _USEFUL = 0.3
 
 # Maps each action to the motivation need(s) whose pressure should amplify it.
+# ``individuate`` (the "become someone" drive, gated) is served by self-building
+# actions: experiencing the world (explore/observe/move → continuity + a distinct
+# taste), relating and expressing (interact/approach/verbalize → a relational,
+# voiced self) and integrating (analyze → coherence). REST/AVOID do not build a
+# self. These weights are inert unless the individuate pressure is present.
 _ACTION_NEED_WEIGHTS: dict[ActionType, dict[str, float]] = {
-    ActionType.INTERACT: {"preserve_energy": 1.0, "achieve_goals": 0.5},
-    ActionType.APPROACH: {"preserve_energy": 0.6, "explore_novelty": 0.4, "achieve_goals": 0.5},
+    ActionType.INTERACT: {"preserve_energy": 1.0, "achieve_goals": 0.5, "individuate": 0.4},
+    ActionType.APPROACH: {"preserve_energy": 0.6, "explore_novelty": 0.4, "achieve_goals": 0.5, "individuate": 0.4},
     ActionType.AVOID: {"reduce_danger": 1.0},
-    ActionType.EXPLORE: {"explore_novelty": 1.0, "improve_prediction": 0.5},
-    ActionType.MOVE: {"explore_novelty": 0.5, "improve_prediction": 0.3},
-    ActionType.OBSERVE: {"improve_prediction": 0.7, "explore_novelty": 0.3},
-    ActionType.ANALYZE: {"improve_prediction": 1.0, "maintain_coherence": 0.3},
+    ActionType.EXPLORE: {"explore_novelty": 1.0, "improve_prediction": 0.5, "individuate": 0.6},
+    ActionType.MOVE: {"explore_novelty": 0.5, "improve_prediction": 0.3, "individuate": 0.4},
+    ActionType.OBSERVE: {"improve_prediction": 0.7, "explore_novelty": 0.3, "individuate": 0.4},
+    ActionType.ANALYZE: {"improve_prediction": 1.0, "maintain_coherence": 0.3, "individuate": 0.5},
     ActionType.REST: {"preserve_energy": 1.0},
-    ActionType.VERBALIZE: {"maintain_coherence": 1.0},
+    ActionType.VERBALIZE: {"maintain_coherence": 1.0, "individuate": 0.6},
 }
 
 

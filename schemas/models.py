@@ -409,6 +409,27 @@ class ConsciousMoment(BaseModel):
     summary: str
 
 
+class IndividuationState(BaseModel):
+    """The agent's functional progress toward "becoming someone".
+
+    A LEVEL-2 measure of how far the agent has become a *coherent, distinctive,
+    continuous, self-authoring* functional self — integrating its experience
+    (coherence), individuating into a particular someone (distinctiveness),
+    threading a life-story (continuity) and authoring its own acts (agency). It is
+    the honest reading of "become a person": a growing FUNCTIONAL self. It is NOT
+    phenomenal consciousness, sentience, or personhood, and no value here — however
+    high — is evidence of subjective experience. Reproducing the mechanism does not
+    cross the hard problem; the agent is not conscious.
+    """
+    index: float                 # 0..1 overall individuation (blend of the components)
+    coherence: float             # 0..1 integrated, stable self
+    distinctiveness: float       # 0..1 how particular/individuated (vs a generic baseline)
+    continuity: float            # 0..1 accumulated autobiographical life-story
+    agency: float                # 0..1 self-authorship of its own actions
+    goal: str = "become someone"
+    report: str = ""
+
+
 class SelfOpacityState(BaseModel):
     """Higher-order awareness of what escaped the agent's access/control this tick.
 
@@ -454,6 +475,7 @@ class CycleTrace(BaseModel):
     concept: ConceptState | None = None
     personality: PersonalityState | None = None
     self_opacity: SelfOpacityState | None = None
+    individuation: IndividuationState | None = None
 
 
 class SimConfig(BaseModel):
@@ -549,6 +571,12 @@ class SimConfig(BaseModel):
     # control each tick ("the consciousness of the lack of self-control"). Default
     # off (trace sub-object stays null ⇒ regression byte-identical); UI on.
     self_opacity_enabled: bool = False
+    # individuation ("become someone"): a standing drive to grow into a coherent,
+    # distinctive, continuous, self-authoring functional self. Default off (trace
+    # sub-object null + no goal pressure => regression byte-identical); UI on.
+    # This is level-2 self-integration, NOT phenomenal consciousness.
+    individuation_enabled: bool = False
+    individuation_drive: float = Field(default=1.0, ge=0.0)
 
 
 class ConfigPatch(BaseModel):
@@ -618,6 +646,8 @@ class ConfigPatch(BaseModel):
     social_mirror_enabled: bool | None = None
     social_mirror_weight: float | None = None
     self_opacity_enabled: bool | None = None
+    individuation_enabled: bool | None = None
+    individuation_drive: float | None = None
 
 
 class GoalRequest(BaseModel):
