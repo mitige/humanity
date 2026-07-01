@@ -736,6 +736,13 @@ input[type="range"]::-moz-range-thumb {
 /* compact inline buttons: drop the .micro top margin when it's also a .btn */
 .btn.micro { margin: 0; font-size: 11px; color: var(--ink-soft); }
 
+/* LLM functional probes — grounding audit result rows + report card.
+   NOT consciousness tests: faithful/confab tags reuse the pos/neg vars. */
+#audit-result { margin-top: 12px; max-height: 320px; }
+#audit-result .row-title.verdict-faithful { color: var(--pos); }
+#audit-result .row-title.verdict-confab { color: var(--neg); }
+#report-card-out { margin-top: 12px; }
+
 /* the honesty caveat must stand out — accent rule + emphasized text */
 .lab-disclaimer {
   margin: 14px 0 0; padding: 10px 14px;

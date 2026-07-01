@@ -1412,6 +1412,79 @@
     }
   });
 
+  // ---------- optional LLM functional probes: grounding audit + report card ----------
+  // Both are on-demand only (never polled); each click costs one LLM request.
+  // NEITHER assesses consciousness. The grounding audit uses the LLM as a
+  // skeptical auditor scoring whether the agent's introspective answers are
+  // GROUNDED in its real internal variables (reportability fidelity); a high
+  // score means faithful, non-confabulated reporting — NOT experience. The
+  // report card is a plain-language summary of the FUNCTIONAL test batteries.
+  // 503 = no key configured, 502 = provider error — api() throws on both, so we
+  // degrade to the same inline "unavailable" message the narrator uses. The
+  // backend's own disclaimer/interpretation are rendered verbatim.
+  const AUDIT_UNAVAIL = "LLM auditor unavailable (set OPENROUTER_API_KEY in .env).";
+
+  document.getElementById('btn-audit')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-audit');
+    const status = document.getElementById('llmprobe-status');
+    const box = document.getElementById('audit-result');
+    btn.disabled = true;
+    if (status) status.textContent = 'auditing…';
+    try {
+      const r = await postJSON('agent/audit', {});
+      box.innerHTML = "";
+      // header: reportability fidelity score + the backend's interpretation
+      const head = el("div", "row");
+      const top = el("div", "row-top");
+      top.appendChild(el("span", "row-title", "Reportability fidelity"));
+      top.appendChild(el("span", "row-tag mono", f2(r.score)));
+      head.appendChild(top);
+      if (r.interpretation) head.appendChild(el("div", "row-sub", esc(r.interpretation)));
+      box.appendChild(head);
+      // one row per verdict: FAITHFUL / CONFAB tag + the question + note
+      const verdicts = (r.detail && r.detail.verdicts) || [];
+      verdicts.forEach((v) => {
+        const row = el("div", "row");
+        const vtop = el("div", "row-top");
+        const faithful = !!v.faithful;
+        const tag = el("span", "row-title " + (faithful ? "verdict-faithful" : "verdict-confab"));
+        tag.textContent = faithful ? "FAITHFUL" : "CONFAB";
+        vtop.appendChild(tag);
+        if (v.question) vtop.appendChild(el("span", "row-tag", esc(v.question)));
+        row.appendChild(vtop);
+        if (v.note) row.appendChild(el("div", "row-sub", esc(v.note)));
+        box.appendChild(row);
+      });
+      box.hidden = false;
+      if (status) status.textContent = '';
+    } catch (e) {
+      if (status) status.textContent = AUDIT_UNAVAIL;
+      box.hidden = true;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('btn-report-card')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-report-card');
+    const status = document.getElementById('llmprobe-status');
+    const out = document.getElementById('report-card-out');
+    btn.disabled = true;
+    // runs the batteries + an LLM call server-side, so it can take ~5-15s
+    if (status) status.textContent = 'compiling… (runs the batteries + LLM, ~10s)';
+    try {
+      const r = await postJSON('agent/report-card', {});
+      out.textContent = r.report_card || '(empty)';
+      out.hidden = false;
+      if (status) status.textContent = '';
+    } catch (e) {
+      if (status) status.textContent = AUDIT_UNAVAIL;
+      out.hidden = true;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   // ============================================================
   //  INIT
   // ============================================================
