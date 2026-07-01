@@ -364,6 +364,13 @@
       </div>
       <p class="report-note">Text generated from internal variables by the AST/HOT mechanisms — not a lived experience.</p>
       <div id="introspection" class="report-list"></div>
+
+      <div class="lab-row" style="margin-top:14px">
+        <button id="btn-narrate" class="btn btn-accent" title="POST /agent/narrate — optional, on-demand">Narrate (LLM)</button>
+        <span id="narrate-status" class="micro"></span>
+      </div>
+      <blockquote id="narrate-output" class="moment-quote" hidden></blockquote>
+      <p id="narrate-model" class="report-note" hidden></p>
     </section>
 
     <!-- ===================== SELF-MODEL ===================== -->

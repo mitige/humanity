@@ -1203,6 +1203,34 @@
     }
   });
 
+  // ---------- optional LLM narrator: on-demand, grounded in real variables ----------
+  // POST /agent/narrate renders agent 0's REAL internal variables into a fluent
+  // narration via the configured LLM. It is generated TEXT, not evidence of
+  // consciousness or lived experience. Fired only on click (each call costs an
+  // API request); never polled. 503 = no key configured, 502 = provider error —
+  // api() throws on both, so degrade to a small inline message.
+  document.getElementById('btn-narrate')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-narrate');
+    const status = document.getElementById('narrate-status');
+    const out = document.getElementById('narrate-output');
+    const modelEl = document.getElementById('narrate-model');
+    btn.disabled = true; status.textContent = 'narrating…';
+    try {
+      const r = await postJSON('agent/narrate', {});
+      out.textContent = r.narration || '(empty)';
+      out.hidden = false;
+      modelEl.textContent = 'Generated from internal variables by ' +
+        (r.model || 'the LLM') + ' — text, not lived experience.';
+      modelEl.hidden = false;
+      status.textContent = '';
+    } catch (e) {
+      status.textContent = 'LLM narrator unavailable (set OPENROUTER_API_KEY in .env).';
+      out.hidden = true; modelEl.hidden = true;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   // ============================================================
   //  INIT
   // ============================================================
