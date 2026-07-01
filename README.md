@@ -862,14 +862,36 @@ every tick. A **fast/headless mode** removes that overhead:
   recomputing it on every retrieval (this also benefits the live instrument).
 - **`SocietyManager.train(n)`** and **`POST /train {ticks}`** run N ticks back-to-back at maximum
   speed (no inter-tick sleep) on the live society, accumulating the learned state.
+- **Cheap memory retrieval.** Cosine-similarity recall was the top per-tick cost — it recomputed the
+  query norm and every record norm on each comparison, on every tick. Each record vector's L2 norm is
+  now cached and the query norm hoisted out of the loop (one dot product per record), so retrieval
+  stays cheap as the life-story grows. **Numerically identical** to the old path — the whole suite
+  stays byte-identical.
 
 Measured on a 300-tick learning run: **30.9 ms/tick (≈32 t/s) → 2.4 ms/tick (≈412 t/s)** with the
-two flags off — about **12.7×** (the gap widens on longer runs, since the default path is O(n²)). The
-defaults preserve the live instrument exactly. The UI exposes this as a **"Train (fast)"** button in
-the Laboratory panel.
+two flags off — about **12.7×** (the gap widens on longer runs, since the default path is O(n²)). With
+the retrieval fix a fully-loaded agent (all mechanisms on, ~600 memories) trains at **≈385 t/s
+(2.6 ms/tick)**. The defaults preserve the live instrument exactly, and the UI exposes this as a
+**"Train (fast)"** button in the Laboratory panel.
 
 > Note: in persist mode `storage/data/memory.json` and `traces.jsonl` grow unbounded — clear them if
 > a run starts to slow down.
+
+### Persistent settings & run checkpoints
+
+Two conveniences make a run yours to keep:
+
+- **Persistent settings.** The UI remembers every Settings-panel choice in `localStorage` and re-applies
+  it on load, so your toggles and parameters stay exactly as you left them until you change them — the
+  hardcoded defaults only apply on a first run.
+- **Run checkpoints.** `POST /checkpoint/save {name}` pickles the **entire live society** — the shared
+  world (including its RNG state), every agent's world-model, learned Q-values, personality, self-model,
+  autobiographical memory and concepts, plus the metrics recorder — to `storage/checkpoints/` (gitignored,
+  local only). `POST /checkpoint/load {name}` restores it in place; `GET /checkpoint/list` and
+  `POST /checkpoint/delete` manage them, and the Laboratory panel exposes all four. Because the RNG is
+  captured, a resumed run continues **bit-for-bit identically** — you can save a run, keep going, and
+  later reload to resume exactly where it was, until you choose to Reset. (Checkpoints are plain pickles
+  for local, trusted use, and are bound to the code version that wrote them.)
 
 ---
 

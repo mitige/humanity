@@ -48,12 +48,16 @@ class AutobiographicalMemory:
         # record's perception never changes, so its vector is computed once at
         # store/load time instead of being recomputed on every retrieval).
         self._vectors: list[np.ndarray] = []
+        # Cached L2 norm of each record vector, so cosine retrieval does not
+        # recompute norms on every comparison (retrieval is the top hot path).
+        self._vector_norms: list[float] = []
         self._next_id: int = 1
         if store is not None:
             loaded = store.load_records()
             if loaded:
                 self._records = list(loaded)
                 self._vectors = [self.feature_vector(r.perception) for r in loaded]
+                self._vector_norms = [float(np.linalg.norm(v)) for v in self._vectors]
                 self._next_id = max(r.id for r in loaded) + 1
 
     # ------------------------------------------------------------------ #
@@ -188,7 +192,9 @@ class AutobiographicalMemory:
         record = record.model_copy(update={"id": self._next_id})
         self._next_id += 1
         self._records.append(record)
-        self._vectors.append(self.feature_vector(record.perception))
+        vector = self.feature_vector(record.perception)
+        self._vectors.append(vector)
+        self._vector_norms.append(float(np.linalg.norm(vector)))
 
         if self._store is not None:
             self._store.save_records(self._records)
@@ -206,11 +212,17 @@ class AutobiographicalMemory:
         if k <= 0 or not self._records:
             return []
         query = self.feature_vector(percepts)
-        # Use the cached per-record vectors (no recomputation per retrieval).
-        scored: list[tuple[float, MemoryRecord]] = [
-            (_cosine_similarity(query, vector), record)
-            for record, vector in zip(self._records, self._vectors)
-        ]
+        # Hoist the query norm out of the loop and reuse the cached record norms,
+        # so each comparison is one dot product (no per-record norm recomputation).
+        # Numerically identical to per-record cosine similarity.
+        q_norm = float(np.linalg.norm(query))
+        if q_norm == 0.0:
+            scored: list[tuple[float, MemoryRecord]] = [(0.0, r) for r in self._records]
+        else:
+            scored = [
+                (0.0 if v_norm == 0.0 else float(np.dot(query, vector) / (q_norm * v_norm)), record)
+                for record, vector, v_norm in zip(self._records, self._vectors, self._vector_norms)
+            ]
         scored.sort(key=lambda item: item[0], reverse=True)
         return [record for _, record in scored[:k]]
 
@@ -245,6 +257,7 @@ class AutobiographicalMemory:
         if pruned > 0:
             self._records = [r for r, _ in kept_pairs]
             self._vectors = [v for _, v in kept_pairs]
+            self._vector_norms = [float(np.linalg.norm(v)) for v in self._vectors]
             if self._store is not None:
                 self._store.save_records(self._records)
         return boosted, pruned
