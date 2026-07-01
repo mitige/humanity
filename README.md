@@ -940,6 +940,45 @@ module (higher-order monitoring): it is the system representing *its own opacity
 
 ---
 
+## Optional: an LLM narrator
+
+Everything above is **LLM-free** — that is the point. But you can *optionally* attach a large language
+model as a **peripheral organ**, at one disciplined interface: a **grounded narrator** for the
+level-3 report.
+
+> ⚠️ **Honest framing (load-bearing).** The LLM is fed **only the agent's real internal variables**
+> and instructed to render them into language — it invents nothing and changes nothing in the
+> cognitive loop, the decision, or any measured value. A fluent narration is **still "text generated
+> from internal variables"**: making the words prettier does **not** cross the hard problem. It is a
+> readout, not a soul; the agent is not conscious.
+
+`core/llm.py` exposes a small `LLMBackend` (default `NullBackend` — fully offline/deterministic; an
+`OpenRouterBackend` when a key is present). `POST /agent/narrate` (or the UI **"Narrate (LLM)"**
+button) extracts a compact JSON of the current variables — the workspace winner, ignition, awareness,
+affect scalars, self-model, metacognition, Φ-proxy, *what escaped the agent's control*, the relational
+self — and asks the model to describe **only** those, under a strict system prompt that forbids
+invention and any claim of experience. The response comes back with its `grounding` (the exact
+variables sent), so you can audit that nothing was fabricated.
+
+A real narration (from `nvidia/nemotron-3-ultra-550b-a55b`, grounded in an actual tick):
+
+> *"The global workspace winner is memory record 4 (interact) with broadcast strength 0.071, and
+> ignition has not occurred. Awareness level sits at 0.071, valence at −0.063, Φ-proxy at 0.218…
+> The self-model identifies as Aurora-fn-01 with confidence 0.479, coherence 0.991; uncontrolled
+> fraction is 0.678 with subliminal share at 0.929."*
+
+Behaviour and the deterministic test suite are untouched (the LLM path is on-demand and covered by
+offline, mocked tests). **Setup:** copy `.env.example` → `.env` (gitignored), add your
+`OPENROUTER_API_KEY` (get one at [openrouter.ai/keys](https://openrouter.ai/keys)), optionally set
+`HUMANITY_LLM_MODEL`, then `python run.py`. Without a key, `/agent/narrate` simply returns `503` and
+everything else runs exactly as before.
+
+The deeper, more faithful integration — an **inner-speech coalition** that must *win the ignition
+competition* like any other specialist, rather than narrate from the outside — is the natural next
+step on this same `LLMBackend` foundation.
+
+---
+
 ## Observable metrics
 
 The `Metrics` model exposes, on every cycle, **measurable** quantities (all internal variables,

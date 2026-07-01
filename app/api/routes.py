@@ -203,6 +203,30 @@ async def post_ask(req: AskRequest) -> AskResponse:
     return _agent0().ask(req.question, req.intent)
 
 
+@router.post("/agent/narrate")
+async def post_narrate() -> dict:
+    """(Optional LLM) Render agent 0's REAL internal variables into a grounded
+    narration via the configured LLM backend (OpenRouter). The LLM is fed only the
+    variables and forbidden to invent or to claim experience; it changes nothing in
+    the cognitive loop. Returns 503 when no LLM key is configured.
+
+    HONESTY: a fluent narration is still text generated from internal variables —
+    NOT evidence of consciousness or subjective experience.
+    """
+    from core.llm import get_backend, narrate
+    backend = get_backend()
+    if not backend.available():
+        raise HTTPException(status_code=503,
+                            detail="No LLM backend configured. Set OPENROUTER_API_KEY to enable /agent/narrate.")
+    try:
+        result = narrate(backend, _agent0())
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    result["disclaimer"] = DISCLAIMER_EN
+    result["framing"] = THEORY_FRAMING_EN
+    return result
+
+
 @router.post("/world/stimulus")
 async def post_world_stimulus(stim: WorldStimulus) -> dict:
     """World stimulus: inject a real object into the shared world near agent 0."""

@@ -23,3 +23,7 @@ storage/data/*.json
 
 # Playwright MCP temp artifacts
 .playwright-mcp/
+
+# Secrets — local only, NEVER commit (LLM API keys, etc.)
+.env
+.env.local
