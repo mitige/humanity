@@ -1045,6 +1045,35 @@ The deeper, more faithful integration — an **inner-speech coalition** that mus
 competition* like any other specialist, rather than narrate from the outside — is the natural next
 step on this same `LLMBackend` foundation.
 
+### LLM functional probes — NOT consciousness tests
+
+Can an LLM verify whether the agent is conscious? **No — and it would be the *worst* possible
+detector.** An LLM judges *language*; a "does this seem conscious?" verdict would just score how
+convincingly the agent *talks*, manufacturing false positives from fluency — the Eliza effect
+industrialized, the exact illusion this project exists to resist. No test, LLM or otherwise, can
+reach level 1.
+
+The honest move is to **flip the LLM from believer to skeptical auditor** — using it to measure a
+*functional* property, never consciousness:
+
+- **Grounding audit** (`POST /agent/audit`). The LLM is given the agent's **real internal variables**
+  and its introspective **answers** (each with the variables it cites), and judges — per answer —
+  whether it is *faithful* to the data or *confabulated*, rewarding accuracy only, never eloquence.
+  The score (computed here, not by the model) is the fraction faithful: **reportability fidelity**.
+  This is effectively an automated check of the project's core invariant — *are the outputs actually
+  grounded in internal variables?* On a live agent (Nemotron 3 Ultra) it returns **1.0**, the auditor
+  confirming *"all answers faithfully report only the variables they cite… no answer asserts content
+  beyond the data."* A perfect score means faithful, non-confabulated reporting — a functional
+  signature the theories predict of an access/report mechanism — and is **NOT** evidence of
+  consciousness.
+- **Report card** (`POST /agent/report-card`). The LLM reads the deterministic functional batteries
+  (mirror, false-memory, calibration, relational-self) and writes a plain-language summary that
+  foregrounds the disclaimers. It measures nothing new; it makes the instrument readable while
+  reinforcing that none of it assesses subjective experience.
+
+Both are optional (503 without an `OPENROUTER_API_KEY`), on-demand, exposed in the Laboratory panel,
+and every result carries the disclaimer that it audits a **functional** property, not consciousness.
+
 ---
 
 ## Observable metrics

@@ -227,6 +227,40 @@ async def post_narrate() -> dict:
     return result
 
 
+@router.post("/agent/audit")
+async def post_grounding_audit() -> dict:
+    """(Optional LLM) FUNCTIONAL probe — NOT a consciousness test. The LLM acts as a
+    skeptical auditor and scores whether agent 0's introspective answers are GROUNDED
+    in its real internal variables (reportability fidelity). A high score means
+    faithful, non-confabulated reporting — never evidence of consciousness. 503 if no
+    LLM key is configured."""
+    from core.llm import get_backend, grounding_audit
+    backend = get_backend()
+    if not backend.available():
+        raise HTTPException(status_code=503,
+                            detail="No LLM backend configured. Set OPENROUTER_API_KEY to enable /agent/audit.")
+    try:
+        return grounding_audit(backend, _agent0())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@router.post("/agent/report-card")
+async def post_report_card() -> dict:
+    """(Optional LLM) An honest plain-language summary of the FUNCTIONAL test
+    batteries, with the disclaimers foregrounded. Measures nothing new; it does not
+    assess consciousness. 503 if no LLM key is configured."""
+    from core.llm import get_backend, report_card
+    backend = get_backend()
+    if not backend.available():
+        raise HTTPException(status_code=503,
+                            detail="No LLM backend configured. Set OPENROUTER_API_KEY to enable /agent/report-card.")
+    try:
+        return report_card(backend)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
 @router.post("/world/stimulus")
 async def post_world_stimulus(stim: WorldStimulus) -> dict:
     """World stimulus: inject a real object into the shared world near agent 0."""

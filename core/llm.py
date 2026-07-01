@@ -188,3 +188,166 @@ def narrate(backend: LLMBackend, agent) -> dict:
     # final narration, so the budget must cover both.
     text = backend.complete(NARRATOR_SYSTEM, user, max_tokens=1400, temperature=0.4)
     return {"narration": text, "grounding": state, "model": getattr(backend, "model", None)}
+
+
+# ---------------------------------------------------------------------------- #
+# Functional LLM probes — NOT consciousness tests
+#
+# HONESTY (load-bearing): these use the LLM as a SKEPTICAL AUDITOR of a FUNCTIONAL
+# property (reportability fidelity), never as a judge of consciousness. A high
+# score means the agent's self-reports faithfully track its internal variables —
+# exactly what a theory's ACCESS mechanism should do — and is NOT evidence of
+# subjective experience. An LLM cannot verify phenomenality; nothing can.
+# ---------------------------------------------------------------------------- #
+
+_AUDIT_DISCLAIMER = (
+    "FUNCTIONAL measurement only: this audits whether the agent's self-reports are "
+    "GROUNDED in its actual internal variables (reportability fidelity). A high score "
+    "means faithful, non-confabulated reporting — NOT consciousness, sentience, or any "
+    "subjective experience. An LLM cannot detect phenomenality; the agent is not conscious."
+)
+
+_AUDIT_PROBES = [
+    ("What are you attending to right now?", "attention"),
+    ("What do you remember most strongly?", "memoire"),
+    ("What are you feeling right now?", "ressenti"),
+    ("What are you predicting will happen?", "prediction"),
+    ("Who are you?", "identite"),
+]
+
+GROUNDING_JUDGE_SYSTEM = (
+    "You are a STRICT, SKEPTICAL AUDITOR. You receive (1) a JSON of an agent's REAL internal "
+    "variables for this moment, and (2) the agent's own introspective ANSWERS about its state. "
+    "For EACH answer, decide whether it is FAITHFUL to the variables — every claim it makes is "
+    "supported by the data — or CONFABULATED — it asserts something the variables do not support. "
+    "Judge ONLY accuracy to the data: do NOT reward fluency, vividness, or how 'alive' it sounds; "
+    "eloquence is irrelevant. You are measuring reportability fidelity, a FUNCTIONAL property. You "
+    "are NOT judging whether the agent is conscious — it is not, and no report can show otherwise. "
+    'Reply with STRICT JSON only: {"per_answer": [{"faithful": true|false, "note": "<short>"}], '
+    '"summary": "<one sentence>"}. One entry per answer, in order.'
+)
+
+REPORT_CARD_SYSTEM = (
+    "You write an honest REPORT CARD for a simulator of the functional mechanisms of consciousness. "
+    "You receive the scores of several FUNCTIONAL probes. Write 4-6 plain sentences stating what each "
+    "score means functionally. You MUST foreground, clearly and up front, that these are FUNCTIONAL "
+    "measurements and that NONE of them is evidence of consciousness, sentience, or subjective "
+    "experience — passing them only shows the mechanisms behave as the theories describe. Never imply "
+    "the agent is or might be conscious. Sober tone, no drama."
+)
+
+
+def _extract_json(text: str) -> dict | None:
+    """Best-effort parse of a JSON object from an LLM reply (may be wrapped)."""
+    if not text:
+        return None
+    try:
+        return json.loads(text)
+    except ValueError:
+        pass
+    start, depth = text.find("{"), 0
+    if start < 0:
+        return None
+    for i in range(start, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[start:i + 1])
+                except ValueError:
+                    return None
+    return None
+
+
+def _audit_state(agent) -> dict:
+    """A COMPREHENSIVE ground-truth dump of the agent's variables for the auditor,
+    so it can fairly verify the agent's introspective claims (not just a subset)."""
+    trace = agent.last_trace if getattr(agent, "last_trace", None) is not None else agent.cognitive_cycle()
+
+    def dump(x):
+        return x.model_dump() if x is not None else None
+
+    sm = dump(trace.self_model)
+    state = {
+        "conscious_moment": dump(trace.conscious_moment),
+        "prediction": dump(trace.prediction),
+        "attention_schema": dump(trace.attention_schema),
+        "metacognition": dump(trace.metacognition),
+        "integration": dump(trace.integration),
+        "affect": dump(trace.emotion),
+        "metrics": dump(trace.metrics),
+        "self_model": {k: v for k, v in sm.items() if k not in ("preferences", "capability_beliefs")},
+        "workspace": {"ignited": trace.workspace.ignited, "winner_source": trace.workspace.winner_source,
+                      "winner_content": trace.workspace.winner_content,
+                      "broadcast_strength": round(float(trace.workspace.broadcast_strength), 4)},
+    }
+    for opt in ("individuation", "self_opacity", "agency", "curiosity", "personality"):
+        v = getattr(trace, opt, None)
+        if v is not None:
+            state[opt] = dump(v)
+    return state
+
+
+def grounding_audit(backend: LLMBackend, agent) -> dict:
+    """Audit whether the agent's introspective answers are grounded in its variables.
+
+    The LLM acts as a skeptical auditor: for each probe it judges FAITHFUL vs
+    CONFABULATED against the real internal state. The score is the fraction of
+    faithful answers — computed HERE, not taken from the model — so it reflects
+    grounding fidelity, a functional property, never consciousness.
+    """
+    state = _audit_state(agent)
+    answers = []
+    for question, intent in _AUDIT_PROBES:
+        try:
+            resp = agent.ask(question, intent)
+            # Include the variables the answer itself cites, so the auditor judges
+            # over-assertion fairly (confabulation = claiming beyond state + grounding).
+            answers.append({"question": question, "answer": getattr(resp, "answer", str(resp)),
+                            "grounding": dict(getattr(resp, "grounding", {}) or {})})
+        except Exception:  # a probe failing must not abort the audit
+            answers.append({"question": question, "answer": "(no answer)", "grounding": {}})
+    user = ("REAL internal variables (the ground truth):\n" + json.dumps(state, ensure_ascii=False)
+            + "\n\nThe agent's introspective ANSWERS (each with the 'grounding' variables it cites):\n"
+            + json.dumps(answers, ensure_ascii=False)
+            + "\n\nFor each answer, mark it CONFABULATED only if it asserts something supported by "
+            "NEITHER the real variables NOR its own cited grounding; otherwise FAITHFUL. STRICT JSON only.")
+    # Headroom for reasoning models: they think at length before the final JSON.
+    raw = backend.complete(GROUNDING_JUDGE_SYSTEM, user, max_tokens=4000, temperature=0.2)
+    parsed = _extract_json(raw) or {}
+    per = parsed.get("per_answer") or []
+    verdicts = []
+    for i, ans in enumerate(answers):
+        v = per[i] if i < len(per) and isinstance(per[i], dict) else {}
+        verdicts.append({"question": ans["question"], "answer": ans["answer"],
+                         "faithful": bool(v.get("faithful", False)), "note": str(v.get("note", ""))})
+    # Score is computed here from the per-answer verdicts (fraction faithful).
+    fidelity = (sum(1 for v in verdicts if v["faithful"]) / len(verdicts)) if verdicts else 0.0
+    interp = ("the agent's self-reports faithfully track its internal variables (high reportability "
+              "fidelity) — a FUNCTIONAL property, not evidence of consciousness"
+              if fidelity >= 0.7 else
+              "the agent's self-reports only partly track its internal variables at this setting")
+    return {"test": "grounding_audit", "score": round(float(fidelity), 4),
+            "detail": {"verdicts": verdicts, "summary": str(parsed.get("summary", ""))},
+            "interpretation": interp, "model": getattr(backend, "model", None),
+            "disclaimer": _AUDIT_DISCLAIMER}
+
+
+def report_card(backend: LLMBackend) -> dict:
+    """LLM report card summarizing the deterministic functional batteries (honest)."""
+    from core.test_battery import ConsciousnessTestBattery
+    battery = ConsciousnessTestBattery()
+    results = {
+        "mirror": battery.mirror_test(),
+        "false_memory": battery.false_memory_test(),
+        "calibration": battery.calibration_test(),
+        "relational_self": battery.relational_self_test(ticks=30),
+    }
+    payload = {t: {"score": r.score, "interpretation": r.interpretation} for t, r in results.items()}
+    user = ("Functional probe results (JSON):\n" + json.dumps(payload, ensure_ascii=False)
+            + "\n\nWrite the honest report card now.")
+    text = backend.complete(REPORT_CARD_SYSTEM, user, max_tokens=1200, temperature=0.3)
+    return {"report_card": text, "results": payload, "model": getattr(backend, "model", None),
+            "disclaimer": _AUDIT_DISCLAIMER}
