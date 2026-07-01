@@ -410,6 +410,51 @@ async def post_train(req: _TrainReq) -> dict:
     return result
 
 
+class _CheckpointReq(BaseModel):
+    name: str = "run"
+
+
+@router.post("/checkpoint/save")
+async def post_checkpoint_save(req: _CheckpointReq) -> dict:
+    """Save the full live society (world, agents, learned state, memory, RNG) to a
+    named checkpoint, so the run can be resumed later."""
+    from core import checkpoint
+    mgr = _manager()
+    async with mgr._lock:
+        return checkpoint.save(mgr, req.name)
+
+
+@router.get("/checkpoint/list")
+async def get_checkpoint_list() -> dict:
+    """List the saved checkpoints (name, tick, agent count, timestamp)."""
+    from core import checkpoint
+    return {"checkpoints": checkpoint.listing()}
+
+
+@router.post("/checkpoint/load")
+async def post_checkpoint_load(req: _CheckpointReq) -> dict:
+    """Resume a run: restore the live society from a saved checkpoint in place."""
+    from core import checkpoint
+    mgr = _manager()
+    mgr.pause()  # stop any running loop before swapping state
+    try:
+        async with mgr._lock:
+            info = checkpoint.load(mgr, req.name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    info["state"] = mgr.state()
+    return info
+
+
+@router.post("/checkpoint/delete")
+async def post_checkpoint_delete(req: _CheckpointReq) -> dict:
+    """Delete a saved checkpoint."""
+    from core import checkpoint
+    if not checkpoint.delete(req.name):
+        raise HTTPException(status_code=404, detail=f"checkpoint '{req.name}' not found")
+    return {"deleted": checkpoint._safe(req.name)}
+
+
 @router.post("/scenario/run", response_model=ScenarioResult)
 async def post_scenario_run(scenario: Scenario) -> ScenarioResult:
     """Run a reproducible scripted scenario and return its metrics time series."""

@@ -16,6 +16,9 @@ __pycache__/
 storage/data/*.json
 *.jsonl
 
+# Run checkpoints (local user data)
+storage/checkpoints/
+
 # Divers
 .DS_Store
 *.egg-info/
