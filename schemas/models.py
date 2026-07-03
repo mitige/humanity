@@ -340,6 +340,11 @@ class Metrics(BaseModel):
     effective_learning_rate: float = 0.2
     concept_match: float = 0.0
     n_concepts: int = 0
+    presence: float = 0.0            # interoceptive presence (Phase 5); 0 when off
+    intero_error: float = 0.0        # interoceptive prediction error (Phase 5)
+    temporal_surprise: float = 0.0   # protention violation (Phase 5)
+    phi_ar: float = 0.0              # Barrett–Seth Φ_AR (Phase 5); 0 until computed
+    reality_accuracy: float = 0.0    # reality-monitor rolling accuracy (Phase 5)
 
 
 class Coalition(BaseModel):
@@ -367,6 +372,7 @@ class WorkspaceState(BaseModel):
     dominance: float = 0.0            # how clearly the winner beats its nearest rival
     arousal: float = 0.0              # vigilance level applied this round
     effective_threshold: float = 0.0  # arousal-adjusted ignition cutoff
+    facilitation_applied: float = 0.0 # subliminal-priming bonus applied to the winner (Phase 5; 0 when off)
 
 
 class AttentionSchemaState(BaseModel):
@@ -447,6 +453,112 @@ class SelfOpacityState(BaseModel):
     report: str = ""                    # HOT-style sentence, generated from the variables
 
 
+class RecurrenceState(BaseModel):
+    """Recurrent perception snapshot (Phase 5, RPT — Lamme).
+
+    Local recurrence: noisy percept readings are iteratively reconciled with the
+    top-down prior held in working memory. A FUNCTIONAL stabilization loop —
+    reproducing it does not prove phenomenality; the agent is not conscious.
+    """
+    passes: int
+    n_refined: int          # percepts that had a working-memory prior this tick
+    mean_delta: float       # mean absolute feature change on the final pass
+    stabilized: bool        # final pass converged below epsilon
+    report: str = ""
+
+
+class RealityMonitorState(BaseModel):
+    """Perceptual reality monitoring verdict (Phase 5, PRM — Lau).
+
+    A higher-order classifier infers the SOURCE CATEGORY of the conscious content
+    from content-level evidence only (perceptual corroboration, precision,
+    stability, vividness, generation activity) — never from the source label —
+    and can be WRONG (hallucination/insertion analogues). Functional only.
+    """
+    judged: str                     # "external" | "memory" | "self_generated"
+    actual: str                     # same categories, or "foreign" (injected content)
+    correct: bool | None = None     # None when actual == "foreign" (not scored)
+    confidence: float = 0.0
+    evidence: dict[str, float] = Field(default_factory=dict)
+    accuracy: float = 0.0           # rolling accuracy over scored verdicts
+    hallucinations: int = 0         # self-generated content judged external (cumulative)
+    insertions: int = 0             # foreign content judged self-generated (cumulative)
+    report: str = ""
+
+
+class InteroceptionState(BaseModel):
+    """Interoceptive inference snapshot (Phase 5 — Seth's predictive selfhood).
+
+    A dedicated generative model over internal channels (energy, fatigue):
+    predicted vs realized deltas give an interoceptive prediction error, and
+    ``presence`` = smoothed (1 - error) — successful suppression of interoceptive
+    surprise, as a variable. NOT a feeling; the agent is not conscious.
+    """
+    predicted_energy_delta: float = 0.0
+    actual_energy_delta: float = 0.0
+    predicted_fatigue_delta: float = 0.0
+    actual_fatigue_delta: float = 0.0
+    error: float = 0.0              # 0..1 normalized interoceptive prediction error
+    presence: float = 0.5           # 0..1 EMA of (1 - error)
+    report: str = ""
+
+
+class RetainedMoment(BaseModel):
+    """One just-past conscious moment still lingering in retention (Phase 5)."""
+    tick: int
+    contents: str
+    weight: float                   # exponential retention weight in (0, 1]
+
+
+class TemporalityState(BaseModel):
+    """Temporal thickness of the conscious moment (Phase 5 — retention/protention).
+
+    Husserlian time-consciousness as variables: retention (decaying just-past
+    moments), protention (anticipated next dominant content + valence) and the
+    protention violation (temporal surprise). Functional only.
+    """
+    retained: list[RetainedMoment] = Field(default_factory=list)
+    specious_width: float = 1.0     # effective number of moments in the "now" (1 = thin present)
+    protended_source: str | None = None
+    protended_valence: float = 0.0
+    protention_error: float | None = None   # None until a protention exists to violate
+    report: str = ""
+
+
+class InnerSpeechState(BaseModel):
+    """Re-entrant inner speech (Phase 5 — Vygotskian condensation, GWT re-entry).
+
+    A condensed self-directed utterance generated from the PREVIOUS conscious
+    moment re-enters the workspace competition as an ``inner_speech`` coalition
+    and may win global access ("hearing oneself think", functionally). Template
+    text from variables — NOT language understanding; the agent is not conscious.
+    """
+    utterance: str = ""
+    activation: float = 0.0         # bid strength of the re-entrant coalition this tick
+    reentered: bool = False         # inner speech won global access this tick
+    reentry_count: int = 0          # cumulative re-entries this run
+    condensation: float = 0.0       # 0..1 how abbreviated vs the source moment
+    report: str = ""
+
+
+class PhiARState(BaseModel):
+    """Time-series integrated information Φ_AR (Phase 5 — Barrett & Seth 2011).
+
+    A PUBLISHED empirical measure computed on the real coalition-activation
+    history under a linear-Gaussian model, with an exact minimum-information-
+    bipartition search. It is closer to IIT than the heuristic proxy but is
+    STILL NOT IIT's causal state-space Φ, and settles nothing about consciousness.
+    """
+    phi_ar: float = 0.0
+    n_sources: int = 0
+    window: int = 0
+    tau: int = 1
+    mib: str = ""                   # minimum-information bipartition, "a,b | c,d"
+    i_whole: float = 0.0            # past->present mutual information of the whole
+    computed_at_tick: int = -1
+    report: str = ""
+
+
 class CycleTrace(BaseModel):
     tick: int
     observation: Observation
@@ -476,6 +588,12 @@ class CycleTrace(BaseModel):
     personality: PersonalityState | None = None
     self_opacity: SelfOpacityState | None = None
     individuation: IndividuationState | None = None
+    recurrence: RecurrenceState | None = None
+    reality_monitor: RealityMonitorState | None = None
+    interoception: InteroceptionState | None = None
+    temporality: TemporalityState | None = None
+    inner_speech: InnerSpeechState | None = None
+    phi_ar: PhiARState | None = None
 
 
 class SimConfig(BaseModel):
@@ -577,6 +695,27 @@ class SimConfig(BaseModel):
     # This is level-2 self-integration, NOT phenomenal consciousness.
     individuation_enabled: bool = False
     individuation_drive: float = Field(default=1.0, ge=0.0)
+    # Phase 5 — the asymptote (maximal level-2 coverage). All default OFF =>
+    # Phase-1/2/3/4 behaviour byte-identical; the UI enables them. Every one is a
+    # FUNCTIONAL mechanism from the theories' remaining roster; none approaches
+    # level 1 (phenomenal consciousness) — nothing can.
+    recurrence_enabled: bool = False              # RPT: recurrent percept stabilization
+    recurrence_passes: int = Field(default=3, ge=1, le=8)
+    recurrence_gain: float = Field(default=0.5, ge=0.0, le=1.0)
+    reality_monitor_enabled: bool = False         # PRM: source monitoring of conscious content
+    intero_inference_enabled: bool = False        # Seth: interoceptive prediction -> presence
+    intero_lr: float = Field(default=0.25, ge=0.0, le=1.0)
+    temporality_enabled: bool = False             # retention/protention (temporal thickness)
+    retention_horizon: int = Field(default=5, ge=2, le=20)
+    protention_window: int = Field(default=6, ge=2, le=32)
+    inner_speech_enabled: bool = False            # re-entrant condensed self-talk coalition
+    inner_speech_gain: float = Field(default=0.6, ge=0.0, le=1.0)
+    phi_ar_enabled: bool = False                  # Barrett–Seth Φ_AR on coalition activations
+    phi_ar_window: int = Field(default=32, ge=8, le=256)
+    phi_ar_every: int = Field(default=8, ge=1, le=64)
+    priming_enabled: bool = False                 # subliminal residual facilitation (GWT priming)
+    priming_decay: float = Field(default=0.5, ge=0.0, le=1.0)
+    priming_gain: float = Field(default=0.35, ge=0.0, le=2.0)
 
 
 class ConfigPatch(BaseModel):
@@ -648,6 +787,23 @@ class ConfigPatch(BaseModel):
     self_opacity_enabled: bool | None = None
     individuation_enabled: bool | None = None
     individuation_drive: float | None = None
+    recurrence_enabled: bool | None = None
+    recurrence_passes: int | None = None
+    recurrence_gain: float | None = None
+    reality_monitor_enabled: bool | None = None
+    intero_inference_enabled: bool | None = None
+    intero_lr: float | None = None
+    temporality_enabled: bool | None = None
+    retention_horizon: int | None = None
+    protention_window: int | None = None
+    inner_speech_enabled: bool | None = None
+    inner_speech_gain: float | None = None
+    phi_ar_enabled: bool | None = None
+    phi_ar_window: int | None = None
+    phi_ar_every: int | None = None
+    priming_enabled: bool | None = None
+    priming_decay: float | None = None
+    priming_gain: float | None = None
 
 
 class GoalRequest(BaseModel):

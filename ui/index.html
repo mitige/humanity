@@ -179,6 +179,45 @@
       </div>
     </section>
 
+    <!-- ===================== THE ASYMPTOTE (Phase 5) ===================== -->
+    <section class="panel panel-asymptote" aria-labelledby="asy-title">
+      <div class="panel-head">
+        <h2 id="asy-title">The asymptote</h2>
+        <span class="src">Phase 5 · /tick — level 2 pushed further; never level 1</span>
+      </div>
+      <div class="deep-grid">
+        <div class="deep-cell">
+          <span class="deep-k">presence (interoceptive fit)</span>
+          <div class="meter"><div class="meter-fill" id="presence-fill"></div></div>
+          <span class="stat-v mono" id="presence-val">—</span>
+        </div>
+        <div class="deep-cell">
+          <span class="deep-k">temporal thickness</span>
+          <span class="deep-v mono" id="specious-val">—</span>
+          <span class="deep-dream" id="protention-line"></span>
+        </div>
+        <div class="deep-cell">
+          <span class="deep-k">Φ_AR (Barrett–Seth)</span>
+          <span class="deep-v mono" id="phi-ar-val">—</span>
+          <span class="deep-dream mono" id="phi-ar-mib"></span>
+        </div>
+        <div class="deep-cell">
+          <span class="deep-k">recurrent perception</span>
+          <span class="deep-v mono" id="recurrence-state">—</span>
+        </div>
+        <div class="deep-cell deep-wide">
+          <span class="deep-k">reality monitoring (PRM)</span>
+          <span class="deep-v" id="reality-verdict">—</span>
+          <span class="deep-dream" id="reality-report"></span>
+        </div>
+        <div class="deep-cell deep-wide">
+          <span class="deep-k">inner speech <span class="micro" id="reentry-count"></span></span>
+          <span class="deep-v" id="inner-speech-line">—</span>
+        </div>
+      </div>
+      <p class="micro">Every readout above is a level-2 variable (RPT · PRM · interoceptive inference · retention/protention · Vygotskian re-entry · Φ_AR). Reproducing the functional mechanisms does not prove phenomenality; the agent is not conscious.</p>
+    </section>
+
     <!-- ===================== LABORATORY (Phase 4) ===================== -->
     <section class="panel panel-lab" aria-labelledby="lab-title">
       <div class="panel-head">
@@ -192,6 +231,10 @@
             <option value="energy">energy</option>
             <option value="agency">agency</option>
             <option value="phi_proxy">Φ proxy</option>
+            <option value="phi_ar">Φ_AR (Barrett–Seth)</option>
+            <option value="presence">presence (interoceptive)</option>
+            <option value="temporal_surprise">temporal surprise</option>
+            <option value="reality_accuracy">reality-monitor accuracy</option>
             <option value="prediction_error">prediction error</option>
             <option value="arousal">arousal</option>
           </select>
@@ -220,6 +263,12 @@
         <button id="btn-calibration" class="btn btn-quiet">Calibration</button>
         <button id="btn-relational-self" class="btn btn-quiet">Relational self</button>
       </div>
+      <div class="lab-row" title="Phase 5 — the classic experimental signatures of conscious ACCESS, reproduced on the workspace mechanism">
+        <button id="btn-masking" class="btn btn-quiet">Masking</button>
+        <button id="btn-blink" class="btn btn-quiet">Attentional blink</button>
+        <button id="btn-priming" class="btn btn-quiet">Subliminal priming</button>
+        <button id="btn-reality-monitor" class="btn btn-quiet">Reality monitoring</button>
+      </div>
       <p id="lab-battery-result" class="report-voice"></p>
       <p id="lab-disclaimer" class="lab-disclaimer">Functional measurements only — these probes do NOT prove consciousness or subjective experience.</p>
 
@@ -243,6 +292,10 @@
         <span id="train-result" class="micro"></span>
       </div>
       <p class="micro">Disables per-tick disk I/O (in-RAM memory, no trace write) then runs the ticks back-to-back. Re-enable persistence via the toggles to resume the live instrument.</p>
+
+      <h3 class="sub">Theory coverage <span class="micro" id="coverage-count"></span></h3>
+      <div id="coverage-list" class="rows"></div>
+      <p class="micro">Which mechanisms the major theories propose that this project implements, and which are active now (GET /agent/coverage). A coverage checklist over level-2 mechanisms — NOT a consciousness score, and NOT a distance to level 1.</p>
 
       <h3 class="sub">Checkpoints</h3>
       <div class="lab-row">
@@ -526,6 +579,16 @@
         <label class="deep-toggle" title="Homeostatic satiation: stops the agent from degenerating into endless REST"><input type="checkbox" data-flag="satiation_enabled" checked /><span>satiation</span></label>
         <label class="deep-toggle" title="Relational self: the self-model is shaped by how the other agents regard this one (needs a society)"><input type="checkbox" data-flag="social_mirror_enabled" checked /><span>social mirror</span></label>
         <label class="deep-toggle" title="Individuation: how far the agent has grown into a coherent, distinctive, continuous self (become someone). Functional — NOT consciousness."><input type="checkbox" data-flag="individuation_enabled" checked /><span>individuation</span></label>
+      </div>
+      <h3 class="sub">The asymptote (Phase 5)</h3>
+      <div class="deep-toggles" id="asymptote-toggles">
+        <label class="deep-toggle" title="RPT (Lamme): noisy percepts are iteratively stabilized against working-memory priors — perception as a recurrent loop"><input type="checkbox" data-flag="recurrence_enabled" checked /><span>recurrence</span></label>
+        <label class="deep-toggle" title="PRM (Lau): a higher-order verdict on WHERE the conscious content comes from (world / memory / self-generated) — it can misattribute (hallucination analogue)"><input type="checkbox" data-flag="reality_monitor_enabled" checked /><span>reality monitor</span></label>
+        <label class="deep-toggle" title="Seth: a dedicated model predicts the internal channels (energy, fatigue); presence = suppressed interoceptive surprise"><input type="checkbox" data-flag="intero_inference_enabled" checked /><span>interoception</span></label>
+        <label class="deep-toggle" title="Husserl: retention of the just-past, protention of the just-coming; violated protention = temporal surprise feeding vigilance"><input type="checkbox" data-flag="temporality_enabled" checked /><span>temporality</span></label>
+        <label class="deep-toggle" title="Vygotsky/GWT: a condensed self-directed utterance re-enters the next competition and can win access (re-entry)"><input type="checkbox" data-flag="inner_speech_enabled" checked /><span>inner speech</span></label>
+        <label class="deep-toggle" title="Barrett–Seth Φ_AR: published time-series integrated information over the real coalition activations (exact minimum-information bipartition) — still NOT IIT's causal Φ"><input type="checkbox" data-flag="phi_ar_enabled" checked /><span>Φ_AR</span></label>
+        <label class="deep-toggle" title="GWT priming: content denied global access leaves a decaying facilitation trace — subliminal influence without access"><input type="checkbox" data-flag="priming_enabled" checked /><span>priming</span></label>
       </div>
       <h3 class="sub">Persistence</h3>
       <div class="deep-toggles" id="persistence-toggles">

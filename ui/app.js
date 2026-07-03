@@ -588,6 +588,11 @@
     social_mirror_enabled: true,
     self_opacity_enabled: true,
     individuation_enabled: true,
+    // Phase 5 — the asymptote (all level-2; never level 1)
+    recurrence_enabled: true, reality_monitor_enabled: true,
+    intero_inference_enabled: true, temporality_enabled: true,
+    inner_speech_enabled: true, phi_ar_enabled: true,
+    priming_enabled: true,
   };
 
   // applyControlStates — reflect a config object into the Settings-panel DOM so
@@ -759,6 +764,55 @@
     if (rep) rep.textContent = iv.report || "";
   }
 
+  // the asymptote (Phase 5, level-2) — recurrence (RPT) / reality monitoring
+  // (PRM) / interoceptive presence / temporal thickness / inner speech / Φ_AR.
+  // Accepts either a full CycleTrace or the GET /agent/consciousness payload
+  // (both expose the same sub-object keys). Each readout degrades to "—" when
+  // its flag is off. Functional variables only — never evidence of experience.
+  function renderAsymptote(src) {
+    const s = src || {};
+
+    const intero = s.interoception;
+    const pf = $("#presence-fill");
+    if (pf) pf.style.width = intero ? (clamp01(num(intero.presence)) * 100).toFixed(1) + "%" : "0";
+    if ($("#presence-val")) $("#presence-val").textContent =
+      intero ? f2(intero.presence) + " · err " + f2(intero.error) : "—";
+
+    const temp = s.temporality;
+    if ($("#specious-val")) $("#specious-val").textContent =
+      temp ? f2(temp.specious_width) + " moments wide" : "—";
+    if ($("#protention-line")) $("#protention-line").textContent = temp
+      ? ("leaning toward: " + (temp.protended_source || "—")
+         + (temp.protention_error != null ? " · surprise " + f2(temp.protention_error) : ""))
+      : "";
+
+    const phi = s.phi_ar;
+    if ($("#phi-ar-val")) $("#phi-ar-val").textContent =
+      phi ? f3(phi.phi_ar) + " · " + num(phi.n_sources) + " sources" : "—";
+    if ($("#phi-ar-mib")) $("#phi-ar-mib").textContent =
+      phi && phi.mib ? "MIB " + phi.mib : "";
+
+    const rec = s.recurrence;
+    if ($("#recurrence-state")) $("#recurrence-state").textContent = rec
+      ? (num(rec.n_refined) + " refined / " + num(rec.passes) + " passes"
+         + (rec.stabilized ? " · stable" : " · settling"))
+      : "—";
+
+    const rm = s.reality_monitor;
+    if ($("#reality-verdict")) $("#reality-verdict").textContent = rm
+      ? (rm.judged + (rm.correct === false ? " — MISATTRIBUTED (actual: " + rm.actual + ")" : "")
+         + " · accuracy " + f2(rm.accuracy))
+      : "—";
+    if ($("#reality-report")) $("#reality-report").textContent = (rm && rm.report) || "";
+
+    const isd = s.inner_speech;
+    if ($("#inner-speech-line")) $("#inner-speech-line").textContent = isd
+      ? ("“" + isd.utterance + "”" + (isd.reentered ? " — re-entered global access" : ""))
+      : "—";
+    if ($("#reentry-count")) $("#reentry-count").textContent =
+      isd ? "· re-entries: " + num(isd.reentry_count) : "";
+  }
+
   // ============================================================
   //  LEARNING & PERSONALITY (Phase 3) — Q-values / concept / personality
   // ============================================================
@@ -894,6 +948,9 @@
       try { renderSelfOpacity(lastTrace); } catch (e) { /* non-fatal */ }
       // individuation ("becoming someone", level-2) — rides on the last /tick trace
       try { renderIndividuation(lastTrace); } catch (e) { /* non-fatal */ }
+      // the asymptote (Phase 5) — /agent/consciousness carries the sub-states
+      // during background runs; the last /tick trace is the fallback
+      try { renderAsymptote(consciousness || lastTrace); } catch (e) { /* non-fatal */ }
       // laboratory time series (Phase 4) — guarded so it can't break the loop
       try { await refreshLabChart(); } catch (e) { /* non-fatal */ }
       // society view updates alongside the single-agent instrument
@@ -952,6 +1009,9 @@
     try { renderSelfOpacity(trace); } catch (e) { /* non-fatal */ }
     // individuation ("becoming someone", level-2) — how far a coherent self has formed
     try { renderIndividuation(trace); } catch (e) { /* non-fatal */ }
+    // the asymptote (Phase 5) — recurrence / PRM / interoception / temporality /
+    // inner speech / Φ_AR ride on the full trace
+    try { renderAsymptote(trace); } catch (e) { /* non-fatal */ }
   }
 
   // ============================================================
@@ -1077,6 +1137,7 @@
       try {
         await postJSON("config", { [flag]: box.checked });
         persistSetting({ [flag]: box.checked });   // survive reload
+        try { refreshCoverage(); } catch (e) { /* non-fatal */ }
       } catch (e) { setStatus("error", "Config error"); }
     });
   });
@@ -1267,6 +1328,42 @@
   $("#btn-false-memory")?.addEventListener("click", runBattery("false_memory"));
   $("#btn-calibration")?.addEventListener("click", runBattery("calibration"));
   $("#btn-relational-self")?.addEventListener("click", runBattery("relational_self", { seed: 7, ticks: 40 }));
+  // Phase 5 — psychophysics signatures of conscious ACCESS (functional only).
+  $("#btn-masking")?.addEventListener("click", runBattery("masking", { seed: 42, ticks: 3 }));
+  $("#btn-blink")?.addEventListener("click", runBattery("blink", { seed: 42, ticks: 3 }));
+  $("#btn-priming")?.addEventListener("click", runBattery("priming", { seed: 42, ticks: 2 }));
+  $("#btn-reality-monitor")?.addEventListener("click", runBattery("reality_monitor", { seed: 42, ticks: 40 }));
+
+  // ---------- theory coverage (the honest asymptote checklist) ----------
+  // GET /agent/coverage lists every theory-proposed mechanism the project
+  // implements and whether it is active in the current config. A level-2
+  // coverage checklist — NOT a consciousness score. Refreshed on load and
+  // whenever a Settings toggle changes the config.
+  async function refreshCoverage() {
+    const box = $("#coverage-list");
+    if (!box) return;
+    let d;
+    try { d = await api("agent/coverage"); } catch (e) { return; }
+    const items = (d && d.items) || [];
+    if ($("#coverage-count")) {
+      $("#coverage-count").textContent =
+        "— " + num(d.active_count) + "/" + num(d.total) + " mechanisms active";
+    }
+    box.innerHTML = "";
+    const frag = document.createDocumentFragment();
+    items.forEach((it) => {
+      const row = el("div", "row");
+      const top = el("div", "row-top");
+      top.appendChild(el("span", "row-title",
+        (it.active ? "●" : "○") + " " + esc(it.theory)));
+      top.appendChild(el("span", "row-tag", it.flag ? esc(it.flag) : "core"));
+      row.appendChild(top);
+      row.appendChild(el("div", "row-sub", esc(it.mechanism) + " — " + esc(it.module)));
+      frag.appendChild(row);
+    });
+    if (!items.length) box.appendChild(el("div", "empty", "Coverage unavailable."));
+    else box.appendChild(frag);
+  }
 
   // ---------- fast training: headless config + back-to-back ticks ----------
   document.getElementById('btn-fast-train')?.addEventListener('click', async () => {
@@ -1492,7 +1589,11 @@
   drawWorld(null);
   drawCircadianDial(1);
   // apply the saved settings (or first-run defaults), then take the first reading
-  applyDeepDefaults().finally(refreshAll);
+  applyDeepDefaults().finally(() => {
+    refreshAll();
+    // theory-coverage checklist reflects the applied config (on-demand only)
+    try { refreshCoverage(); } catch (e) { /* non-fatal */ }
+  });
   // load the checkpoint list once (on-demand only — not in the polling loop)
   refreshCheckpoints();
 })();

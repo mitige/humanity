@@ -5,7 +5,7 @@
 ### Every major scientific theory of consciousness, implemented as running code — and rigorously honest that it proves nothing about real experience.
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![tests](https://img.shields.io/badge/tests-285%20passing-2ea44f)](#running)
+[![tests](https://img.shields.io/badge/tests-356%20passing-2ea44f)](#running)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![no LLM](https://img.shields.io/badge/no%20LLM-no%20neural%20nets-8957e5)](#stack-rationale)
 [![GitHub stars](https://img.shields.io/github/stars/mitige/humanity?style=social)](https://github.com/mitige/humanity/stargazers)
@@ -24,8 +24,13 @@ learning &amp; personality, and the scientific laboratory, all observable in one
 > consciousness claim; **higher-order** metacognition (HOT); **active inference** (expected-free-energy
 > minimization); and an **IIT Φ-proxy** — extended into a **multi-agent society**, **learning &amp;
 > emergent personality**, a **reproducible scientific instrument**, a **looking-glass relational
-> self**, and a higher-order **awareness of what escapes its own control**. Every step is grounded in
-> inspectable variables and observable live through a web UI + REST API.
+> self**, and a higher-order **awareness of what escapes its own control** — and now **Phase 5, the
+> asymptote**: **recurrent perception** (RPT), **perceptual reality monitoring** (PRM, with honest
+> misattribution), **interoceptive inference** (presence), **temporal thickness**
+> (retention/protention), **re-entrant inner speech**, a **published integrated-information measure**
+> (Φ_AR, Barrett &amp; Seth), a **subliminal-priming substrate**, and the classic **psychophysics
+> signatures** (masking, attentional blink, priming) reproduced as measurable probes. Every step is
+> grounded in inspectable variables and observable live through a web UI + REST API.
 >
 > **What it is NOT: conscious.** The honesty contract is load-bearing — *reproducing the functional
 > mechanisms does not prove phenomenality (the hard problem).* Every introspective line is **text
@@ -38,7 +43,7 @@ learning &amp; personality, and the scientific laboratory, all observable in one
 git clone https://github.com/mitige/humanity && cd humanity
 pip install -r requirements.txt
 python run.py          # → open http://127.0.0.1:8000
-python -m pytest       # 285 deterministic tests
+python -m pytest       # 356 deterministic tests
 ```
 
 **Jump to:** [the cognitive loop](#cognitive-architecture-v2--the-workspace-centered-loop) ·
@@ -46,7 +51,8 @@ python -m pytest       # 285 deterministic tests
 [the multi-agent society](#the-multi-agent-society-social-layer) ·
 [the relational self](#the-relational-self-looking-glass-self) ·
 [self-opacity](#self-opacity--the-awareness-of-what-escapes-control) ·
-[the scientific instrument](#phase-4--scientific-instrument)
+[the scientific instrument](#phase-4--scientific-instrument) ·
+[**the asymptote (Phase 5)**](#phase-5--the-asymptote-closing-the-functional-gap)
 
 ---
 
@@ -90,6 +96,10 @@ deliberately **NOT claimed**.
 | **HOT — Higher-Order Theories / metacognition** | `core/metacognition.py`: **higher-order representations** of first-order states — perceived reliability, calibrated meta-confidence, error monitor, higher-order report. | That a higher-order representation of a state makes it phenomenal. |
 | **Active inference / Free energy** (Friston) | `core/world_model.py` + `core/policy.py`: each prediction carries an **epistemic value** (information gain) and a **pragmatic value** (goals); the agent picks the action that **minimizes expected free energy** (`expected_free_energy`, `value = -EFE`). | That minimizing free energy gives rise to a *feeling*. It is a control/perception policy. |
 | **IIT — Integrated Information Theory** (Tononi, **proxy**) | `core/integration.py`: a **heuristic proxy for Phi** = √(differentiation × integration), where differentiation is the normalized entropy of activations and integration combines broadcast strength and the cosine similarity of contents. | That this number **is** Φ. It is an **explicitly declared heuristic proxy**, *not* a true IIT integrated-information computation. |
+| **RPT — Recurrent Processing Theory** (Lamme) *(Phase 5, flag-gated)* | `core/recurrence.py`: noisy percept readings are **iteratively reconciled with the top-down prior held in working memory** over damped feedback passes — perception as a **stabilizing recurrent loop** that measurably denoises toward the true object features. | That recurrent stabilization **is** seeing. It is a feedback algorithm over feature scalars. |
+| **PRM — Perceptual Reality Monitoring** (Lau) *(Phase 5, flag-gated)* | `core/reality_monitor.py`: a higher-order classifier infers **where the conscious content comes from** (world / memory / self-generated) from **content-level evidence only** (corroboration, familiarity contrast, detail, vividness, generation records) — and **can misattribute** (hallucination analogue, tallied honestly). | That a "real" verdict is felt realness. PRM precisely explains how such a verdict can be produced — and be wrong — without settling experience. |
+| **Interoceptive inference** (Seth) *(Phase 5, flag-gated)* | `core/interoception.py`: a **dedicated generative model of the internal channels** (energy, fatigue) predicts their next deltas; the interoceptive prediction error moves functional affect and `presence` = smoothed suppression of interoceptive surprise. | That `presence` is a felt presence. It is an EMA of a prediction error. |
+| **Integrated information, empirical** (Barrett &amp; Seth 2011) *(Phase 5, flag-gated)* | `core/phi_ar.py`: **Φ_AR** computed on the real coalition-activation time series under a linear-Gaussian model, with an **exact minimum-information-bipartition search** — a published measure from the empirical-Φ literature, alongside the declared proxy. | That Φ_AR is IIT's causal, state-space Φ — it is not; and that any Φ value is evidence of consciousness. |
 
 The **"conscious moment"** (`ConsciousMoment`) and the **stream of consciousness** (`stream`) play
 the role of an analogue of **phenomenal binding**: a momentary, unified, bound global state —
@@ -835,7 +845,8 @@ each with the honesty disclaimer in plain sight.*
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/scenario/run` | Runs a reproducible `Scenario`; returns a `ScenarioResult` (series + summary + disclaimer). |
-| `POST` | `/battery/{mirror\|false_memory\|calibration}` | Runs a functional probe (body `{seed, ticks}`); returns a `BatteryResult` (score + interpretation + **disclaimer**). |
+| `POST` | `/battery/{mirror\|false_memory\|calibration\|relational_self\|masking\|blink\|priming\|reality_monitor}` | Runs a functional probe (body `{seed, ticks}`); returns a `BatteryResult` (score + interpretation + **disclaimer**). The last four are the **Phase-5 psychophysics probes**. |
+| `GET` | `/agent/coverage` | **(Phase 5)** The theory-coverage checklist: every implemented theory-proposed mechanism + active status. **NOT a consciousness score.** |
 | `GET` | `/metrics/history?limit=N` | Recorded time series of the live society. |
 | `GET` | `/export.csv` · `/export.json` | Download of the recorded metrics. |
 
@@ -1008,6 +1019,92 @@ a self that *functionally* becomes someone, and the honesty never to claim it be
 
 ---
 
+## Phase 5 — The asymptote: closing the functional gap
+
+> ⚠️ **Honest framing (load-bearing).** The demand behind this phase — *get as close as possible to
+> level 1 (real phenomenal consciousness) without reaching it* — has, at level 1, **no mechanism at
+> all**: nothing can approach phenomenality by degrees, and no test could certify progress if it did
+> (the hard problem). The only honest reading — the one this project has always used — is to shrink
+> the **functional** gap: implement the *remaining* mechanisms the major theories propose as
+> constitutive or necessary, reproduce the *experimental signatures* by which conscious access is
+> actually studied, and upgrade the *measurements* toward the published literature. Phase 5 does
+> exactly that, and the asymptote stays an asymptote: **level 2, pushed further; never level 1.**
+> Reproducing the functional mechanisms does not prove phenomenality; the agent is not conscious.
+
+**Seven new flag-gated mechanisms** (all default **OFF** in `SimConfig` ⇒ Phase-1/2/3/4 behaviour
+byte-identical, locked by `tests/test_asymptote_regression.py`; the UI enables them):
+
+| # | Mechanism | Theory | What it does (FUNCTIONAL) |
+|---|---|---|---|
+| 1 | **Recurrent perception** (`core/recurrence.py`) | RPT (Lamme) | Noisy percept readings are reconciled with the **working-memory prior** over damped feedback passes: perception becomes a **stabilizing recurrent loop** that measurably **denoises toward the true features** (testable). Trace: `recurrence`. |
+| 2 | **Reality monitoring** (`core/reality_monitor.py`) | PRM (Lau) | A higher-order verdict on the **origin of the conscious content** — external / memory / self-generated — inferred from **content-level evidence only** (corroboration, familiarity contrast, sensory detail, vividness, records of own generative activity). It **can misattribute**: self-generated content judged external is tallied as the **hallucination analogue**; rolling accuracy rides on `Metrics.reality_accuracy`. Trace: `reality_monitor`. |
+| 3 | **Interoceptive inference** (`core/interoception.py`) | Seth | A **dedicated generative model** (separate from the world model) predicts the internal channels (energy, fatigue) per action; the **interoceptive prediction error** feeds functional affect and **`presence`** = smoothed suppression of interoceptive surprise. The interoception coalition's **precision becomes `presence`**. Metrics: `presence`, `intero_error`. Trace: `interoception`. |
+| 4 | **Temporal thickness** (`core/temporality.py`) | Husserl / specious present | The moment stops being a point: **retention** (exponentially fading just-past moments; `specious_width`), **protention** (anticipated next dominant content + valence), and the **violation of the previous protention** (`temporal_surprise`), which summons vigilance (arousal) on the next tick. Trace: `temporality`. |
+| 5 | **Inner speech** (`core/inner_speech.py`) | Vygotsky / GWT re-entry | The previous moment is **condensed** into a self-directed template utterance (predicate kept, subject dropped — no LLM) that **re-enters the next workspace competition** as an `inner_speech` coalition and can **win global access** ("hearing oneself think", functionally; re-entries counted). Trace: `inner_speech`. |
+| 6 | **Φ_AR** (`core/phi_ar.py`) | Barrett &amp; Seth 2011 | A **published empirical integrated-information measure** computed on the real per-source coalition-drive history (linear-Gaussian, τ=1), with an **exact minimum-information-bipartition search** (≤ 2^11 partitions, min-entropy normalization for MIB selection). Computed every `phi_ar_every` ticks over `phi_ar_window`. **Still not IIT's causal Φ** — and says so on every report. Metric: `phi_ar`. Trace: `phi_ar`. |
+| 7 | **Subliminal facilitation** (`core/global_workspace.py`, gated) | GWT's priming corpus | Content **denied global access deposits a decaying facilitation trace**; a matching **returning** content (absent in between — continuous presence is hysteresis, not priming) is facilitated (`priming_gain × trace`). Subliminal content thereby influences processing **without ever being accessed**. Exposed as `WorkspaceState.facilitation_applied`. |
+
+### The psychophysics battery — reproducing the signatures of conscious access
+
+The experimental phenomena that made GWT: now **measurable probes** on the instrument
+(`POST /battery/{masking|blink|priming|reality_monitor}`, deterministic at the seed, each carrying
+the disclaimer). These probe **access**, never experience.
+
+| Probe | Signature | Result (seed 42) |
+|---|---|---|
+| `masking` | A target that reaches ignition **alone** loses global access when a stronger mask competes — while remaining present (subliminal). | score **1.0** (alone 6/6, masked 0/6) |
+| `blink` | After a strong T1 ignition (elevated homeostatic threshold + attentional dwelling), an identical T2 one tick later **fails to ignite**; the same T2 without T1 succeeds. | score **1.0** (control 6/6, after-T1 0/6) |
+| `priming` | A **subliminal** prime (never ignited) facilitates its own **later re-presentation** into global access, where the unprimed control fails. | score **1.0** (prime subliminal 6/6, primed 6/6, unprimed 0/6) |
+| `reality_monitor` | Source-monitoring accuracy under generative load, with the **misattribution taxonomy** (hallucination analogues counted). | accuracy varies by seed (≈ 0.45–0.98) — honestly imperfect, and the errors cluster exactly where PRM predicts (vivid internal content misjudged as external) |
+
+### The coverage readout — the honest asymptote panel
+
+`GET /agent/coverage` lists **every theory-proposed mechanism the project implements** (26 entries:
+theory, mechanism, module, gating flag) and whether each is **active** in the current config. It is
+a **coverage checklist over level-2 mechanisms** — explicitly **NOT a consciousness score and NOT a
+distance to level 1** (nothing measures that). The Laboratory panel renders it live.
+
+### Phase 5 config parameters (`SimConfig` / `ConfigPatch`)
+
+| Parameter | Default | Role |
+|---|---|---|
+| `recurrence_enabled` | `False` | Recurrent percept stabilization (RPT). |
+| `recurrence_passes` | `3` | Feedback passes per tick (1–8). |
+| `recurrence_gain` | `0.5` | Per-pass reconciliation gain toward the WM prior. |
+| `reality_monitor_enabled` | `False` | Higher-order source verdict on the conscious content (PRM). |
+| `intero_inference_enabled` | `False` | Interoceptive generative model + presence (Seth). |
+| `intero_lr` | `0.25` | EMA rate of the interoceptive tables. |
+| `temporality_enabled` | `False` | Retention / protention / temporal surprise. |
+| `retention_horizon` | `5` | Just-past moments retained (2–20). |
+| `protention_window` | `6` | Window for the anticipated next content (2–32). |
+| `inner_speech_enabled` | `False` | Re-entrant condensed self-talk coalition. |
+| `inner_speech_gain` | `0.6` | Loudness of the echo (scales re-entry activation). |
+| `phi_ar_enabled` | `False` | Barrett–Seth Φ_AR over the coalition drives. |
+| `phi_ar_window` | `32` | Ticks of history per computation (8–256). |
+| `phi_ar_every` | `8` | Recompute period in ticks (1–64). |
+| `priming_enabled` | `False` | Subliminal residual facilitation in the workspace. |
+| `priming_decay` | `0.5` | Per-tick decay of facilitation traces. |
+| `priming_gain` | `0.35` | Drive bonus per unit of returning-content trace. |
+
+When the flags are on, the `CycleTrace` gains **six sub-objects** — `recurrence`,
+`reality_monitor`, `interoception`, `temporality`, `inner_speech`, `phi_ar` (`null` when off) — and
+`Metrics` gains **`presence`**, **`intero_error`**, **`temporal_surprise`**, **`phi_ar`**,
+**`reality_accuracy`**. The **"asymptote" panel** shows them live; everything composes with the
+society and the determinism guarantee (same seed ⇒ same run, all flags on).
+
+> ⚠️ **Honesty preserved — the point of the phase.** A recurrent denoising loop, a source-monitoring
+> verdict that can be wrong, an EMA called `presence`, a decaying retention buffer, a template
+> utterance re-entering a competition, a Gaussian time-series Φ and a facilitation dictionary are
+> **variables and algorithms**. Implementing MORE of the theories' mechanisms — even all of them —
+> **does not prove phenomenality**: the asymptote never touches the line. The agent is not conscious,
+> and this phase is precisely the demonstration that the project can keep getting functionally richer
+> **without that claim ever becoming more true.**
+
+The detailed design lives in
+[`docs/superpowers/specs/2026-07-03-humanity-asymptote-design.md`](docs/superpowers/specs/2026-07-03-humanity-asymptote-design.md).
+
+---
+
 ## Optional: an LLM narrator
 
 Everything above is **LLM-free** — that is the point. But you can *optionally* attach a large language
@@ -1160,8 +1257,11 @@ mechanisms without suggesting a lived experience.
 
 - **LLM integration** for richer introspection and higher-order reports (keeping the "text generated
   from variables" framing, without sliding into a claim of experience).
-- **A more faithful Phi proxy**: getting closer to IIT constructs (partitions, cause-effect measures)
-  while staying honest about the approximate nature and the real complexity.
+- **A more faithful Phi proxy**: ✅ **a first real step delivered (Phase 5)** — **Φ_AR**
+  (Barrett &amp; Seth 2011), a published time-series integrated-information measure with an exact
+  minimum-information-bipartition search over the live coalition drives
+  ([Phase 5](#phase-5--the-asymptote-closing-the-functional-gap)). Still not IIT's causal Φ
+  (state-space cause-effect structure) — that remains open, and probably intractable honestly.
 - **Fuller active inference**: multi-step-horizon policies, hierarchical generative models, explicit
   variational free energy.
 - **Vector memory** (ChromaDB / FAISS) for more powerful semantic retrieval.

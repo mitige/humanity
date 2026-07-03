@@ -32,7 +32,7 @@ COHERENCE_WINDOW: int = 12                 # ticks used to compute self-coherenc
 WORKSPACE_SOURCES: list[str] = [
     "perception", "memory", "motivation", "prediction_error",
     "interoception", "metacognition", "communication", "social",
-    "imagination", "dream", "concept",
+    "imagination", "dream", "concept", "inner_speech",
 ]
 SUBLIMINAL_FACTOR: float = 0.3       # broadcast strength multiplier when NOT ignited (subliminal)
 
@@ -55,6 +55,21 @@ IGNITION_SCORE_WINDOW: int = 24      # ticks of ignition-score history for adapt
 
 THEORY_FRAMING_FR = "Cette version vise une implementation de bonne foi, aussi fidele que possible, des mecanismes que les grandes theories scientifiques de la conscience proposent comme constitutifs ou necessaires : espace de travail global (GWT), schema attentionnel (AST), theories d'ordre superieur (HOT), inference active / energie libre, et information integree (IIT, proxy Phi). C'est une tentative theorique maximale. Elle reste incapable d'etablir la presence d'une experience subjective reelle (le hard problem) : reproduire les mecanismes fonctionnels ne prouve pas la phenomenalite."
 THEORY_FRAMING_EN = "This version is a good-faith attempt to implement, as faithfully as tractable, the mechanisms that the major scientific theories of consciousness propose as constitutive or necessary: the global workspace (GWT), the attention schema (AST), higher-order theories (HOT), active inference / free energy, and integrated information (IIT, Phi proxy). It is a maximal theoretical attempt. It still cannot establish the presence of real subjective experience (the hard problem): reproducing functional mechanisms does not prove phenomenality."
+
+# === Phase 5 — the asymptote (maximal level-2 coverage) ===
+# Every constant below parameterizes a FUNCTIONAL mechanism; none of them brings
+# the project closer to level 1 (phenomenal consciousness) — nothing can.
+RECURRENCE_STABLE_EPS: float = 0.005   # final-pass mean delta below which perception counts as stabilized
+INTERO_PRESENCE_EMA: float = 0.3       # smoothing of presence = EMA(1 - interoceptive error)
+INTERO_ENERGY_SCALE: float = 6.0       # energy-delta scale (REST_RECOVERY) normalizing intero error
+INTERO_FATIGUE_SCALE: float = 4.0      # fatigue-delta amplification normalizing intero error
+REALITY_ACCURACY_EMA: float = 0.25     # smoothing of the reality-monitor rolling accuracy
+REALITY_STABILITY_WINDOW: int = 6      # recent winners considered for the stability cue
+TEMPORAL_SURPRISE_GAIN: float = 0.5    # weight of protention violation in the arousal salience
+PHI_AR_MAX_SOURCES: int = 12           # cap on sources entering the exact bipartition search
+PHI_AR_RIDGE: float = 1e-6             # covariance ridge regularization (determinism/stability)
+INNER_SPEECH_PRECISION: float = 0.8    # precision of the re-entrant inner-speech coalition
+PRIMING_TRACE_FLOOR: float = 1e-4      # facilitation traces below this are dropped
 
 # === Society (multi-agent, v3) ===
 # Smoothing weights for the social layer (bounded EMA updates).

@@ -211,6 +211,7 @@ h1, h2, h3 { margin: 0; font-weight: 500; }
 .panel-hero      { grid-column: span 7; }
 .panel-deep      { grid-column: span 12; }
 .panel-learning  { grid-column: span 12; }
+.panel-asymptote { grid-column: span 12; }
 .panel-lab       { grid-column: span 12; }
 .panel-workspace { grid-column: span 5; }
 .panel-metrics   { grid-column: span 12; }
@@ -227,7 +228,7 @@ h1, h2, h3 { margin: 0; font-weight: 500; }
   .layout { grid-template-columns: repeat(6, 1fr); }
   .panel-hero, .panel-workspace, .panel-metrics, .panel-world,
   .panel-introspect, .panel-mem, .panel-config, .panel-deep,
-  .panel-learning, .panel-lab { grid-column: span 6; }
+  .panel-learning, .panel-asymptote, .panel-lab { grid-column: span 6; }
   .panel-ast { grid-column: span 6; }
   .panel-hot, .panel-self, .panel-wm { grid-column: span 3; }
 }

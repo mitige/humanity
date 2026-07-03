@@ -497,7 +497,8 @@ async def post_scenario_run(scenario: Scenario) -> ScenarioResult:
 
 @router.post("/battery/{test_name}", response_model=BatteryResult)
 async def post_battery(test_name: str, req: _BatteryReq) -> BatteryResult:
-    """Run a functional probe (mirror | false_memory | calibration | relational_self)."""
+    """Run a functional probe (mirror | false_memory | calibration | relational_self
+    | masking | blink | priming | reality_monitor)."""
     battery = ConsciousnessTestBattery()
     if test_name == "mirror":
         return battery.mirror_test(seed=req.seed, ticks=req.ticks)
@@ -509,7 +510,29 @@ async def post_battery(test_name: str, req: _BatteryReq) -> BatteryResult:
         # this probe runs isolated-vs-society and needs enough ticks for the
         # agents to come into mutual view.
         return battery.relational_self_test(seed=req.seed, ticks=max(int(req.ticks), 30))
+    # Phase 5 — psychophysics signatures of conscious ACCESS (functional). The
+    # ``ticks`` body field is the pre-stimulus warmup; it is clamped so the
+    # probes stay in the stimulus regime they were calibrated for.
+    if test_name == "masking":
+        return battery.masking_test(seed=req.seed, ticks=min(int(req.ticks), 4))
+    if test_name == "blink":
+        return battery.blink_test(seed=req.seed, ticks=min(int(req.ticks), 4))
+    if test_name == "priming":
+        return battery.priming_test(seed=req.seed, ticks=min(int(req.ticks), 4))
+    if test_name == "reality_monitor":
+        return battery.reality_monitor_test(seed=req.seed, ticks=max(int(req.ticks), 30))
     raise HTTPException(status_code=404, detail=f"unknown test '{test_name}'")
+
+
+@router.get("/agent/coverage")
+async def get_coverage() -> dict:
+    """The asymptote panel: which theory-proposed mechanisms are implemented and
+    active. A coverage CHECKLIST over level-2 mechanisms — explicitly NOT a
+    consciousness score and NOT a distance to level 1 (nothing measures that)."""
+    from core.coverage import coverage
+    payload = coverage(_manager().config)
+    payload["framing"] = THEORY_FRAMING_EN
+    return payload
 
 
 @router.get("/metrics/history")

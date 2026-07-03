@@ -21,6 +21,7 @@ from core.constants import (
     AROUSAL_THRESHOLD_GAIN,
     IGNITION_ADAPT,
     IGNITION_SCORE_WINDOW,
+    PRIMING_TRACE_FLOOR,
     SUBLIMINAL_FACTOR,
 )
 
@@ -39,6 +40,14 @@ class GlobalWorkspace:
         self._recent_winners: deque[str] = deque(maxlen=max(1, int(config.stream_length)))
         # Recent ignition scores -> homeostatic (relative-prominence) threshold.
         self._recent_scores: deque[float] = deque(maxlen=IGNITION_SCORE_WINDOW)
+        # Phase 5 (gated by ``priming_enabled``): residual facilitation traces
+        # deposited by content that failed global access — GWT's subliminal
+        # priming: unaccessed content still facilitates its own reprocessing.
+        # The bonus only applies to RETURNING content (absent from the previous
+        # competition): continuous presence is already handled by hysteresis,
+        # and without this gate a static scene would self-prime everything.
+        self._facilitation: dict[tuple[str, str], float] = {}
+        self._prev_keys: set[tuple[str, str]] = set()
 
     # ------------------------------------------------------------- factory
     @staticmethod
@@ -131,6 +140,22 @@ class GlobalWorkspace:
                 if c.source == maintenance_source:
                     drive[i] = float(np.clip(drive[i] + boost, 0.0, 1.0))
 
+        # 2b) Phase 5 — subliminal residual facilitation (gated): content that
+        #     previously failed global access left a decaying trace; a matching
+        #     re-presentation is facilitated (repetition priming WITHOUT access).
+        #     Deposits use the PRE-bonus drive, so traces cannot self-amplify.
+        pre_bonus_drive = drive.copy()
+        facilitation_applied = 0.0
+        if getattr(config, "priming_enabled", False) and self._facilitation:
+            gain = float(config.priming_gain)
+            for i, c in enumerate(coalitions):
+                key = (c.source, c.content)
+                if key in self._prev_keys:
+                    continue  # continuously present: hysteresis territory, not priming
+                trace = self._facilitation.get(key, 0.0)
+                if trace > 0.0:
+                    drive[i] = float(np.clip(drive[i] + gain * trace, 0.0, 1.0))
+
         # Softmax-normalized field (for the Phi-proxy distribution + UI bars).
         temp = max(1e-6, float(config.workspace_temp))
         shifted = drive / temp - float(np.max(drive / temp))
@@ -171,6 +196,27 @@ class GlobalWorkspace:
         # Record this tick's score for the next round's adaptive baseline.
         self._recent_scores.append(float(ignition_score))
 
+        # Phase 5 — facilitation bookkeeping (gated): report the winner's bonus,
+        # decay all traces, then let every coalition whose content was NOT
+        # globally broadcast this tick deposit its (pre-bonus) subliminal trace.
+        if getattr(config, "priming_enabled", False):
+            facilitation_applied = float(
+                max(0.0, drive[winner_idx] - pre_bonus_drive[winner_idx]))
+            decay = float(config.priming_decay)
+            self._facilitation = {
+                key: val * decay
+                for key, val in self._facilitation.items()
+                if val * decay >= PRIMING_TRACE_FLOOR
+            }
+            for i, c in enumerate(coalitions):
+                if ignited and i == winner_idx:
+                    continue  # broadcast content is consolidated, not primed
+                key = (c.source, c.content)
+                dep = float(pre_bonus_drive[i])
+                if dep >= PRIMING_TRACE_FLOOR:
+                    self._facilitation[key] = max(self._facilitation.get(key, 0.0), dep)
+            self._prev_keys = {(c.source, c.content) for c in coalitions}
+
         # 6) Broadcast strength: full when ignited, attenuated (subliminal) else.
         broadcast_strength = float(
             np.clip(ignition_score if ignited else ignition_score * SUBLIMINAL_FACTOR, 0.0, 1.0)
@@ -196,6 +242,7 @@ class GlobalWorkspace:
             dominance=round(dom_rel, 6),
             arousal=round(ar, 6),
             effective_threshold=round(effective_threshold, 6),
+            facilitation_applied=round(float(facilitation_applied), 6),
         )
 
     # ----------------------------------------------------- broadcast vector

@@ -26,6 +26,8 @@ from core.constants import (
     AROUSAL_EMA,
     AROUSAL_FLOOR,
     ENERGY_CAP_FACTOR,
+    TEMPORAL_SURPRISE_GAIN,
+    WORKSPACE_SOURCES,
 )
 from core.attention_schema import AttentionSchema
 from core.autobiographical_memory import AutobiographicalMemory
@@ -37,7 +39,9 @@ from core.emotion import EmotionModel
 from core.global_workspace import GlobalWorkspace
 from core.imagination import Imagination
 from core.individuation import compute_individuation
+from core.inner_speech import InnerSpeech
 from core.integration import IntegrationMonitor
+from core.interoception import InteroceptiveModel
 from core.introspection import DISCLAIMER_EN, Introspection
 from core.learning import PolicyLearner
 from core.meta_learning import MetaLearner
@@ -45,12 +49,16 @@ from core.metacognition import Metacognition
 from core.motivation import MotivationSystem
 from core.personality import PersonalityModel
 from core.perception import Perception
+from core.phi_ar import PhiARMonitor
 from core.policy import Policy
+from core.reality_monitor import RealityMonitor
+from core.recurrence import RecurrentPerception
 from core.self_model import SelfModel
 from core.self_opacity import assess_self_opacity
 from core.shared_world import SharedWorld
 from core.sleep import SleepCycle
 from core.social_emotion import apply_contagion, update_trust
+from core.temporality import Temporality
 from core.theory_of_mind import TheoryOfMind
 from core.working_memory import WorkingMemory
 from core.world import World
@@ -189,6 +197,18 @@ class CognitiveAgent:
         self.personality = PersonalityModel()
         self._concept_state: ConceptState | None = None
 
+        # Phase 5: asymptote mechanisms (active only when their flags are on).
+        # Each is a further FUNCTIONAL mechanism from the theories' roster; none
+        # approaches level 1 (phenomenal consciousness) — nothing can.
+        self.recurrent_perception = RecurrentPerception()
+        self.reality_monitor = RealityMonitor()
+        self.interoceptive = InteroceptiveModel()
+        self.temporality = Temporality()
+        self.inner_speech = InnerSpeech()
+        self.phi_ar_monitor = PhiARMonitor(WORKSPACE_SOURCES, config.phi_ar_window)
+        # Protention violation queued into the NEXT tick's arousal salience.
+        self._pending_temporal_surprise: float = 0.0
+
         # "Become someone": a standing individuation drive. The full state is
         # recomputed each tick and fed one-tick-deferred to the motivation drive;
         # enabling it also installs the explicit goal on the self-model.
@@ -230,6 +250,15 @@ class CognitiveAgent:
         # 2) Perceive: encode raw observation into relative percepts.
         seen_counts = self._shared_world.seen_counts if self._shared_world is not None else self.world.seen_counts
         percepts: list[Percept] = self.perception.encode(observation, seen_counts)
+
+        # Phase 5 — recurrent perception (RPT, gated): the noisy feed-forward
+        # readings are iteratively reconciled with the top-down prior still held
+        # in working memory (last tick's items), so perception becomes a
+        # stabilizing recurrent loop instead of a single sweep.
+        recurrence_state = None
+        if cfg.recurrence_enabled:
+            percepts, recurrence_state = self.recurrent_perception.refine(
+                percepts, self.working_memory.contents(), cfg)
 
         # Phase 3 — concept formation (gated): cluster a normalized percept feature
         # vector into emergent prototypes; the dominant concept bids in the workspace.
@@ -325,6 +354,11 @@ class CognitiveAgent:
         #     so stimuli / perturbations can push content over the ignition line.
         arousal = self._update_arousal(percepts, prev_error, cfg)
 
+        # Phase 5 — Φ_AR history (gated): record the raw specialist drives BEFORE
+        # the competition softmax-normalizes activations in place.
+        if cfg.phi_ar_enabled:
+            self.phi_ar_monitor.append(coalitions)
+
         # 7) Global workspace competition + broadcast (GWT ignition), modulated
         #    by arousal and sustained by the previously-ignited content.
         workspace = self.global_workspace.compete(
@@ -353,6 +387,35 @@ class CognitiveAgent:
             recent_errors=list(self._recent_errors),
             config=cfg,
         )
+
+        # Phase 5 — perceptual reality monitoring (PRM, gated): a higher-order
+        # verdict on WHERE the winning content comes from (world / memory /
+        # self-generated), inferred from content-level evidence only — and
+        # therefore capable of misattribution (hallucination analogue).
+        reality_state = None
+        if cfg.reality_monitor_enabled:
+            reality_state = self.reality_monitor.assess(
+                workspace=workspace,
+                recent_winners=list(self._recent_winners),
+                generation_activity={
+                    "imagination": bool(cfg.imagination_enabled
+                                        and self._pending_imagination is not None),
+                    "dream": bool(cfg.dream_enabled and self._pending_dream),
+                    "inner_speech": bool(cfg.inner_speech_enabled and any(
+                        c.source == "inner_speech" for c in workspace.competition)),
+                },
+            )
+
+        # Phase 5 — Φ_AR (gated): periodically recompute the Barrett–Seth
+        # time-series integrated information over the buffered drives; between
+        # computations the last state is held (cheap per-tick bookkeeping).
+        phi_ar_state = None
+        if cfg.phi_ar_enabled:
+            if self.phi_ar_monitor.ready() and (
+                    observation.tick % max(1, int(cfg.phi_ar_every)) == 0):
+                phi_ar_state = self.phi_ar_monitor.compute(observation.tick, cfg)
+            else:
+                phi_ar_state = self.phi_ar_monitor.last
 
         # Phase 2 — imagination (gated, awake only): a bounded mental rollout whose
         # preferred first action gives the policy a forward-looking bonus.
@@ -395,6 +458,14 @@ class CognitiveAgent:
             chosen_prediction = self._prediction_for(predictions, decision)
             consolidated, pruned = self.sleep_cycle.consolidate(self.memory, cfg)
             dream_text = self.sleep_cycle.dream(self.memory, cfg)
+
+        # Phase 5 — interoceptive inference (gated): predict the internal
+        # consequences (energy/fatigue deltas) of the chosen action from a
+        # DEDICATED generative model, before acting (Seth's beast-machine layer).
+        intero_pred: tuple[float, float] | None = None
+        fatigue_before = float(self.last_emotion.fatigue)
+        if cfg.intero_inference_enabled:
+            intero_pred = self.interoceptive.predict(decision.action.value)
 
         # 10) Act on the world.
         if self._shared_world is not None:
@@ -486,6 +557,26 @@ class CognitiveAgent:
                 drift=float(cfg.personality_drift))
             emotion = self.personality.modulate(emotion)
 
+        # Phase 5 — interoceptive inference, comparison step (gated): score the
+        # realized internal deltas against the prediction; interoceptive surprise
+        # feeds functional affect (confusion up, satisfaction down) and the
+        # smoothed ``presence`` scalar rises while the body unfolds as predicted.
+        interoception_state = None
+        if cfg.intero_inference_enabled and intero_pred is not None:
+            interoception_state = self.interoceptive.observe(
+                decision.action.value,
+                predicted_energy_delta=float(intero_pred[0]),
+                actual_energy_delta=float(result.energy_delta),
+                predicted_fatigue_delta=float(intero_pred[1]),
+                actual_fatigue_delta=float(emotion.fatigue) - fatigue_before,
+                config=cfg,
+            )
+            ierr = float(interoception_state.error)
+            emotion = emotion.model_copy(update={
+                "confusion": float(min(1.0, emotion.confusion + 0.25 * ierr)),
+                "satisfaction": float(max(0.0, emotion.satisfaction - 0.15 * ierr)),
+            })
+
         # Phase 2 — sense of agency (gated): did my own action unfold as predicted?
         agency_state = self.agency.compute(chosen_prediction, result) if cfg.agency_enabled else None
 
@@ -509,6 +600,23 @@ class CognitiveAgent:
             chosen_prediction=chosen_prediction,
         )
         self._stream.append(conscious_moment)
+
+        # Phase 5 — temporal thickness (gated): retention of the just-past,
+        # protention of the just-coming, and the violation of the PREVIOUS
+        # protention (temporal surprise), queued into the next tick's arousal.
+        temporality_state = None
+        if cfg.temporality_enabled:
+            temporality_state = self.temporality.update(list(self._stream), cfg)
+            self._pending_temporal_surprise = float(
+                temporality_state.protention_error or 0.0)
+
+        # Phase 5 — inner speech (gated): condense THIS moment into a
+        # self-directed utterance that re-enters the NEXT competition; score
+        # whether the previous utterance won global access this tick (re-entry).
+        inner_speech_state = None
+        if cfg.inner_speech_enabled:
+            inner_speech_state = self.inner_speech.generate(
+                conscious_moment, workspace, cfg)
 
         # 15) Self-model update; fold the conscious contents into the narrative.
         #     When the social mirror is on, the regard of the other agents (a
@@ -598,6 +706,13 @@ class CognitiveAgent:
             effective_learning_rate=round(float(effective_lr), 6),
             concept_match=round(float(concept_state.match), 4) if concept_state else 0.0,
             n_concepts=int(concept_state.n_concepts) if concept_state else 0,
+            presence=round(float(interoception_state.presence), 4) if interoception_state else 0.0,
+            intero_error=round(float(interoception_state.error), 4) if interoception_state else 0.0,
+            temporal_surprise=(round(float(temporality_state.protention_error), 4)
+                               if (temporality_state is not None
+                                   and temporality_state.protention_error is not None) else 0.0),
+            phi_ar=round(float(phi_ar_state.phi_ar), 4) if phi_ar_state else 0.0,
+            reality_accuracy=round(float(reality_state.accuracy), 4) if reality_state else 0.0,
         )
 
         # Publish this agent's social signal so others can perceive it.
@@ -692,6 +807,12 @@ class CognitiveAgent:
             personality=personality_state,
             self_opacity=self_opacity_state,
             individuation=individuation_state,
+            recurrence=recurrence_state,
+            reality_monitor=reality_state,
+            interoception=interoception_state,
+            temporality=temporality_state,
+            inner_speech=inner_speech_state,
+            phi_ar=phi_ar_state,
         )
         # Per-tick JSONL trace write is the second-largest per-tick I/O cost;
         # ``trace_logging=False`` skips it for fast/headless training.
@@ -808,9 +929,14 @@ class CognitiveAgent:
         max_novelty = max((float(p.novelty) for p in percepts), default=0.0)
         surprise = float(self._pending_surprise)
         gain = float(cfg.arousal_gain)
+        # Phase 5 — temporal surprise (gated): a violated protention (the moment
+        # departing from what was anticipated) summons vigilance on this tick.
+        temporal = float(self._pending_temporal_surprise) if cfg.temporality_enabled else 0.0
+        self._pending_temporal_surprise = 0.0
         # Salience in [0,1]: how much the current situation demands vigilance.
         salience = gain * (
             0.55 * max_danger + 0.35 * max_novelty + 0.45 * float(prev_error) + 0.6 * surprise
+            + TEMPORAL_SURPRISE_GAIN * temporal
         )
         salience = min(1.0, max(0.0, salience))
         # Target arousal tracks salience directly so vigilance can dip BELOW the
@@ -936,12 +1062,18 @@ class CognitiveAgent:
         energy_norm = float(self_state.energy) / max(1.0, float(cfg.initial_energy))
         low_energy = max(0.0, 1.0 - energy_norm)
         intero_activation = max(low_energy, float(emotion.fatigue), abs(float(self_state.mood)))
+        # Phase 5 (gated): when interoceptive inference runs, the channel's
+        # precision IS the presence scalar — a well-predicted internal milieu is
+        # a trustworthy interoceptive signal (Seth's precision-weighting).
+        intero_precision = (float(self.interoceptive.presence)
+                            if cfg.intero_inference_enabled
+                            else float(self_state.confidence))
         coalitions.append(
             mk(
                 "interoception",
                 "interoception: internal bodily state",
                 activation=float(intero_activation),
-                precision=float(self_state.confidence),
+                precision=intero_precision,
                 vector=[
                     float(min(energy_norm, 1.0)),
                     float(emotion.fatigue),
@@ -1008,6 +1140,14 @@ class CognitiveAgent:
                 "concept", f"concept #{cs.dominant_concept}",
                 activation=float(max(0.0, min(1.0, cs.match))), precision=0.6,
                 vector=[float(cs.match), 0.0, 0.0, 0.0]))
+
+        # Phase 5 — inner-speech coalition (gated, one-tick latency): the
+        # PREVIOUS moment's condensed self-directed utterance re-enters the
+        # competition and may win global access (re-entry).
+        if cfg.inner_speech_enabled:
+            isc = self.inner_speech.coalition(self.global_workspace.make_coalition, cfg)
+            if isc is not None:
+                coalitions.append(isc)
 
         return coalitions
 
@@ -1324,6 +1464,13 @@ class CognitiveAgent:
                     "broadcast_strength": float(ws.broadcast_strength),
                     "threshold": float(ws.threshold),
                 },
+                # Phase 5 sub-states (null unless their flags are on).
+                "recurrence": trace.recurrence.model_dump() if trace.recurrence else None,
+                "reality_monitor": trace.reality_monitor.model_dump() if trace.reality_monitor else None,
+                "interoception": trace.interoception.model_dump() if trace.interoception else None,
+                "temporality": trace.temporality.model_dump() if trace.temporality else None,
+                "inner_speech": trace.inner_speech.model_dump() if trace.inner_speech else None,
+                "phi_ar": trace.phi_ar.model_dump() if trace.phi_ar else None,
             }
         # No cycle yet: neutral placeholders.
         return {
@@ -1338,6 +1485,12 @@ class CognitiveAgent:
                 "broadcast_strength": 0.0,
                 "threshold": float(self.config.ignition_threshold),
             },
+            "recurrence": None,
+            "reality_monitor": None,
+            "interoception": None,
+            "temporality": None,
+            "inner_speech": None,
+            "phi_ar": None,
         }
 
     def stream(self, n: int) -> list[ConsciousMoment]:
