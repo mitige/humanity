@@ -937,7 +937,14 @@
         lastTick = tick;
         // canonical arousal source: GET /state.arousal
         if (state.arousal != null) renderArousal(state.arousal, configValue("arousal_baseline"));
-        if (typeof state.running === "boolean") setRunningUI(state.running);
+        if (typeof state.running === "boolean") {
+          setRunningUI(state.running);
+          // keep the poll loop in lockstep with the BACKEND's running state:
+          // a run now survives page reloads and config patches, so polling
+          // must follow the server, not only the local Start/Pause clicks.
+          if (state.running && !pollTimer) startPolling();
+          else if (!state.running && pollTimer) stopPolling();
+        }
         renderWorkingMemory(state.working_memory || null, num(state.working_memory_load));
         if (state.self_model && !self) renderSelfModel(state.self_model);
         if (state.disclaimer) $("#footer-disclaimer").textContent = state.disclaimer;
@@ -952,17 +959,21 @@
       if (self) renderSelfModel(self);
       renderMemories(mem || []);
       if (intro) renderIntrospection(intro);
+      // The optional trace sub-objects (learning, personality, sleep, opacity,
+      // individuation, asymptote…) now ride on GET /agent/consciousness, so
+      // every panel refreshes during BACKGROUND runs; a client-side CycleTrace
+      // (manual Step) is only the fallback.
+      const traceish = consciousness || lastTrace;
       // deep-consciousness panel (Phase 2) — guarded so it can't break the loop
-      try { refreshDeep(state, lastTrace); } catch (e) { /* non-fatal */ }
-      // learning & personality panel (Phase 3) — driven by the last /tick trace
-      try { refreshLearning(lastTrace); } catch (e) { /* non-fatal */ }
-      // self-opacity readout (HOT, level-2) — rides on the last /tick trace
-      try { renderSelfOpacity(lastTrace); } catch (e) { /* non-fatal */ }
-      // individuation ("becoming someone", level-2) — rides on the last /tick trace
-      try { renderIndividuation(lastTrace); } catch (e) { /* non-fatal */ }
-      // the asymptote (Phase 5) — /agent/consciousness carries the sub-states
-      // during background runs; the last /tick trace is the fallback
-      try { renderAsymptote(consciousness || lastTrace); } catch (e) { /* non-fatal */ }
+      try { refreshDeep(state, traceish); } catch (e) { /* non-fatal */ }
+      // learning & personality panel (Phase 3)
+      try { refreshLearning(traceish); } catch (e) { /* non-fatal */ }
+      // self-opacity readout (HOT, level-2)
+      try { renderSelfOpacity(traceish); } catch (e) { /* non-fatal */ }
+      // individuation ("becoming someone", level-2)
+      try { renderIndividuation(traceish); } catch (e) { /* non-fatal */ }
+      // the asymptote (Phase 5)
+      try { renderAsymptote(traceish); } catch (e) { /* non-fatal */ }
       // laboratory time series (Phase 4) — guarded so it can't break the loop
       try { await refreshLabChart(); } catch (e) { /* non-fatal */ }
       // society view updates alongside the single-agent instrument

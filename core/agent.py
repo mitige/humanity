@@ -1452,6 +1452,10 @@ class CognitiveAgent:
         trace = self.last_trace
         ws = self.workspace_state()
         if trace is not None:
+            def _opt(name):
+                v = getattr(trace, name, None)
+                return v.model_dump() if v is not None else None
+
             return {
                 "conscious_moment": trace.conscious_moment.model_dump(),
                 "attention_schema": trace.attention_schema.model_dump(),
@@ -1463,14 +1467,33 @@ class CognitiveAgent:
                     "winner_content": ws.winner_content,
                     "broadcast_strength": float(ws.broadcast_strength),
                     "threshold": float(ws.threshold),
+                    # ignition diagnostics, so the UI gate reads correctly from
+                    # this payload alone (not only from /agent/workspace).
+                    "ignition_score": float(ws.ignition_score),
+                    "effective_threshold": float(ws.effective_threshold),
+                    "winner_strength": float(ws.winner_strength),
+                    "dominance": float(ws.dominance),
+                    "arousal": float(ws.arousal),
                 },
-                # Phase 5 sub-states (null unless their flags are on).
-                "recurrence": trace.recurrence.model_dump() if trace.recurrence else None,
-                "reality_monitor": trace.reality_monitor.model_dump() if trace.reality_monitor else None,
-                "interoception": trace.interoception.model_dump() if trace.interoception else None,
-                "temporality": trace.temporality.model_dump() if trace.temporality else None,
-                "inner_speech": trace.inner_speech.model_dump() if trace.inner_speech else None,
-                "phi_ar": trace.phi_ar.model_dump() if trace.phi_ar else None,
+                # Every optional trace sub-object (null unless its flag is on),
+                # so the UI panels can refresh during BACKGROUND runs — a full
+                # CycleTrace only exists client-side after a manual /tick.
+                "circadian": _opt("circadian"),
+                "sleep": _opt("sleep"),
+                "imagination": _opt("imagination"),
+                "curiosity": _opt("curiosity"),
+                "agency": _opt("agency"),
+                "learning": _opt("learning"),
+                "concept": _opt("concept"),
+                "personality": _opt("personality"),
+                "self_opacity": _opt("self_opacity"),
+                "individuation": _opt("individuation"),
+                "recurrence": _opt("recurrence"),
+                "reality_monitor": _opt("reality_monitor"),
+                "interoception": _opt("interoception"),
+                "temporality": _opt("temporality"),
+                "inner_speech": _opt("inner_speech"),
+                "phi_ar": _opt("phi_ar"),
             }
         # No cycle yet: neutral placeholders.
         return {
