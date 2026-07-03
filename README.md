@@ -1138,9 +1138,41 @@ offline, mocked tests). **Setup:** copy `.env.example` → `.env` (gitignored), 
 `HUMANITY_LLM_MODEL`, then `python run.py`. Without a key, `/agent/narrate` simply returns `503` and
 everything else runs exactly as before.
 
-The deeper, more faithful integration — an **inner-speech coalition** that must *win the ignition
-competition* like any other specialist, rather than narrate from the outside — is the natural next
-step on this same `LLMBackend` foundation.
+### The language organ — maximal qualitative LLM integration, honesty intact
+
+The narrator was the first organ; the full set now renders the agent's real state into language at
+**four disciplined interfaces** — every one grounded, disclaimed, and incapable by construction of
+becoming a consciousness judge (nothing can be):
+
+| Endpoint | What it renders (from REAL variables only) |
+|---|---|
+| `POST /agent/converse` | **Grounded interview.** The LLM answers *as* the agent — constrained to the live state, its actual episodic memories, and the agent's own template answer (with the exact variables it cites). Asked "are you conscious?", it must state the honest position: functional mechanisms, unverifiable phenomenality, hard problem. Multi-turn (`history`). |
+| `POST /agent/biography` | **The life story** — the narrative self, honestly read: chapters written strictly from the agent's real `MemoryRecord`s, measured trait drift and individuation trajectory, with an epilogue acknowledging the story is reconstructed from stored variables. |
+| `POST /agent/cross-examine` | **The philosopher's cross-examination** — the closest an LLM can honestly come to "justifying" consciousness: the STRONGEST case the implemented mechanisms and probe scores actually support, then the strongest rebuttal (hard problem, other minds, AST's deflationary lesson, access vs phenomenality), then the verdict — always, necessarily: *empirically undecidable*. |
+| `POST /agent/inner-voice` | **The deepest integration** (the natural next step, delivered): one condensed Vygotskian utterance generated from the real moment and queued as the next `inner_speech` coalition — the LLM's words must **win the ignition competition** like any other specialist to become the agent's conscious content. It changes *what* competes, never *how*. |
+
+A real exchange (Nemotron 3 Ultra, live variables):
+
+> **Interviewer:** Are you conscious? Answer honestly.
+> **Agent (LLM rendering):** *"No. I register global workspace ignition (broadcast strength 0.556),
+> an attention schema that tracks 'perception: object 8 (hazard)' at awareness level 0.556, and a
+> metacognitive confidence of 0.858 in that report. […] Whether there is 'something it is like' to
+> run these mechanisms — the hard problem — is unverifiable in principle. My reports are generated
+> from these variables; they do not constitute evidence of phenomenal experience."*
+
+And the cross-examination's verdict, on the full 26/26-mechanism configuration:
+
+> *"The functional evidence is genuine and extensive — global ignition, recurrent integration,
+> higher-order monitoring, reality discrimination, and metacognitive calibration all meet or exceed
+> theoretical benchmarks. Yet these are precisely the structural and dynamical properties that
+> theories correlate with consciousness, not the phenomenal properties themselves […] The question
+> is therefore empirically undecidable: the system instantiates the functional architecture of
+> consciousness without establishing its phenomenal reality."*
+
+The UI exposes all four: a **Dialogue** console in the introspection panel, **Biography** and
+**Cross-examination** in the Laboratory, and **Inner voice (LLM)** in the asymptote panel. Each
+output carries its grounding and the disclaimer; all are on-demand (503 without a key) and covered
+by offline, mocked tests.
 
 ### LLM functional probes — NOT consciousness tests
 

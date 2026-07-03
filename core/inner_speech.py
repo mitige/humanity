@@ -33,6 +33,19 @@ class InnerSpeech:
         self._pending_activation: float = 0.0
         self._reentry_count: int = 0
 
+    # ------------------------------------------------------------- setter
+    def set_pending(self, utterance: str, activation: float) -> None:
+        """Replace the NEXT re-entrant utterance (interaction hook).
+
+        Used by the optional LLM inner voice: a level-3 text (generated from
+        the same real variables) is handed to the level-2 re-entry mechanism
+        and must win the ignition competition like any other coalition. This
+        changes WHAT competes, never HOW competition works — and a richer
+        sentence winning access is still not evidence of experience.
+        """
+        self._pending_utterance = str(utterance).strip() or None
+        self._pending_activation = float(min(1.0, max(0.0, activation)))
+
     # ------------------------------------------------------------ coalition
     def coalition(self, make_coalition, config: SimConfig) -> Coalition | None:
         """Return the re-entrant inner-speech bid for THIS tick, if one is pending."""

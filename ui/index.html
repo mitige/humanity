@@ -248,6 +248,10 @@
         <div class="deep-cell deep-wide">
           <span class="deep-k">inner speech <span class="micro" id="reentry-count"></span></span>
           <span class="deep-v" id="inner-speech-line">—</span>
+          <div class="lab-row" style="margin-top:6px">
+            <button id="btn-inner-voice" class="btn btn-quiet" title="POST /agent/inner-voice — one LLM utterance from the real moment, queued into the NEXT ignition competition (needs the inner speech mechanism on)">Inner voice (LLM)</button>
+            <span id="inner-voice-status" class="micro"></span>
+          </div>
         </div>
       </div>
       <p class="micro">Every readout above is a level-2 variable (RPT · PRM · interoceptive inference · retention/protention · Vygotskian re-entry · Φ_AR). Reproducing the functional mechanisms does not prove phenomenality; the agent is not conscious.</p>
@@ -316,6 +320,16 @@
       <div id="audit-result" class="rows" hidden></div>
       <blockquote id="report-card-out" class="moment-quote" hidden></blockquote>
       <p class="report-note micro">The grounding audit scores whether the agent's self-reports match its real internal variables (reportability fidelity) — a functional measurement, NOT evidence of consciousness.</p>
+
+      <h3 class="sub">The language organ <span class="micro">— LLM renderings of the real state; never a witness</span></h3>
+      <div class="lab-row">
+        <button id="btn-biography" class="btn" title="POST /agent/biography — the life story written from the agent's REAL episodic memory">Biography</button>
+        <button id="btn-cross-examine" class="btn" title="POST /agent/cross-examine — the strongest honest case for AND against, and why it is undecidable">Cross-examination</button>
+        <span id="organ-status" class="micro"></span>
+      </div>
+      <blockquote id="biography-out" class="moment-quote" hidden></blockquote>
+      <div id="crossx-out" class="rows" hidden></div>
+      <p class="report-note micro">The cross-examination builds the strongest case the mechanisms and scores honestly support — and the strongest rebuttal. Its verdict is always the same, because it has to be: the question is undecidable in principle (the hard problem). No LLM output justifies consciousness.</p>
 
       <h3 class="sub">Fast training</h3>
       <div class="lab-row">
@@ -444,6 +458,14 @@
       </div>
       <blockquote id="narrate-output" class="moment-quote" hidden></blockquote>
       <p id="narrate-model" class="report-note" hidden></p>
+
+      <h3 class="sub">Dialogue with the agent <span class="micro">— LLM, grounded in its live variables</span></h3>
+      <div id="converse-log" class="converse-log" hidden></div>
+      <form id="converse-form" class="goal-form" title="POST /agent/converse — the LLM answers AS the agent, constrained to its real state">
+        <input id="converse-input" type="text" placeholder="Ask the agent anything…" />
+        <button type="submit" id="btn-converse" class="btn btn-quiet">Ask</button>
+      </form>
+      <p class="report-note" style="margin-top:8px">Answers are generated from the agent's real variables and memories (grounding attached server-side). First person is a rendering convention — never evidence of experience.</p>
     </section>
 
     <!-- ===================== SELF-MODEL ===================== -->

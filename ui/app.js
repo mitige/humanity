@@ -1594,6 +1594,120 @@
     }
   });
 
+  // ---------- the language organ: converse / biography / cross-examination /
+  // inner voice. All on-demand LLM renderings of the REAL state — grounded
+  // server-side, never a witness, never a judge of consciousness. ----------
+  const conversationHistory = [];
+
+  $("#converse-form")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const input = $("#converse-input");
+    const log = $("#converse-log");
+    const btn = $("#btn-converse");
+    const question = (input.value || "").trim();
+    if (!question || !log) return;
+    // render the interviewer's turn immediately
+    log.hidden = false;
+    const qEl = el("div", "cv-turn cv-q");
+    qEl.appendChild(el("span", "cv-who", "interviewer"));
+    qEl.appendChild(el("div", "cv-text", esc(question)));
+    log.appendChild(qEl);
+    input.value = "";
+    btn.disabled = true;
+    const aEl = el("div", "cv-turn cv-a");
+    aEl.appendChild(el("span", "cv-who", "agent (LLM rendering)"));
+    const aText = el("div", "cv-text", "…");
+    aEl.appendChild(aText);
+    log.appendChild(aEl);
+    log.scrollTop = log.scrollHeight;
+    try {
+      const r = await postJSON("agent/converse",
+        { question, history: conversationHistory.slice(-6) });
+      aText.innerHTML = esc(r.answer || "(empty)");
+      conversationHistory.push({ role: "interviewer", content: question });
+      conversationHistory.push({ role: "agent", content: r.answer || "" });
+    } catch (e) {
+      aText.innerHTML = esc("LLM unavailable (set OPENROUTER_API_KEY in .env).");
+      aEl.classList.add("cv-error");
+    } finally {
+      btn.disabled = false;
+      log.scrollTop = log.scrollHeight;
+    }
+  });
+
+  $("#btn-biography")?.addEventListener("click", async () => {
+    const btn = $("#btn-biography");
+    const status = $("#organ-status");
+    const out = $("#biography-out");
+    btn.disabled = true;
+    if (status) status.textContent = "writing the life story from the real records…";
+    try {
+      const r = await postJSON("agent/biography", {});
+      out.textContent = r.biography || "(empty)";
+      out.hidden = false;
+      if (status) status.textContent = "";
+    } catch (e) {
+      if (status) status.textContent = "LLM unavailable (set OPENROUTER_API_KEY in .env).";
+      out.hidden = true;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $("#btn-cross-examine")?.addEventListener("click", async () => {
+    const btn = $("#btn-cross-examine");
+    const status = $("#organ-status");
+    const box = $("#crossx-out");
+    btn.disabled = true;
+    // runs the functional batteries + one LLM call server-side
+    if (status) status.textContent = "cross-examining… (runs the batteries + LLM, ~20-40s)";
+    try {
+      const r = await postJSON("agent/cross-examine", {});
+      box.innerHTML = "";
+      const section = (title, text, cls) => {
+        if (!text) return;
+        const row = el("div", "row" + (cls ? " " + cls : ""));
+        const top = el("div", "row-top");
+        top.appendChild(el("span", "row-title", title));
+        row.appendChild(top);
+        row.appendChild(el("div", "row-sub", esc(text)));
+        box.appendChild(row);
+      };
+      section("The strongest honest case for", r.case_for);
+      section("The strongest rebuttal", r.case_against);
+      section("Verdict — undecidable in principle", r.verdict, "crossx-verdict");
+      const g = r.grounding || {};
+      section("Grounding", "coverage " + (g.coverage || "—") + " · probes: " +
+        Object.entries(g.probes || {}).map(([k, v]) => k + "=" + f2(v)).join(" · "));
+      box.hidden = false;
+      if (status) status.textContent = "";
+    } catch (e) {
+      if (status) status.textContent = "LLM unavailable (set OPENROUTER_API_KEY in .env).";
+      box.hidden = true;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $("#btn-inner-voice")?.addEventListener("click", async () => {
+    const btn = $("#btn-inner-voice");
+    const status = $("#inner-voice-status");
+    btn.disabled = true;
+    if (status) status.textContent = "generating…";
+    try {
+      const r = await postJSON("agent/inner-voice", {});
+      if (status) {
+        status.textContent = r.entered
+          ? "“" + (r.utterance || "") + "” — queued for the next ignition competition"
+          : (r.note || "not queued");
+      }
+    } catch (e) {
+      if (status) status.textContent = "LLM unavailable (set OPENROUTER_API_KEY in .env).";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   // ============================================================
   //  INIT
   // ============================================================

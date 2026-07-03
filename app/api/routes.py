@@ -261,6 +261,79 @@ async def post_report_card() -> dict:
         raise HTTPException(status_code=502, detail=str(exc))
 
 
+class _ConverseReq(BaseModel):
+    question: str
+    history: list[dict] = []
+
+
+def _llm_backend_or_503(feature: str):
+    """Shared guard for the optional language-organ endpoints."""
+    from core.llm import get_backend
+    backend = get_backend()
+    if not backend.available():
+        raise HTTPException(status_code=503,
+                            detail=f"No LLM backend configured. Set OPENROUTER_API_KEY to enable {feature}.")
+    return backend
+
+
+@router.post("/agent/converse")
+async def post_converse(req: _ConverseReq) -> dict:
+    """(Optional LLM) Grounded interview: the LLM answers AS agent 0, constrained
+    to its live variables, real memories and its own template answer. Reportability
+    (GWT/HOT) rendered fluently — first person is a convention, never a witness, and
+    no answer is evidence of consciousness. 503 if no LLM key is configured."""
+    from core.llm import converse
+    backend = _llm_backend_or_503("/agent/converse")
+    try:
+        return converse(backend, _agent0(), req.question, req.history)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@router.post("/agent/biography")
+async def post_biography() -> dict:
+    """(Optional LLM) The agent's life story, written strictly from its REAL
+    episodic memory records and measured trait trajectory (the narrative self,
+    honestly read). A reconstructed story is not a lived one; not evidence of
+    consciousness. 503 if no LLM key is configured."""
+    from core.llm import biography
+    backend = _llm_backend_or_503("/agent/biography")
+    try:
+        return biography(backend, _agent0())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@router.post("/agent/cross-examine")
+async def post_cross_examine() -> dict:
+    """(Optional LLM) The philosopher's cross-examination: the STRONGEST honest case
+    that the system instantiates the functional properties the theories describe,
+    the strongest rebuttal, and the reason the question is undecidable in principle.
+    It never concludes the agent is conscious — nothing can establish that. 503 if
+    no LLM key is configured."""
+    from core.llm import cross_examine
+    backend = _llm_backend_or_503("/agent/cross-examine")
+    try:
+        return cross_examine(backend, _agent0())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@router.post("/agent/inner-voice")
+async def post_inner_voice() -> dict:
+    """(Optional LLM) Generate one condensed inner-speech line from agent 0's real
+    moment and queue it as the next ``inner_speech`` coalition: the LLM's words must
+    WIN the ignition competition to become the agent's conscious content — re-entry
+    through the real mechanism, not narration from outside. Requires the
+    inner_speech mechanism to be enabled to actually compete. 503 if no LLM key."""
+    from core.llm import inner_voice
+    backend = _llm_backend_or_503("/agent/inner-voice")
+    try:
+        return inner_voice(backend, _agent0())
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
 @router.post("/world/stimulus")
 async def post_world_stimulus(stim: WorldStimulus) -> dict:
     """World stimulus: inject a real object into the shared world near agent 0."""
