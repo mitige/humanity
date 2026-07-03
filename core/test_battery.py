@@ -341,6 +341,56 @@ class ConsciousnessTestBattery:
                                      "reps": int(reps)},
                              interpretation=interp, disclaimer=BATTERY_DISCLAIMER)
 
+    def language_genesis_test(self, seed: int = 42, ticks: int = 120) -> BatteryResult:
+        """Does a shared lexicon EMERGE when the invent-a-language drive is on?
+
+        Runs the same society (4 agents, hermetic, in-RAM) with the language
+        drive ON vs OFF for the same ticks, then measures the naming-game
+        outcomes: lexical convergence (mean agreement on each meaning's modal
+        word), meanings named, and communicative success. Score = convergence
+        with the drive on (0 when no meaning is shared). Emergent conventions
+        over strength tables — NOT understanding, reference, intention, or any
+        evidence of consciousness.
+        """
+        from core.society import SocietyManager
+
+        def run(drive: bool):
+            # A denser meeting ground (smaller grid, wider earshot) so the
+            # naming game gets enough encounters within the probe's budget.
+            mgr = SocietyManager(SimConfig(
+                n_agents=4, world_noise=0.1, random_seed=int(seed),
+                grid_size=10, comm_radius=8, satiation_enabled=True,
+                persist_memory=False, trace_logging=False,
+                language_drive_enabled=drive))
+            for _ in range(int(ticks)):
+                mgr.tick()
+            summary = mgr.language_summary()
+            successes = [float(ag.lexicon.success_rate) for ag in mgr.agents.values()]
+            vocab = [len(ag.lexicon.vocabulary()) for ag in mgr.agents.values()]
+            return summary, _mean(successes), _mean(vocab)
+
+        on, on_success, on_vocab = run(True)
+        off, off_success, off_vocab = run(False)
+        convergence = float(on["convergence"] or 0.0)
+        interp = (f"a shared lexicon emerged: {on['n_meanings_named']} meaning(s) named, "
+                  f"convergence {convergence:.2f}, communicative success {on_success:.2f} "
+                  "— conventions born from the naming game, absent without the drive"
+                  if convergence > 0.5 and on["n_meanings_named"] >= 2 else
+                  "no clear shared lexicon emerged at this setting")
+        return BatteryResult(
+            test="language_genesis", score=round(convergence, 4),
+            detail={"drive_on": {"convergence": on["convergence"],
+                                 "n_meanings_named": on["n_meanings_named"],
+                                 "mean_success": round(on_success, 4),
+                                 "mean_vocabulary": round(on_vocab, 2),
+                                 "dictionary": {m: d["modal_word"]
+                                                for m, d in on["dictionary"].items()}},
+                    "drive_off": {"convergence": off["convergence"],
+                                  "n_meanings_named": off["n_meanings_named"],
+                                  "mean_success": round(off_success, 4)},
+                    "ticks": int(ticks)},
+            interpretation=interp, disclaimer=BATTERY_DISCLAIMER)
+
     def reality_monitor_test(self, seed: int = 42, ticks: int = 40) -> BatteryResult:
         """Source-monitoring accuracy under generative load (PRM probe).
 

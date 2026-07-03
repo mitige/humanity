@@ -593,6 +593,8 @@
     intero_inference_enabled: true, temporality_enabled: true,
     inner_speech_enabled: true, phi_ar_enabled: true,
     priming_enabled: true,
+    // Phase 6 — the invention of language (naming games)
+    language_drive_enabled: true,
   };
 
   // applyControlStates — reflect a config object into the Settings-panel DOM so
@@ -825,6 +827,85 @@
       isd ? "· re-entries: " + num(isd.reentry_count) : "";
   }
 
+  // the invention of language (Phase 6, level-2) — the agent-side readouts ride
+  // on the trace/consciousness payload (language sub-object); the SOCIETY-side
+  // dictionary + convergence come from GET /society/language. Emergent
+  // naming-game conventions — never understanding, never experience.
+  function renderLanguage(src) {
+    const lang = (src || {}).language;
+    const sf = $("#lang-success-fill"), sv = $("#lang-success-val");
+    const df = $("#lang-deficit-fill"), dv = $("#lang-deficit-val");
+    if (sf) sf.style.width = lang ? (clamp01(num(lang.success_rate)) * 100).toFixed(1) + "%" : "0";
+    if (sv) sv.textContent = lang ? f2(lang.success_rate) + " · " + num(lang.n_exchanges) + " exchanges" : "—";
+    if (df) df.style.width = lang ? (clamp01(num(lang.deficit)) * 100).toFixed(1) + "%" : "0";
+    if (dv) dv.textContent = lang ? f2(lang.deficit) : "—";
+
+    const ex = $("#lang-exchange");
+    if (ex) {
+      if (lang && lang.utterance) {
+        ex.textContent = "spoke “" + lang.utterance.word + "” (" + lang.utterance.meaning + ")";
+      } else if (lang && lang.heard && lang.heard.length) {
+        const h = lang.heard[lang.heard.length - 1];
+        ex.textContent = "heard “" + h.word + "” from agent " + h.sender_id
+          + (h.inferred_meaning ? " → read as " + h.inferred_meaning : " → no context")
+          + (h.understood ? " ✓" : "");
+      } else {
+        ex.textContent = "—";
+      }
+    }
+
+    const vocab = $("#lang-vocab");
+    if (vocab) {
+      vocab.innerHTML = "";
+      const entries = lang ? Object.entries(lang.vocabulary || {}) : [];
+      if (!entries.length) {
+        vocab.appendChild(el("span", "chip chip-empty", "no invented words yet"));
+      } else {
+        entries.forEach(([meaning, word]) => {
+          vocab.appendChild(el("span", "chip lang-chip kind-" + esc(meaning),
+            "“" + esc(word) + "” = " + esc(meaning)));
+        });
+      }
+    }
+  }
+
+  async function refreshSocietyLanguage() {
+    const box = $("#lang-dictionary");
+    if (!box) return;
+    let d;
+    try { d = await api("society/language"); } catch (e) { return; }
+    if ($("#lang-convergence")) {
+      $("#lang-convergence").textContent =
+        d.convergence != null ? f2(d.convergence) : "—";
+    }
+    if ($("#lang-distinct")) {
+      $("#lang-distinct").textContent = d.n_meanings_named
+        ? (d.n_meanings_named + " meaning(s) named · " + num(d.distinct_modal_words) + " distinct word(s)")
+        : "";
+    }
+    box.innerHTML = "";
+    const entries = Object.entries(d.dictionary || {});
+    if (!entries.length) {
+      box.appendChild(el("div", "empty", "No conventions yet — let the society talk."));
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    entries.forEach(([meaning, e]) => {
+      const row = el("div", "row");
+      const top = el("div", "row-top");
+      top.appendChild(el("span", "row-title kind-" + esc(meaning),
+        "“" + esc(e.modal_word) + "” = " + esc(meaning)));
+      top.appendChild(el("span", "row-tag",
+        "agreement " + f2(e.agreement) + " · " + num(e.speakers) + " speaker(s)"));
+      row.appendChild(top);
+      const variants = Object.entries(e.variants || {})
+        .map(([w, n]) => "“" + esc(w) + "”×" + n).join(" · ");
+      row.appendChild(el("div", "row-sub", variants));
+      frag.appendChild(row);
+    });
+    box.appendChild(frag);
+  }
+
   // ============================================================
   //  LEARNING & PERSONALITY (Phase 3) — Q-values / concept / personality
   // ============================================================
@@ -974,6 +1055,9 @@
       try { renderIndividuation(traceish); } catch (e) { /* non-fatal */ }
       // the asymptote (Phase 5)
       try { renderAsymptote(traceish); } catch (e) { /* non-fatal */ }
+      // the invention of language (Phase 6) — agent readouts + society dictionary
+      try { renderLanguage(traceish); } catch (e) { /* non-fatal */ }
+      try { await refreshSocietyLanguage(); } catch (e) { /* non-fatal */ }
       // laboratory time series (Phase 4) — guarded so it can't break the loop
       try { await refreshLabChart(); } catch (e) { /* non-fatal */ }
       // society view updates alongside the single-agent instrument
@@ -1035,6 +1119,8 @@
     // the asymptote (Phase 5) — recurrence / PRM / interoception / temporality /
     // inner speech / Φ_AR ride on the full trace
     try { renderAsymptote(trace); } catch (e) { /* non-fatal */ }
+    // the invention of language (Phase 6) — agent-side readouts
+    try { renderLanguage(trace); } catch (e) { /* non-fatal */ }
   }
 
   // ============================================================
@@ -1356,6 +1442,7 @@
   $("#btn-blink")?.addEventListener("click", runBattery("blink", { seed: 42, ticks: 3 }));
   $("#btn-priming")?.addEventListener("click", runBattery("priming", { seed: 42, ticks: 2 }));
   $("#btn-reality-monitor")?.addEventListener("click", runBattery("reality_monitor", { seed: 42, ticks: 40 }));
+  $("#btn-language-genesis")?.addEventListener("click", runBattery("language_genesis", { seed: 42, ticks: 120 }));
 
   // ---------- theory coverage (the honest asymptote checklist) ----------
   // GET /agent/coverage lists every theory-proposed mechanism the project

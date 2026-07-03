@@ -6,7 +6,7 @@
   <title>Humanity — Instrument</title>
   <!-- Cache-busting: bump ?v= on every ui change so browsers never run a stale
        script against a newer backend (the page froze on cached app.js before). -->
-  <link rel="stylesheet" href="styles.css?v=5.1" />
+  <link rel="stylesheet" href="styles.css?v=5.2" />
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -276,6 +276,8 @@
             <option value="presence">presence (interoceptive)</option>
             <option value="temporal_surprise">temporal surprise</option>
             <option value="reality_accuracy">reality-monitor accuracy</option>
+            <option value="language_success">language success (naming game)</option>
+            <option value="vocabulary_size">vocabulary size</option>
             <option value="prediction_error">prediction error</option>
             <option value="arousal">arousal</option>
           </select>
@@ -309,6 +311,7 @@
         <button id="btn-blink" class="btn btn-quiet">Attentional blink</button>
         <button id="btn-priming" class="btn btn-quiet">Subliminal priming</button>
         <button id="btn-reality-monitor" class="btn btn-quiet">Reality monitoring</button>
+        <button id="btn-language-genesis" class="btn btn-quiet" title="Runs the same society with the language drive ON vs OFF and measures whether a shared lexicon emerges (~20s)">Language genesis</button>
       </div>
       <p id="lab-battery-result" class="report-voice"></p>
       <p id="lab-disclaimer" class="lab-disclaimer">Functional measurements only — these probes do NOT prove consciousness or subjective experience.</p>
@@ -393,6 +396,44 @@
       </div>
       <canvas id="society-canvas" width="560" height="560" aria-label="Society world"></canvas>
       <div id="society-relations" class="rows"></div>
+    </section>
+
+    <!-- ===================== THE INVENTION OF LANGUAGE (Phase 6) ===================== -->
+    <section class="panel panel-language" aria-labelledby="lang-title">
+      <div class="panel-head">
+        <h2 id="lang-title">The invention of language</h2>
+        <span class="src">Phase 6 · naming games · /society/language</span>
+      </div>
+      <div class="deep-grid">
+        <div class="deep-cell">
+          <span class="deep-k">lexical convergence (society)</span>
+          <span class="deep-v mono" id="lang-convergence">—</span>
+          <span class="deep-dream" id="lang-distinct"></span>
+        </div>
+        <div class="deep-cell">
+          <span class="deep-k">communicative success (agent 0)</span>
+          <div class="meter"><div class="meter-fill" id="lang-success-fill"></div></div>
+          <span class="stat-v mono" id="lang-success-val">—</span>
+        </div>
+        <div class="deep-cell">
+          <span class="deep-k">goal deficit — "invent a language"</span>
+          <div class="meter"><div class="meter-fill" id="lang-deficit-fill"></div></div>
+          <span class="stat-v mono" id="lang-deficit-val">—</span>
+        </div>
+        <div class="deep-cell">
+          <span class="deep-k">last exchange</span>
+          <span class="deep-v" id="lang-exchange">—</span>
+        </div>
+        <div class="deep-cell deep-wide">
+          <span class="deep-k">agent 0's invented vocabulary</span>
+          <div id="lang-vocab" class="chips"></div>
+        </div>
+        <div class="deep-cell deep-wide">
+          <span class="deep-k">the emergent dictionary (majority conventions)</span>
+          <div id="lang-dictionary" class="rows"></div>
+        </div>
+      </div>
+      <p class="micro">Agents INVENT word forms for the meanings they perceive and align through naming games (speak what you see; bind heard words to your own context; reinforce, adopt, inhibit rivals). A shared lexicon emerging is measurable convention formation — NOT understanding, reference, intention or experience. The agents are not conscious.</p>
     </section>
 
     <!-- ===================== ATTENTION SCHEMA ===================== -->
@@ -614,6 +655,10 @@
         <label class="deep-toggle" title="Barrett–Seth Φ_AR: published time-series integrated information over the real coalition activations (exact minimum-information bipartition) — still NOT IIT's causal Φ"><input type="checkbox" data-flag="phi_ar_enabled" checked /><span>Φ_AR</span></label>
         <label class="deep-toggle" title="GWT priming: content denied global access leaves a decaying facilitation trace — subliminal influence without access"><input type="checkbox" data-flag="priming_enabled" checked /><span>priming</span></label>
       </div>
+      <h3 class="sub">The invention of language (Phase 6)</h3>
+      <div class="deep-toggles" id="language-toggles">
+        <label class="deep-toggle" title="Naming games: installs the standing goal 'invent a language' — agents name what they see with INVENTED words, align on what they hear, and a shared lexicon emerges. Conventions, not understanding."><input type="checkbox" data-flag="language_drive_enabled" checked /><span>language drive</span></label>
+      </div>
       <h3 class="sub">Persistence</h3>
       <div class="deep-toggles" id="persistence-toggles">
         <label class="deep-toggle"><input type="checkbox" data-flag="persist_memory" checked /><span>persist memory</span></label>
@@ -628,6 +673,6 @@
     <span id="footer-disclaimer"></span>
   </footer>
 
-  <script src="app.js?v=5.1"></script>
+  <script src="app.js?v=5.2"></script>
 </body>
 </html>

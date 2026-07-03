@@ -71,6 +71,23 @@ PHI_AR_RIDGE: float = 1e-6             # covariance ridge regularization (determ
 INNER_SPEECH_PRECISION: float = 0.8    # precision of the re-entrant inner-speech coalition
 PRIMING_TRACE_FLOOR: float = 1e-4      # facilitation traces below this are dropped
 
+# === Phase 6 — the invention of language (naming games) ===
+# Deterministic Steels-style naming-game dynamics: agents INVENT word forms for
+# grounded meanings (the object kinds they actually perceive) and align through
+# use. Conventions emerge; nothing here is understanding or experience.
+LANGUAGE_MEANINGS: list[str] = ["food", "hazard", "tool", "curio"]
+LANGUAGE_SYLLABLES: list[str] = [
+    "ka", "mo", "ti", "lu", "re", "so", "na", "vi", "pe", "du", "fa", "gi",
+]
+LANGUAGE_USE_BOOST: float = 0.06     # entrenchment per own use of a word
+LANGUAGE_ADOPT_STRENGTH: float = 0.3 # initial strength of a newly adopted heard word
+LANGUAGE_HEAR_BOOST: float = 0.2     # reinforcement when hearing a word one already has
+LANGUAGE_INHIBITION: float = 0.15    # lateral inhibition of competing synonyms on alignment
+LANGUAGE_HOMONYM_INHIBITION: float = 0.35  # harder inhibition of the SAME word on other meanings
+                                           # (else one sound colonizes several meanings for good)
+LANGUAGE_SUCCESS_EMA: float = 0.2    # smoothing of the communicative-success rate
+LANGUAGE_STRENGTH_FLOOR: float = 0.01  # entries below this are pruned
+
 # === Society (multi-agent, v3) ===
 # Smoothing weights for the social layer (bounded EMA updates).
 CONTAGION_EMA: float = 0.15     # default; SimConfig.contagion_rate overrides per run

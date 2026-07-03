@@ -288,6 +288,7 @@ body.is-scrolled .brand-mark svg { width: 26px; height: 26px; }
 .panel-lab       { grid-column: span 12; }
 .panel-world     { grid-column: span 6; }
 .panel-society   { grid-column: span 6; }
+.panel-language  { grid-column: span 12; }
 .panel-ast       { grid-column: span 4; }
 .panel-hot       { grid-column: span 4; }
 .panel-introspect{ grid-column: span 4; }
@@ -300,7 +301,8 @@ body.is-scrolled .brand-mark svg { width: 26px; height: 26px; }
   .layout { grid-template-columns: repeat(6, 1fr); }
   .panel-hero, .panel-workspace, .panel-metrics, .panel-world,
   .panel-introspect, .panel-mem, .panel-config, .panel-deep,
-  .panel-learning, .panel-asymptote, .panel-lab, .panel-society { grid-column: span 6; }
+  .panel-learning, .panel-asymptote, .panel-lab, .panel-society,
+  .panel-language { grid-column: span 6; }
   .panel-ast, .panel-hot, .panel-self, .panel-wm { grid-column: span 3; }
 }
 @media (max-width: 720px) {
@@ -896,6 +898,19 @@ input[type="range"]::-moz-range-thumb {
   font-size: 12px; line-height: 1.55; color: var(--ink);
   font-weight: 600; letter-spacing: 0.01em;
 }
+
+/* =====================================================================
+   THE INVENTION OF LANGUAGE (Phase 6) — invented lexicon + dictionary
+   ===================================================================== */
+.lang-chip { font-family: var(--mono); font-size: 11px; letter-spacing: 0.01em; }
+.lang-chip.kind-food   { border-color: color-mix(in srgb, var(--pos) 45%, var(--line)); color: var(--pos); }
+.lang-chip.kind-hazard { border-color: color-mix(in srgb, var(--neg) 45%, var(--line)); color: var(--neg); }
+.lang-chip.kind-tool   { border-color: color-mix(in srgb, var(--cool) 45%, var(--line)); color: var(--cool); }
+.lang-chip.kind-curio  { border-color: color-mix(in srgb, var(--curio) 45%, var(--line)); color: var(--curio); }
+#lang-dictionary { max-height: 260px; }
+#lang-dictionary .row-title { font-family: var(--mono); font-size: 12px; }
+#lang-exchange { font-size: 14px; }
+#lang-vocab { min-height: 26px; }
 
 /* =====================================================================
    DIALOGUE — the grounded interview (language organ)

@@ -135,6 +135,11 @@ class SocietyManager:
     def agent(self, agent_id: int) -> CognitiveAgent:
         return self.agents[int(agent_id)]
 
+    def language_summary(self) -> dict:
+        """The society's emergent dictionary + lexical convergence (Phase 6)."""
+        from core.language import society_language_summary
+        return society_language_summary({aid: ag.lexicon for aid, ag in self.agents.items()})
+
     def relations(self) -> dict:
         """Trust/ToM graph: nodes = agents, edges = (observer -> other, trust)."""
         edges = []

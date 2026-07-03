@@ -104,13 +104,19 @@ class SharedWorld:
         return obj
 
     # ------------------------------------------------------------- messaging
-    def post_message(self, sender_id: int, content: str, vector: list[float]) -> Message:
-        """Deposit a message at the sender's location, deliverable from next tick."""
+    def post_message(self, sender_id: int, content: str, vector: list[float],
+                     word: str | None = None) -> Message:
+        """Deposit a message at the sender's location, deliverable from next tick.
+
+        ``word`` (Phase 6, optional) carries an INVENTED naming-game utterance;
+        the meaning is never transmitted — hearers must infer it from their own
+        context, which is what lets conventions emerge.
+        """
         body = self.agents[sender_id]
         msg = Message(id=self._next_msg_id, tick_emitted=self.tick, sender_id=sender_id,
                       content=str(content), vector=[float(v) for v in vector],
                       x=body.x, y=body.y, radius=int(self.config.comm_radius),
-                      ttl=int(self.config.message_ttl))
+                      ttl=int(self.config.message_ttl), word=word)
         self.messages.append(msg)
         self._next_msg_id += 1
         return msg

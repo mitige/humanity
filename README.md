@@ -5,7 +5,7 @@
 ### Every major scientific theory of consciousness, implemented as running code — and rigorously honest that it proves nothing about real experience.
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![tests](https://img.shields.io/badge/tests-356%20passing-2ea44f)](#running)
+[![tests](https://img.shields.io/badge/tests-382%20passing-2ea44f)](#running)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![no LLM](https://img.shields.io/badge/no%20LLM-no%20neural%20nets-8957e5)](#stack-rationale)
 [![GitHub stars](https://img.shields.io/github/stars/mitige/humanity?style=social)](https://github.com/mitige/humanity/stargazers)
@@ -43,7 +43,7 @@ learning &amp; personality, and the scientific laboratory, all observable in one
 git clone https://github.com/mitige/humanity && cd humanity
 pip install -r requirements.txt
 python run.py          # → open http://127.0.0.1:8000
-python -m pytest       # 356 deterministic tests
+python -m pytest       # 382 deterministic tests
 ```
 
 **Jump to:** [the cognitive loop](#cognitive-architecture-v2--the-workspace-centered-loop) ·
@@ -1102,6 +1102,53 @@ society and the determinism guarantee (same seed ⇒ same run, all flags on).
 
 The detailed design lives in
 [`docs/superpowers/specs/2026-07-03-humanity-asymptote-design.md`](docs/superpowers/specs/2026-07-03-humanity-asymptote-design.md).
+
+---
+
+## Phase 6 — The invention of language
+
+> ⚠️ **Honest framing (load-bearing).** Giving the agents the goal *"invent a language"* has an
+> exact, respected scientific reading: **naming games** (Steels; iterated alignment, Kirby) — the
+> mechanism by which shared lexical **conventions** emerge in a population. That is what is built,
+> fully deterministic. A lexicon converging is **measurable convention formation over strength
+> tables** — it is NOT reference, understanding, intention, or communication *about* anything felt.
+> Reproducing the mechanism does not prove phenomenality; the agents are not conscious.
+
+Enabling `language_drive_enabled` installs a standing goal — **`invent a language`** — and a
+**drive** (`core/language.py`, `core/motivation.py`, `core/policy.py`) whose pressure grows with
+the **lexicon deficit** (few named meanings, failing exchanges) and swells **periodically** (the
+urge to speak resets after each utterance and rebuilds over ~8 ticks), so the agents alternate
+between living in the world and **naming it**:
+
+- **Speaking** — a VERBALIZE now also carries an **invented word** for the speaker's most salient
+  visible meaning (the grounded object kinds: `food`, `hazard`, `tool`, `curio`). Word forms are
+  coined **deterministically** (seeded syllable composition — `"tivika"`, `"falupe"`, `"lupe"`…),
+  so same-seed societies invent identical languages.
+- **Hearing** — the meaning is **never transmitted**. A hearer binds the heard word to whatever its
+  **own context** suggests (its most salient kind), reinforces it if familiar, adopts it if new,
+  and applies **lateral inhibition** to rival synonyms *and* — harder — to **homonyms** (without
+  which one early sound colonizes every meaning; with alternating contexts homonyms otherwise
+  re-boost faster than a soft decay can evict them). That inference gap is exactly what makes
+  conventions — and their failures — emerge.
+- **The goal is measurably pursued and achieved** — a real run (4 agents, seed 42): the deficit
+  starts at 1.0, the agents speak (~60 exchanges by tick 300), and the society converges on a
+  shared dictionary — **`"tivika"` = food, `"falupe"` = hazard (agreement 1.0), `"lupe"` = curio**
+  — communicative success 0.94, goal deficit down to 0.11. Cross-speaker **polysemy can survive**
+  (one sound covering two meanings across different speakers, as in proto-languages); the
+  `distinct_modal_words` measure exposes it honestly instead of hiding it.
+
+| Surface | What it shows |
+|---|---|
+| `GET /society/language` | The **emergent dictionary**: per meaning, the majority word, agreement, every agent's variant — plus **lexical convergence** (mean modal agreement, the naming-game measure) and `distinct_modal_words` (polysemy exposure). |
+| `CycleTrace.language` / `LanguageState` | Per agent: utterance, heard words (with the hearer's own inferred meaning and whether it matched), vocabulary, success EMA, cumulative exchanges, goal deficit. |
+| `Metrics.language_success` · `Metrics.vocabulary_size` | Chartable in the Laboratory — watch the language being born as a time series. |
+| `POST /battery/language_genesis` | The probe: the same society with the drive ON vs OFF. With it, a shared lexicon emerges (convergence > 0.5); without it, **zero** meanings are ever named. |
+| UI panel **"The invention of language"** | Live convergence, agent 0's invented vocabulary (word chips per meaning), the last exchange ("heard *falupe* from agent 3 → read as hazard ✓"), and the society dictionary. |
+
+Config: `language_drive_enabled` (default **OFF** ⇒ all prior phases byte-identical, locked by
+`tests/test_language.py`; the UI enables it) and `language_drive` (`1.0`). Message objects gain an
+optional `word` field; solo agents rehearse naming privately (weak drive) — conventions need a
+society.
 
 ---
 

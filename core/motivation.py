@@ -37,6 +37,8 @@ class MotivationSystem:
         n_visible_agents: int = 0,
         society_size: int = 1,
         individuation_index: float | None = None,
+        language_deficit: float | None = None,
+        language_urge: float = 1.0,
     ) -> list[GoalPressure]:
         """Return the current functional goal pressures (each >= 0).
 
@@ -148,6 +150,27 @@ class MotivationSystem:
                 pressure=float(config.individuation_drive) * deficit,
                 description=(f"Become someone: grow a coherent, distinctive, continuous self "
                             f"(individuation {float(individuation_index):.2f})."),
+            ))
+
+        # language (gated): the standing drive to INVENT A LANGUAGE — pressure
+        # grows with the lexicon's deficit (few named meanings, failing
+        # exchanges) and pushes the agent to verbalize and seek interlocutors.
+        # Solo agents keep a weak rehearsal pressure (naming without hearers).
+        if config.language_drive_enabled and language_deficit is not None:
+            social_scale = 1.0 if society_size > 1 else 0.25
+            # The urge to speak is PERIODIC: it resets after an utterance and
+            # rebuilds over a few ticks, so agents alternate between living in
+            # the world and naming it instead of chattering every tick.
+            urge = max(0.0, min(1.0, float(language_urge)))
+            # At full urge the pressure OVERSHOOTS the plain deficit (×1.5) so a
+            # periodic utterance can win even against attractive foraging; right
+            # after speaking it sags to a quarter — the pendulum of the drive.
+            pressures.append(GoalPressure(
+                need="language",
+                pressure=(float(config.language_drive) * max(0.0, float(language_deficit))
+                          * social_scale * (0.25 + 1.25 * urge)),
+                description=(f"Invent a language: name the world and align on shared words "
+                             f"(lexicon deficit {float(language_deficit):.2f}, urge {urge:.2f})."),
             ))
 
         return pressures

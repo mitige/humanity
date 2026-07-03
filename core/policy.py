@@ -41,14 +41,17 @@ _USEFUL = 0.3
 # self. These weights are inert unless the individuate pressure is present.
 _ACTION_NEED_WEIGHTS: dict[ActionType, dict[str, float]] = {
     ActionType.INTERACT: {"preserve_energy": 1.0, "achieve_goals": 0.5, "individuate": 0.4},
-    ActionType.APPROACH: {"preserve_energy": 0.6, "explore_novelty": 0.4, "achieve_goals": 0.5, "individuate": 0.4},
+    ActionType.APPROACH: {"preserve_energy": 0.6, "explore_novelty": 0.4, "achieve_goals": 0.5, "individuate": 0.4, "language": 0.3},
     ActionType.AVOID: {"reduce_danger": 1.0},
-    ActionType.EXPLORE: {"explore_novelty": 1.0, "improve_prediction": 0.5, "individuate": 0.6},
-    ActionType.MOVE: {"explore_novelty": 0.5, "improve_prediction": 0.3, "individuate": 0.4},
+    ActionType.EXPLORE: {"explore_novelty": 1.0, "improve_prediction": 0.5, "individuate": 0.6, "language": 0.25},
+    ActionType.MOVE: {"explore_novelty": 0.5, "improve_prediction": 0.3, "individuate": 0.4, "language": 0.2},
     ActionType.OBSERVE: {"improve_prediction": 0.7, "explore_novelty": 0.3, "individuate": 0.4},
     ActionType.ANALYZE: {"improve_prediction": 1.0, "maintain_coherence": 0.3, "individuate": 0.5},
     ActionType.REST: {"preserve_energy": 1.0},
-    ActionType.VERBALIZE: {"maintain_coherence": 1.0, "individuate": 0.6},
+    # ``language`` (the invent-a-language drive, gated): served above all by
+    # SPEAKING — naming what one sees so conventions can spread — and by moving
+    # toward potential interlocutors. Inert unless the pressure is present.
+    ActionType.VERBALIZE: {"maintain_coherence": 1.0, "individuate": 0.6, "language": 1.2},
 }
 
 
@@ -186,6 +189,15 @@ class Policy:
             else:
                 satiation_term = 0.0
 
+            # Language drive (Phase 6, gated): speaking is how conventions
+            # spread, but VERBALIZE carries ~no EFE value of its own, so the
+            # MULTIPLICATIVE need alignment cannot lift it. The drive therefore
+            # contributes an ADDITIVE term to the actions that serve it (its
+            # entries in the weights table). Zero unless the pressure exists.
+            lang_pressure = pressure_by_need.get("language", 0.0)
+            language_term = (3.5 * lang_pressure * need_weights.get("language", 0.0)
+                             if lang_pressure > 0.0 else 0.0)
+
             score = (
                 value_term
                 + pref_term
@@ -196,6 +208,7 @@ class Policy:
                 + certainty_term
                 + imagination_term
                 + learned_term
+                + language_term
                 - satiation_term
             )
             scored.append((float(score), pred))

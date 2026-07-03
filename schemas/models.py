@@ -48,6 +48,10 @@ class Message(BaseModel):
     y: int
     radius: int                        # earshot radius from the emission point
     ttl: int                           # ticks the message stays deliverable
+    # Phase 6 — an INVENTED word naming the speaker's salient meaning (naming
+    # game). Hearers never receive the meaning: they must infer it from their
+    # OWN context — that inference gap is what makes conventions emerge.
+    word: str | None = None
 
 
 class OtherMind(BaseModel):
@@ -345,6 +349,8 @@ class Metrics(BaseModel):
     temporal_surprise: float = 0.0   # protention violation (Phase 5)
     phi_ar: float = 0.0              # Barrett–Seth Φ_AR (Phase 5); 0 until computed
     reality_accuracy: float = 0.0    # reality-monitor rolling accuracy (Phase 5)
+    language_success: float = 0.0    # naming-game success EMA (Phase 6); 0 when off
+    vocabulary_size: int = 0         # invented words currently held (Phase 6)
 
 
 class Coalition(BaseModel):
@@ -541,6 +547,33 @@ class InnerSpeechState(BaseModel):
     report: str = ""
 
 
+class HeardWord(BaseModel):
+    """One heard naming-game utterance and how it was resolved (Phase 6)."""
+    word: str
+    sender_id: int
+    inferred_meaning: str | None = None   # what the hearer's OWN context suggested
+    understood: bool = False              # hearer's word for that meaning matched
+
+
+class LanguageState(BaseModel):
+    """The invention of language (Phase 6) — naming-game snapshot.
+
+    A FUNCTIONAL mechanism: agents invent word forms for grounded meanings and
+    align on shared conventions through use (Steels-style naming game, made
+    deterministic). "Inventing a language" here is the measurable emergence of
+    a shared lexicon — variables and update rules, NOT understanding, intention
+    or experience. The agent is not conscious.
+    """
+    utterance: dict | None = None          # {"word": ..., "meaning": ...} spoken this tick
+    heard: list[HeardWord] = Field(default_factory=list)
+    vocabulary: dict[str, str] = Field(default_factory=dict)   # meaning -> current word
+    vocabulary_size: int = 0
+    success_rate: float = 0.0              # EMA of understood exchanges
+    n_exchanges: int = 0                   # cumulative heard-word exchanges
+    deficit: float = 1.0                   # 1 - (coverage+success blend): drives the goal
+    report: str = ""
+
+
 class PhiARState(BaseModel):
     """Time-series integrated information Φ_AR (Phase 5 — Barrett & Seth 2011).
 
@@ -594,6 +627,7 @@ class CycleTrace(BaseModel):
     temporality: TemporalityState | None = None
     inner_speech: InnerSpeechState | None = None
     phi_ar: PhiARState | None = None
+    language: LanguageState | None = None
 
 
 class SimConfig(BaseModel):
@@ -716,6 +750,13 @@ class SimConfig(BaseModel):
     priming_enabled: bool = False                 # subliminal residual facilitation (GWT priming)
     priming_decay: float = Field(default=0.5, ge=0.0, le=1.0)
     priming_gain: float = Field(default=0.35, ge=0.0, le=2.0)
+    # Phase 6 — the invention of language. Default OFF => byte-identical to all
+    # prior phases; the UI enables it. Installs the standing goal "invent a
+    # language" and a drive that pushes the agents to speak, listen and align on
+    # a shared INVENTED lexicon (deterministic naming games). Emergent
+    # conventions, NOT understanding — the agents are not conscious.
+    language_drive_enabled: bool = False
+    language_drive: float = Field(default=1.0, ge=0.0)
 
 
 class ConfigPatch(BaseModel):
@@ -804,6 +845,8 @@ class ConfigPatch(BaseModel):
     priming_enabled: bool | None = None
     priming_decay: float | None = None
     priming_gain: float | None = None
+    language_drive_enabled: bool | None = None
+    language_drive: float | None = None
 
 
 class GoalRequest(BaseModel):

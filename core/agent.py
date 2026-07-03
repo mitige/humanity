@@ -43,6 +43,7 @@ from core.inner_speech import InnerSpeech
 from core.integration import IntegrationMonitor
 from core.interoception import InteroceptiveModel
 from core.introspection import DISCLAIMER_EN, Introspection
+from core.language import Lexicon
 from core.learning import PolicyLearner
 from core.meta_learning import MetaLearner
 from core.metacognition import Metacognition
@@ -209,6 +210,13 @@ class CognitiveAgent:
         # Protention violation queued into the NEXT tick's arousal salience.
         self._pending_temporal_surprise: float = 0.0
 
+        # Phase 6: the invention of language (active only when its flag is on).
+        # The lexicon is the agent's own invented meaning->word conventions;
+        # enabling the drive also installs the explicit standing goal.
+        self.lexicon = Lexicon(agent_id=self.agent_id)
+        if config.language_drive_enabled:
+            self.self_model.set_goal("invent a language")
+
         # "Become someone": a standing individuation drive. The full state is
         # recomputed each tick and fed one-tick-deferred to the motivation drive;
         # enabling it also installs the explicit goal on the self-model.
@@ -293,6 +301,10 @@ class CognitiveAgent:
             individuation_index=(self._last_individuation.index
                                  if (cfg.individuation_enabled and self._last_individuation is not None)
                                  else None),
+            language_deficit=(self.lexicon.deficit()
+                              if cfg.language_drive_enabled else None),
+            language_urge=(self.lexicon.urge
+                           if cfg.language_drive_enabled else 1.0),
         )
 
         # 4) Attention: select salient items under the capacity bottleneck.
@@ -305,6 +317,17 @@ class CognitiveAgent:
         #     saliency so its perception coalition rises. No-op when no bias is
         #     set, so default behaviour is unchanged.
         salient = self._apply_attend_bias(salient)
+
+        # Phase 6 — hearing (naming game, gated): each heard INVENTED word is
+        # bound to the meaning the hearer's OWN context suggests (the most
+        # salient visible kind) — the speaker's meaning is never transmitted.
+        # Alignment (adopt/reinforce + lateral inhibition) makes conventions
+        # emerge across the society.
+        if cfg.language_drive_enabled:
+            inferred = salient[0].percept.kind if salient else None
+            for msg in audible_messages:
+                if msg.word:
+                    self.lexicon.hear(msg.word, inferred, msg.sender_id)
 
         # 5) Working memory: refresh/expire/evict.
         self.working_memory.update(salient, observation.tick)
@@ -706,6 +729,10 @@ class CognitiveAgent:
             effective_learning_rate=round(float(effective_lr), 6),
             concept_match=round(float(concept_state.match), 4) if concept_state else 0.0,
             n_concepts=int(concept_state.n_concepts) if concept_state else 0,
+            language_success=(round(float(self.lexicon.success_rate), 4)
+                              if cfg.language_drive_enabled else 0.0),
+            vocabulary_size=(len(self.lexicon.vocabulary())
+                             if cfg.language_drive_enabled else 0),
             presence=round(float(interoception_state.presence), 4) if interoception_state else 0.0,
             intero_error=round(float(interoception_state.error), 4) if interoception_state else 0.0,
             temporal_surprise=(round(float(temporality_state.protention_error), 4)
@@ -724,10 +751,18 @@ class CognitiveAgent:
             self._shared_world.agents[self.agent_id].publish(
                 decision.action, dom_affect, float(self_state_after.mood))
             # VERBALIZE => emit a grounded message (delivered next tick).
+            # Phase 6 (gated): the message also carries an INVENTED word naming
+            # the speaker's most salient visible meaning — the naming game move.
             last_emitted = None
             if decision.action == ActionType.VERBALIZE:
                 content, vector = build_message_content(self.agent_id, conscious_moment)
-                self._shared_world.post_message(self.agent_id, content, vector)
+                spoken_word = None
+                if cfg.language_drive_enabled and salient:
+                    utt = self.lexicon.speak(salient[0].percept.kind)
+                    spoken_word = utt["word"]
+                    content = f"{content} ⟦{spoken_word}⟧"
+                self._shared_world.post_message(self.agent_id, content, vector,
+                                                word=spoken_word)
                 last_emitted = content
             self._last_social = SocialState(
                 agent_id=self.agent_id,
@@ -766,6 +801,16 @@ class CognitiveAgent:
                 agency=(agency_state.agency if agency_state is not None else None),
                 memory_count=len(self.memory._records))
             individuation_state = self._last_individuation
+
+        # Phase 6 — language state (gated). A SOLO agent still rehearses naming
+        # (weak drive): its VERBALIZE coins/entrenches a word for its salient
+        # meaning even with no hearers; in a society the word rode the message.
+        language_state = None
+        if cfg.language_drive_enabled:
+            if (self._shared_world is None and decision.action == ActionType.VERBALIZE
+                    and salient):
+                self.lexicon.speak(salient[0].percept.kind)
+            language_state = self.lexicon.state()
 
         # Self-opacity (gated): a higher-order readout of what escaped access/
         # control this tick — the subliminal remainder (GWT), an outcome not
@@ -813,6 +858,7 @@ class CognitiveAgent:
             temporality=temporality_state,
             inner_speech=inner_speech_state,
             phi_ar=phi_ar_state,
+            language=language_state,
         )
         # Per-tick JSONL trace write is the second-largest per-tick I/O cost;
         # ``trace_logging=False`` skips it for fast/headless training.
@@ -1494,6 +1540,7 @@ class CognitiveAgent:
                 "temporality": _opt("temporality"),
                 "inner_speech": _opt("inner_speech"),
                 "phi_ar": _opt("phi_ar"),
+                "language": _opt("language"),
             }
         # No cycle yet: neutral placeholders.
         return {

@@ -471,6 +471,17 @@ async def get_society_relations() -> dict:
     return _manager().relations()
 
 
+@router.get("/society/language")
+async def get_society_language() -> dict:
+    """(Phase 6) The society's emergent dictionary: each meaning's invented word
+    variants, the majority convention, and the lexical convergence — the
+    naming-game measure of a language being born. Emergent conventions over
+    strength tables; NOT understanding, and not evidence of consciousness."""
+    payload = _manager().language_summary()
+    payload["disclaimer"] = DISCLAIMER_EN
+    return payload
+
+
 @router.get("/society/messages")
 async def get_society_messages() -> dict:
     """Return the messages currently alive in the shared world."""
@@ -616,6 +627,9 @@ async def post_battery(test_name: str, req: _BatteryReq) -> BatteryResult:
         return battery.priming_test(seed=req.seed, ticks=min(int(req.ticks), 4))
     if test_name == "reality_monitor":
         return battery.reality_monitor_test(seed=req.seed, ticks=max(int(req.ticks), 30))
+    # Phase 6 — does a shared lexicon emerge under the invent-a-language drive?
+    if test_name == "language_genesis":
+        return battery.language_genesis_test(seed=req.seed, ticks=max(int(req.ticks), 80))
     raise HTTPException(status_code=404, detail=f"unknown test '{test_name}'")
 
 
