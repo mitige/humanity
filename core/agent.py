@@ -1553,14 +1553,18 @@ class SimulationManager:
                     break
                 await asyncio.sleep(delay)
         finally:
-            self.running = False
+            # Only the CURRENT loop owns the running flag (see SocietyManager).
+            if self._task is asyncio.current_task():
+                self.running = False
 
     def pause(self) -> None:
         """Stop the background loop (it finishes its current tick first)."""
         self.running = False
         if self._task is not None:
-            self._task.cancel()
-            self._task = None
+            # Detach BEFORE cancelling so the dying loop's finally-guard sees it
+            # is no longer the current task and leaves the flag alone.
+            task, self._task = self._task, None
+            task.cancel()
 
     # ------------------------------------------------------------------ #
     # Lifecycle / state

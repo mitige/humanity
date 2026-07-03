@@ -56,6 +56,49 @@ def test_psychophysics_battery_endpoints():
     assert 0.0 <= r.json()["score"] <= 1.0
 
 
+def test_get_config_returns_live_config():
+    r = client.get("/config")
+    assert r.status_code == 200
+    cfg = r.json()["config"]
+    assert "recurrence_enabled" in cfg and "n_agents" in cfg
+
+
+def test_config_patch_resumes_a_running_loop():
+    """A config patch applied mid-run must not kill the run (the /config route
+    resumes the loop on the rebuilt society), and in particular the OLD
+    cancelled loop's finally must not clobber its successor's running flag.
+    Exercised at the manager level (TestClient cannot host a live asyncio
+    background loop across requests)."""
+    import asyncio
+
+    from core.society import SocietyManager
+    from schemas.models import ConfigPatch, RunRequest, SimConfig
+
+    async def scenario():
+        mgr = SocietyManager(SimConfig(world_noise=0.0, random_seed=3,
+                                       persist_memory=False, trace_logging=False))
+        await mgr.run(RunRequest(tps=200.0))
+        await asyncio.sleep(0.05)
+        assert mgr.running is True
+        # What POST /config does: reset, then resume because it was running.
+        was_running = bool(mgr.running)
+        resume = mgr.last_run_request
+        mgr.reset(ConfigPatch(priming_enabled=True))
+        assert mgr.running is False          # reset itself pauses...
+        if was_running:
+            await mgr.run(resume or RunRequest())
+        # ...and the resumed loop must SURVIVE the cancelled loop's finally.
+        await asyncio.sleep(0.2)
+        assert mgr.running is True
+        assert mgr.config.priming_enabled is True
+        # An explicit pause still pauses for good.
+        mgr.pause()
+        await asyncio.sleep(0.05)
+        assert mgr.running is False
+
+    asyncio.run(scenario())
+
+
 def test_coverage_endpoint_is_honest_and_reflects_config():
     r = client.get("/agent/coverage")
     assert r.status_code == 200

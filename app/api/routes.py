@@ -287,11 +287,26 @@ async def post_perturb(req: PerturbRequest) -> dict:
     return {"effect": effect, "state": _society_state_legacy()}
 
 
+@router.get("/config")
+async def get_config() -> dict:
+    """Return the live SimConfig (lets the UI diff before posting a patch)."""
+    return {"config": _manager().config.model_dump()}
+
+
 @router.post("/config")
 async def post_config(patch: ConfigPatch) -> dict:
-    """Apply a partial config patch (rebuilds the society) and return config + state."""
+    """Apply a partial config patch (rebuilds the society) and return config + state.
+
+    A patch applied while the background loop is running RESUMES the loop on
+    the rebuilt society (same tps) instead of silently pausing the instrument —
+    so toggling a mechanism, or a page-load settings sync, never kills a run.
+    """
     mgr = _manager()
+    was_running = bool(mgr.running)
+    resume = mgr.last_run_request
     mgr.reset(patch)
+    if was_running:
+        await mgr.run(resume or RunRequest())
     state = _society_state_legacy()
     state["disclaimer"] = DISCLAIMER_EN
     return {"config": mgr.config.model_dump(), "state": state}
@@ -362,9 +377,16 @@ async def post_society_pause() -> dict:
 
 @router.post("/society/config")
 async def post_society_config(patch: ConfigPatch) -> dict:
-    """Apply a config patch (e.g. n_agents) and rebuild the society; return state."""
+    """Apply a config patch (e.g. n_agents) and rebuild the society; return state.
+
+    Like ``POST /config``, resumes the background loop if it was running.
+    """
     mgr = _manager()
+    was_running = bool(mgr.running)
+    resume = mgr.last_run_request
     mgr.reset(patch)
+    if was_running:
+        await mgr.run(resume or RunRequest())
     state = mgr.state()
     state["disclaimer"] = DISCLAIMER_EN
     return state

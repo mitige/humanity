@@ -615,15 +615,27 @@
     });
   }
 
-  // applyDeepDefaults — on load, apply the SAVED settings if any (so the panel
-  // restores exactly what the user last set), else apply+persist the hardcoded
-  // defaults (first run). Then reflect the applied set into the controls.
+  // applyDeepDefaults — on load, apply the DEFAULTS overlaid with the SAVED
+  // settings (so newly-shipped mechanisms default ON even for users with an
+  // older saved set, while every choice the user actually made still wins).
+  // The desired set is DIFFED against the live backend config first and only
+  // the differing keys are posted — a plain reload no longer resets (and,
+  // combined with the backend resume, never pauses) a running simulation.
   async function applyDeepDefaults() {
     const saved = loadSettings();
-    const cfg = saved || { ...SETTINGS_DEFAULTS };
+    const cfg = { ...SETTINGS_DEFAULTS, ...(saved || {}) };
     try {
-      await postJSON("config", cfg);
-      if (!saved) saveSettings(cfg);   // persist defaults on first run
+      let patch = cfg;
+      try {
+        const live = (await api("config")) || {};
+        const liveCfg = live.config || {};
+        patch = {};
+        for (const k in cfg) {
+          if (liveCfg[k] !== cfg[k]) patch[k] = cfg[k];
+        }
+      } catch (e) { /* no GET /config: post the full set */ }
+      if (Object.keys(patch).length) await postJSON("config", patch);
+      saveSettings(cfg);   // persist the merged set (adds newly-shipped keys)
     } catch (e) { /* non-fatal: panel just stays at defaults */ }
     applyControlStates(cfg);
   }

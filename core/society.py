@@ -24,6 +24,9 @@ class SocietyManager:
         self._lock = asyncio.Lock()
         self._task: asyncio.Task | None = None
         self.running: bool = False
+        # Last run request, so a config patch applied mid-run can resume the
+        # loop at the same pace instead of silently pausing the instrument.
+        self.last_run_request: RunRequest | None = None
 
     def _build(self) -> None:
         self.world = SharedWorld(self.config)
@@ -85,6 +88,7 @@ class SocietyManager:
         return {"ticks_run": n, "tick": int(self.world.tick), "n_agents": len(self.agents)}
 
     async def run(self, req: RunRequest) -> None:
+        self.last_run_request = req
         if self.running:
             return
         self.running = True
@@ -103,13 +107,19 @@ class SocietyManager:
                     break
                 await asyncio.sleep(delay)
         finally:
-            self.running = False
+            # Only the CURRENT loop owns the running flag: a cancelled, already
+            # replaced loop (e.g. a config patch that resumed a fresh run) must
+            # not clobber its successor's state when its cancellation lands.
+            if self._task is asyncio.current_task():
+                self.running = False
 
     def pause(self) -> None:
         self.running = False
         if self._task is not None:
-            self._task.cancel()
-            self._task = None
+            # Detach BEFORE cancelling so the dying loop's finally-guard sees it
+            # is no longer the current task and leaves the flag alone.
+            task, self._task = self._task, None
+            task.cancel()
 
     # ------------------------------------------------------------- lifecycle
     def reset(self, patch: dict | ConfigPatch | None = None) -> None:
