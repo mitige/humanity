@@ -4,7 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Humanity — Instrument</title>
-  <link rel="stylesheet" href="styles.css" />
+  <!-- Cache-busting: bump ?v= on every ui change so browsers never run a stale
+       script against a newer backend (the page froze on cached app.js before). -->
+  <link rel="stylesheet" href="styles.css?v=5.1" />
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -626,6 +628,6 @@
     <span id="footer-disclaimer"></span>
   </footer>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=5.1"></script>
 </body>
 </html>
