@@ -119,6 +119,41 @@
       </div>
     </section>
 
+    <!-- ===================== GLOBAL WORKSPACE ===================== -->
+    <section class="panel panel-workspace" aria-labelledby="ws-title">
+      <div class="panel-head">
+        <h2 id="ws-title">Global workspace</h2>
+        <span class="src">GET /agent/workspace · GWT</span>
+      </div>
+      <div class="ws-readout">
+        <span class="ws-broadcast">broadcast <b class="mono" id="ws-broadcast">0.000</b></span>
+        <span class="ws-winner" id="ws-winner">—</span>
+      </div>
+      <div class="arousal-row" title="Arousal / vigilance — GET /state · arousal (modulates the effective threshold)">
+        <span class="arousal-k">Arousal / vigilance</span>
+        <div class="meter arousal-meter">
+          <div class="meter-fill" id="arousal-fill"></div>
+          <div class="arousal-baseline" id="arousal-baseline-mark"></div>
+        </div>
+        <span class="stat-v mono" id="arousal-val">0.000</span>
+      </div>
+      <div class="coalitions" id="coalitions">
+        <div class="threshold-line" id="threshold-line">
+          <span class="threshold-tag">effective threshold <b class="mono" id="threshold-val">0.300</b></span>
+        </div>
+      </div>
+      <p class="micro">Each bar is a specialized coalition competing for global access. The displayed threshold is the <b>effective threshold</b> — the nominal threshold modulated by arousal and homeostasis. An ignition score beyond it&nbsp;: ignition + broadcast (conscious access).</p>
+    </section>
+
+    <!-- ===================== METRICS STRIP ===================== -->
+    <section class="panel panel-metrics" aria-labelledby="met-title">
+      <div class="panel-head">
+        <h2 id="met-title">Indicators</h2>
+        <span class="src">GET /metrics · /agent/consciousness</span>
+      </div>
+      <div class="metric-grid" id="metric-grid"></div>
+    </section>
+
     <!-- ===================== DEEP CONSCIOUSNESS (Phase 2) ===================== -->
     <section class="panel panel-deep" aria-labelledby="deep-title">
       <div class="panel-head">
@@ -306,41 +341,6 @@
       </div>
       <div id="ckpt-list" class="rows"></div>
       <p class="micro">Save the full run (world, agents, learned state, memory, RNG). Load one to resume exactly where it was — until you Reset.</p>
-    </section>
-
-    <!-- ===================== GLOBAL WORKSPACE ===================== -->
-    <section class="panel panel-workspace" aria-labelledby="ws-title">
-      <div class="panel-head">
-        <h2 id="ws-title">Global workspace</h2>
-        <span class="src">GET /agent/workspace · GWT</span>
-      </div>
-      <div class="ws-readout">
-        <span class="ws-broadcast">broadcast <b class="mono" id="ws-broadcast">0.000</b></span>
-        <span class="ws-winner" id="ws-winner">—</span>
-      </div>
-      <div class="arousal-row" title="Arousal / vigilance — GET /state · arousal (modulates the effective threshold)">
-        <span class="arousal-k">Arousal / vigilance</span>
-        <div class="meter arousal-meter">
-          <div class="meter-fill" id="arousal-fill"></div>
-          <div class="arousal-baseline" id="arousal-baseline-mark"></div>
-        </div>
-        <span class="stat-v mono" id="arousal-val">0.000</span>
-      </div>
-      <div class="coalitions" id="coalitions">
-        <div class="threshold-line" id="threshold-line">
-          <span class="threshold-tag">effective threshold <b class="mono" id="threshold-val">0.300</b></span>
-        </div>
-      </div>
-      <p class="micro">Each bar is a specialized coalition competing for global access. The displayed threshold is the <b>effective threshold</b> — the nominal threshold modulated by arousal and homeostasis. An ignition score beyond it&nbsp;: ignition + broadcast (conscious access).</p>
-    </section>
-
-    <!-- ===================== METRICS STRIP ===================== -->
-    <section class="panel panel-metrics" aria-labelledby="met-title">
-      <div class="panel-head">
-        <h2 id="met-title">Indicators</h2>
-        <span class="src">GET /metrics · /agent/consciousness</span>
-      </div>
-      <div class="metric-grid" id="metric-grid"></div>
     </section>
 
     <!-- ===================== WORLD ===================== -->

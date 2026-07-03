@@ -1608,4 +1608,15 @@
   });
   // load the checkpoint list once (on-demand only — not in the polling loop)
   refreshCheckpoints();
+
+  // compact the sticky masthead once the user scrolls into the instrument
+  // (the framing epigraph folds away; the transport stays within reach)
+  let mastheadCompact = false;
+  window.addEventListener("scroll", () => {
+    const scrolled = window.scrollY > 40;
+    if (scrolled !== mastheadCompact) {
+      mastheadCompact = scrolled;
+      document.body.classList.toggle("is-scrolled", scrolled);
+    }
+  }, { passive: true });
 })();
