@@ -26,6 +26,7 @@ storage/checkpoints/
 
 # Playwright MCP temp artifacts
 .playwright-mcp/
+.worktrees/
 
 # Secrets — local only, NEVER commit (LLM API keys, etc.)
 .env
