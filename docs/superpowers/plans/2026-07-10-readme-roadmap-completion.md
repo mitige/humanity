@@ -22,7 +22,7 @@
 - Modify: `tests/test_phase7_ui.py:354-370`
 - Test: `tests/test_phase7_ui.py`
 
-- [ ] **Step 1: Replace the README scorecard assertions with the completed-roadmap contract**
+- [x] **Step 1: Replace the README scorecard assertions with the completed-roadmap contract**
 
 Replace `test_phase7_is_documented_and_future_extensions_are_closed` with:
 
@@ -60,7 +60,7 @@ def test_phase7_is_documented_and_final_roadmap_is_completed():
     assert not violations, _format_violations(violations)
 ```
 
-- [ ] **Step 2: Run the contract to verify it fails for the current README**
+- [x] **Step 2: Run the contract to verify it fails for the current README**
 
 Run:
 
@@ -76,7 +76,7 @@ Expected: FAIL listing the missing `Roadmap completed` heading and grouped Phase
 - Modify: `README.md:1440-1477`
 - Test: `tests/test_phase7_ui.py`
 
-- [ ] **Step 1: Replace the old terminal section with the approved grouped checklist**
+- [x] **Step 1: Replace the old terminal section with the approved grouped checklist**
 
 Use this exact structure and factual scope:
 
@@ -141,7 +141,7 @@ structure on a true micro-substrate remains computationally out of scope, and su
 remains empirically undecidable here.
 ```
 
-- [ ] **Step 2: Run the focused README/UI contract**
+- [x] **Step 2: Run the focused README/UI contract**
 
 Run:
 
@@ -151,7 +151,7 @@ python -m pytest tests/test_phase7_ui.py -q
 
 Expected: all tests in `tests/test_phase7_ui.py` PASS.
 
-- [ ] **Step 3: Check the documentation diff**
+- [x] **Step 3: Check the documentation diff**
 
 Run:
 
@@ -171,7 +171,7 @@ Expected: `git diff --check` exits 0; `rg` finds `Roadmap completed` and `627/62
 - Verify: `docs/superpowers/specs/2026-07-10-readme-roadmap-completion-design.md`
 - Verify: `docs/superpowers/plans/2026-07-10-readme-roadmap-completion.md`
 
-- [ ] **Step 1: Run the full regression suite**
+- [x] **Step 1: Run the full regression suite**
 
 Run:
 
@@ -181,7 +181,7 @@ python -m pytest -q
 
 Expected: 627 tests pass with no failure or error.
 
-- [ ] **Step 2: Stage only the roadmap documentation and its contract**
+- [x] **Step 2: Stage only the roadmap documentation and its contract**
 
 Run:
 
