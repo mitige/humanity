@@ -23,6 +23,16 @@ class TraceLogger:
         """Create a logger writing to ``path`` (defaults to storage/data/traces.jsonl)."""
         self._path: Path = Path(path) if path is not None else _DEFAULT_PATH
 
+    @classmethod
+    def for_agent(cls, agent_id: int, n_agents: int) -> "TraceLogger":
+        """Create the legacy solo logger or an agent-specific society logger."""
+        path = (
+            _DEFAULT_PATH
+            if int(n_agents) <= 1
+            else _DATA_DIR / f"traces-agent-{int(agent_id)}.jsonl"
+        )
+        return cls(path)
+
     def path(self) -> str:
         """Return the absolute path of the backing JSONL file."""
         return str(self._path)

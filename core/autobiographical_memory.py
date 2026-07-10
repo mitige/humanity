@@ -258,8 +258,8 @@ class AutobiographicalMemory:
             self._records = [r for r, _ in kept_pairs]
             self._vectors = [v for _, v in kept_pairs]
             self._vector_norms = [float(np.linalg.norm(v)) for v in self._vectors]
-            if self._store is not None:
-                self._store.save_records(self._records)
+        if (boosted > 0 or pruned > 0) and self._store is not None:
+            self._store.save_records(self._records)
         return boosted, pruned
 
     def count(self) -> int:

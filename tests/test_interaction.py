@@ -19,6 +19,7 @@ so it never breaks the rest of the suite.
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from core.agent import CognitiveAgent
 from schemas.models import (
@@ -277,6 +278,17 @@ def test_perturb_choc_lowers_energy(agent: CognitiveAgent) -> None:
     assert float(agent.self_model._state.energy) == pytest.approx(energy_after, abs=1e-4)
 
 
+def test_perturb_choc_reports_actual_clamped_energy_loss(tmp_path) -> None:
+    agent = _make_agent(tmp_path, initial_energy=5.0)
+    before = float(agent.world.agent_energy)
+
+    effect = agent.perturb(PerturbRequest(type="shock", magnitude=1.0))
+
+    assert before == pytest.approx(5.0)
+    assert effect["energy"] == 0.0
+    assert effect["drained"] == pytest.approx(before)
+
+
 def test_perturb_surprise_raises_next_cycle_error_and_confusion(tmp_path) -> None:
     """perturb(surprise) raises the NEXT cycle's prediction_error + confusion.
 
@@ -318,11 +330,10 @@ def test_perturb_apaisement_lowers_fear_and_raises_mood(agent: CognitiveAgent) -
     assert effect["mood"] == pytest.approx(float(agent.self_model._state.mood), abs=1e-4)
 
 
-def test_perturb_unknown_type_is_a_noop(agent: CognitiveAgent) -> None:
-    """An unknown perturbation type is reported as not applied (no crash)."""
-    agent.cognitive_cycle()
-    effect = agent.perturb(PerturbRequest(type="inconnu", magnitude=1.0))
-    assert effect["applied"] is False
+def test_perturb_unknown_type_is_rejected() -> None:
+    """Unknown public perturbation types cannot become silent no-ops."""
+    with pytest.raises(ValidationError):
+        PerturbRequest(type="inconnu", magnitude=1.0)
 
 
 # --------------------------------------------------------------------------- #

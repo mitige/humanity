@@ -47,10 +47,14 @@ from core.language import Lexicon
 from core.learning import PolicyLearner
 from core.meta_learning import MetaLearner
 from core.metacognition import Metacognition
+from core.mind_wandering import MindWandering
 from core.motivation import MotivationSystem
 from core.personality import PersonalityModel
 from core.perception import Perception
 from core.phi_ar import PhiARMonitor
+from core.phi_causal import PhiCausalMonitor
+from core.hierarchy import HierarchicalModel
+from core.planning import Planner
 from core.policy import Policy
 from core.reality_monitor import RealityMonitor
 from core.recurrence import RecurrentPerception
@@ -59,8 +63,10 @@ from core.self_opacity import assess_self_opacity
 from core.shared_world import SharedWorld
 from core.sleep import SleepCycle
 from core.social_emotion import apply_contagion, update_trust
+from core.td_learning import TDLearner
 from core.temporality import Temporality
 from core.theory_of_mind import TheoryOfMind
+from core.vector_memory import VectorMemoryIndex
 from core.working_memory import WorkingMemory
 from core.world import World
 from core.world_model import WorldModel
@@ -93,6 +99,7 @@ from schemas.models import (
     RunRequest,
     SalientItem,
     SelfModelState,
+    SemanticMemoryState,
     SimConfig,
     SleepState,
     SocialState,
@@ -108,11 +115,13 @@ class CognitiveAgent:
     """A single simulated agent running a full cognitive cycle per tick."""
 
     def __init__(self, config: SimConfig, *, agent_id: int = 0,
-                 shared_world: "SharedWorld | None" = None) -> None:
+                 shared_world: "SharedWorld | None" = None,
+                 defer_trace_logging: bool = False) -> None:
         """Instantiate the world and every cognitive module from ``config``."""
         self.config = config
         self.agent_id = int(agent_id)
         self._shared_world = shared_world
+        self._defer_trace_logging = bool(defer_trace_logging)
         self._build(config)
 
     def _build(self, config: SimConfig, *, preserve_identity: bool = False) -> None:
@@ -126,7 +135,10 @@ class CognitiveAgent:
         # Persistence + episodic memory. ``persist_memory=False`` keeps memory
         # in-RAM (no per-store full-file rewrite) for fast/headless training.
         if not preserve_identity or not hasattr(self, "memory_store"):
-            self.memory_store = MemoryStore() if config.persist_memory else None
+            self.memory_store = (
+                MemoryStore.for_agent(self.agent_id, config.n_agents)
+                if config.persist_memory else None
+            )
         self.memory = AutobiographicalMemory(config, store=self.memory_store)
         self.emotion_model = EmotionModel()
         self.motivation = MotivationSystem(config)
@@ -139,7 +151,8 @@ class CognitiveAgent:
         self.attention_schema = AttentionSchema()
         self.metacognition = Metacognition()
         if not preserve_identity or not hasattr(self, "trace_logger"):
-            self.trace_logger = TraceLogger()
+            self.trace_logger = TraceLogger.for_agent(
+                self.agent_id, config.n_agents)
 
         # Cycle bookkeeping.
         self.last_trace: CycleTrace | None = None
@@ -215,14 +228,29 @@ class CognitiveAgent:
         # enabling the drive also installs the explicit standing goal.
         self.lexicon = Lexicon(agent_id=self.agent_id)
         if config.language_drive_enabled:
-            self.self_model.set_goal("invent a language")
+            self.self_model.set_goal("invent a language", source="system")
+
+        # Phase 7: the horizon (active only when their flags are on). Each is a
+        # further FUNCTIONAL mechanism — exact coarse-grained causal Φ, a
+        # hierarchical generative model with explicit VFE, multi-step EFE
+        # planning, semantic vector memory, contextual TD(λ), and default-mode
+        # wandering. None approaches level 1 (phenomenal consciousness).
+        self.phi_causal_monitor = PhiCausalMonitor(WORKSPACE_SOURCES, config.phi_causal_window)
+        self.hierarchical = HierarchicalModel()
+        self.planner = Planner()
+        self.vector_index = VectorMemoryIndex()
+        if config.vector_memory_enabled:
+            self.vector_index.rebuild(self.memory._records)
+        self.td_learner = TDLearner()
+        self.mind_wandering = MindWandering()
+        self._last_curiosity = None  # CuriosityState | None (for wandering's boredom)
 
         # "Become someone": a standing individuation drive. The full state is
         # recomputed each tick and fed one-tick-deferred to the motivation drive;
         # enabling it also installs the explicit goal on the self-model.
         self._last_individuation = None  # IndividuationState | None
         if config.individuation_enabled:
-            self.self_model.set_goal("become someone")
+            self.self_model.set_goal("become someone", source="system")
             self._last_individuation = compute_individuation(
                 self.self_model.snapshot(), memory_count=len(self.memory._records))
 
@@ -332,10 +360,29 @@ class CognitiveAgent:
         # 5) Working memory: refresh/expire/evict.
         self.working_memory.update(salient, observation.tick)
 
-        # 6) Episodic retrieval: similar past records.
-        memory_matches: list[MemoryRecord] = self.memory.retrieve_similar(
-            percepts, cfg.memory_retrieval_k
-        )
+        # 6) Episodic retrieval: similar past records. Phase 7 (gated) routes
+        #    retrieval through the deterministic semantic vector index (hashed
+        #    n-gram embeddings + cosine/importance/recency blend) instead of the
+        #    plain feature-cosine path.
+        semantic_state = None
+        if cfg.vector_memory_enabled:
+            self.vector_index.sync(self.memory._records)
+            context_text = " ".join(
+                [g.need for g in goals[:2]] + [s.percept.kind for s in salient[:3]])
+            memory_matches, mean_sim = self.vector_index.retrieve(
+                self.memory._records, percepts, context_text,
+                cfg.memory_retrieval_k, cfg, observation.tick)
+            semantic_state = SemanticMemoryState(
+                mode="semantic",
+                index_size=int(self.vector_index.size()),
+                mean_similarity=round(float(mean_sim), 4),
+                report=(f"Semantic retrieval over {self.vector_index.size()} embedded "
+                        f"episodes; mean cosine {mean_sim:.2f}. Distributional "
+                        "similarity of records — not remembering as an experience."))
+        else:
+            memory_matches: list[MemoryRecord] = self.memory.retrieve_similar(
+                percepts, cfg.memory_retrieval_k
+            )
 
         # 7) Candidate actions + predictions.
         candidates = self.policy.candidate_actions(salient, self_state)
@@ -347,6 +394,29 @@ class CognitiveAgent:
         if self._shared_world is not None:
             self.theory_of_mind.update(visible_agents, audible_messages,
                                        tick=observation.tick, grid_size=cfg.grid_size)
+
+        # Phase 7 — mind-wandering / default mode (gated): when external demand
+        # is low, an associative walk over autobiographical memory produces
+        # spontaneous content that will bid in this tick's competition. Uses the
+        # PREVIOUS tick's arousal and workspace winner (one-tick re-entry lag,
+        # like the other self-generated sources).
+        wandering_state = None
+        if cfg.mind_wandering_enabled:
+            wandering_state = self.mind_wandering.update(
+                salient=salient, goals=goals,
+                arousal=float(self._arousal),
+                arousal_baseline=float(cfg.arousal_baseline),
+                boredom=(float(self._last_curiosity.boredom)
+                         if (cfg.curiosity_enabled and self._last_curiosity is not None)
+                         else 0.0),
+                sleeping=sleeping,
+                records=self.memory._records,
+                tick=observation.tick, agent_id=self.agent_id,
+                prev_winner_source=(self._last_workspace.winner_source
+                                    if self._last_workspace is not None else None),
+                config=cfg,
+                vector_index=(self.vector_index
+                              if cfg.vector_memory_enabled else None))
 
         # 6b) BUILD COALITIONS: each specialist process submits a bid for the
         #     single global-workspace broadcast channel (GWT). Bids carry an
@@ -363,6 +433,15 @@ class CognitiveAgent:
             emotion=self.last_emotion,
             cfg=cfg,
         )
+
+        # Phase 7 — the wandering coalition (gated): spontaneous, task-unrelated
+        # content competes for global access like any specialist bid.
+        if cfg.mind_wandering_enabled:
+            wander_bid = self.mind_wandering.bid()
+            if wander_bid is not None:
+                w_content, w_activation, w_precision, w_vector = wander_bid
+                coalitions.append(self.global_workspace.make_coalition(
+                    "wandering", w_content, w_activation, w_precision, w_vector))
 
         # 6c) HOOK (cognitive injection): append one coalition per active
         #     injection so it competes in the next workspace round (tests the
@@ -381,6 +460,11 @@ class CognitiveAgent:
         # the competition softmax-normalizes activations in place.
         if cfg.phi_ar_enabled:
             self.phi_ar_monitor.append(coalitions)
+
+        # Phase 7 — causal-Φ history (gated): same pre-competition tap, feeding
+        # the coarse-grained binary substrate of the exact causal measure.
+        if cfg.phi_causal_enabled:
+            self.phi_causal_monitor.append(coalitions)
 
         # 7) Global workspace competition + broadcast (GWT ignition), modulated
         #    by arousal and sustained by the previously-ignited content.
@@ -434,11 +518,24 @@ class CognitiveAgent:
         # computations the last state is held (cheap per-tick bookkeeping).
         phi_ar_state = None
         if cfg.phi_ar_enabled:
+            cycle_tick = int(observation.tick) + 1
             if self.phi_ar_monitor.ready() and (
-                    observation.tick % max(1, int(cfg.phi_ar_every)) == 0):
-                phi_ar_state = self.phi_ar_monitor.compute(observation.tick, cfg)
+                    cycle_tick % max(1, int(cfg.phi_ar_every)) == 0):
+                phi_ar_state = self.phi_ar_monitor.compute(cycle_tick, cfg)
             else:
                 phi_ar_state = self.phi_ar_monitor.last
+
+        # Phase 7 — causal Φ (gated): periodically recompute the EXACT
+        # state-space measure (empirical TPM + exhaustive MIP) on the
+        # coarse-grained binary substrate; the last state is held in between.
+        phi_causal_state = None
+        if cfg.phi_causal_enabled:
+            cycle_tick = int(observation.tick) + 1
+            if self.phi_causal_monitor.ready() and (
+                    cycle_tick % max(1, int(cfg.phi_causal_every)) == 0):
+                phi_causal_state = self.phi_causal_monitor.compute(cycle_tick, cfg)
+            else:
+                phi_causal_state = self.phi_causal_monitor.last
 
         # Phase 2 — imagination (gated, awake only): a bounded mental rollout whose
         # preferred first action gives the policy a forward-looking bonus.
@@ -453,7 +550,43 @@ class CognitiveAgent:
                 config=cfg)
             imagined_best = imagination_state.best_first_action
 
+        # Phase 7 — multi-step-horizon planning (gated, awake only): a bounded
+        # policy-TREE search over action sequences scored by discounted -EFE
+        # (fuller active inference than the 1-step policy or the greedy
+        # imagination rollout). Its preferred first action earns an additive
+        # policy bonus, exactly like the imagination hook.
+        planning_state = None
+        planned_best = None
+        if cfg.planning_enabled and not sleeping:
+            plan_energy = (self._shared_world.agents[self.agent_id].energy
+                           if self._shared_world is not None else self.world.agent_energy)
+            planning_state = self.planner.plan(
+                self.world_model, observation, candidates,
+                current_energy=float(plan_energy),
+                initial_energy=float(cfg.initial_energy), config=cfg)
+            if planning_state.chosen_first:
+                planned_best = ActionType(planning_state.chosen_first)
+
+        # Phase 7 — contextual TD(λ) (gated): the pre-action context in which
+        # this tick's decision is about to be taken (used both to read the
+        # context-conditional learned values and, after acting, to credit it).
+        td_ctx_now = None
+        if cfg.td_learning_enabled:
+            td_ctx_now = TDLearner.context_key(
+                danger_visible=any(p.danger >= 0.4 for p in percepts),
+                low_energy=(float(observation.agent_energy)
+                            < 0.35 * float(cfg.initial_energy)),
+                novelty_visible=any(p.novelty >= 0.5 for p in percepts),
+                others_visible=bool(visible_agents),
+            )
+
         # 9) Policy: choose an action (active inference; value == -EFE).
+        if cfg.td_learning_enabled and td_ctx_now is not None:
+            learned_vals = self.td_learner.values_for(td_ctx_now)
+        elif cfg.learning_enabled:
+            learned_vals = self.policy_learner.values()
+        else:
+            learned_vals = None
         decision: ActionDecision = self.policy.choose_action(
             predictions,
             memory_matches,
@@ -463,7 +596,8 @@ class CognitiveAgent:
             salient,
             cfg,
             imagined_best_action=imagined_best,
-            learned_values=(self.policy_learner.values() if cfg.learning_enabled else None),
+            learned_values=learned_vals,
+            planned_best_action=planned_best,
         )
 
         # The prediction backing the chosen action (for trace + error).
@@ -506,17 +640,31 @@ class CognitiveAgent:
                 min(1.0, max(0.0, current_error + self._pending_surprise))
             )
             self._pending_surprise = 0.0
+        # Phase 7 — hierarchical generative model (gated): the slow context
+        # level updates its regime posterior from this tick's evidence and
+        # computes the EXPLICIT variational free energy (accuracy + complexity).
+        hierarchy_state = None
+        if cfg.hierarchy_enabled:
+            hierarchy_state = self.hierarchical.update(
+                percepts, float(current_error), list(self._recent_errors), cfg)
         # Phase 3 — meta-learning (gated): adapt the effective learning rate.
         effective_lr = float(cfg.learning_rate)
         if cfg.meta_learning_enabled:
             effective_lr = self.meta_learner.effective_lr(cfg.learning_rate, list(self._recent_errors), cfg)
+        # Phase 7 — top-down modulation (gated): the context regime scales the
+        # fast level's learning rate (volatile/adverse regimes => learn faster);
+        # composes multiplicatively with meta-learning when both are on.
+        if cfg.hierarchy_enabled:
+            effective_lr = float(min(1.0, max(0.0, effective_lr * self.hierarchical.lr_factor())))
+        lr_override_active = cfg.meta_learning_enabled or cfg.hierarchy_enabled
         self.world_model.update(chosen_prediction, result,
-                                lr_override=(effective_lr if cfg.meta_learning_enabled else None))
+                                lr_override=(effective_lr if lr_override_active else None))
         self._recent_errors.append(float(current_error))
         error_reduction = prev_error - current_error
 
-        # Phase 3 — learn the value of the action just taken (gated).
-        if cfg.learning_enabled:
+        # Phase 3 — learn the value of the action just taken (gated). Phase 7's
+        # contextual TD(λ) shares the same shaped reward signal.
+        if cfg.learning_enabled or cfg.td_learning_enabled:
             energy_delta = float(result.energy_delta)
             goal_progress = float(result.actual.get("goal_progress", 0.0))
             if cfg.satiation_enabled:
@@ -533,8 +681,13 @@ class CognitiveAgent:
                           + float(cfg.explore_reward_weight) * novelty)
             else:
                 reward = energy_delta + goal_progress
-            self.policy_learner.update(decision.action.value, reward,
-                                       lr=(effective_lr if cfg.meta_learning_enabled else cfg.value_learning_rate))
+            if cfg.learning_enabled:
+                self.policy_learner.update(decision.action.value, reward,
+                                           lr=(effective_lr if cfg.meta_learning_enabled else cfg.value_learning_rate))
+            # Phase 7 — TD(λ): credit flows backward along eligibility traces,
+            # conditioned on the context the action was taken in.
+            if cfg.td_learning_enabled and td_ctx_now is not None:
+                self.td_learner.step(td_ctx_now, decision.action.value, reward, cfg)
 
         # 12) Emotion update from this tick's signals.
         emotion = self.emotion_model.update(
@@ -673,7 +826,7 @@ class CognitiveAgent:
         )
         if workspace.ignited:
             base_importance = float(min(1.0, base_importance * 1.5 + 0.1))
-        self.memory.store_experience(
+        stored_record = self.memory.store_experience(
             tick=result.tick,
             perception=percepts,
             action=decision.action,
@@ -684,6 +837,9 @@ class CognitiveAgent:
             importance=base_importance,
             summary=decision.rationale,
         )
+        # Phase 7 (gated) — keep the semantic index in lock-step with memory.
+        if cfg.vector_memory_enabled and stored_record is not None:
+            self.vector_index.append(stored_record)
 
         # 17) Introspection (generated from state, augmented with v2 sub-states).
         introspection = self.introspection.generate(
@@ -699,6 +855,13 @@ class CognitiveAgent:
             metacognition=metacognition,
             integration=integration,
         )
+
+        # Phase 7 — world-task readout (gated): the ENVIRONMENT's current task.
+        task_state = None
+        if cfg.tasks_enabled:
+            task_state = (self._shared_world.task_state()
+                          if self._shared_world is not None
+                          else self.world.task_state())
 
         # 18) Metrics (existing fields + v2 consciousness metrics).
         metrics = Metrics(
@@ -740,6 +903,14 @@ class CognitiveAgent:
                                    and temporality_state.protention_error is not None) else 0.0),
             phi_ar=round(float(phi_ar_state.phi_ar), 4) if phi_ar_state else 0.0,
             reality_accuracy=round(float(reality_state.accuracy), 4) if reality_state else 0.0,
+            phi_causal=round(float(phi_causal_state.phi_causal), 4) if phi_causal_state else 0.0,
+            vfe=round(float(hierarchy_state.vfe), 4) if hierarchy_state else 0.0,
+            planning_depth=int(planning_state.horizon) if planning_state else 0,
+            wandering_occupancy=round(float(wandering_state.occupancy), 4) if wandering_state else 0.0,
+            task_progress=(round(float(task_state.progress), 4) if task_state else 0.0),
+            semantic_similarity=round(float(semantic_state.mean_similarity), 4) if semantic_state else 0.0,
+            td_error=(round(float(self.td_learner.last_td_error), 4)
+                      if cfg.td_learning_enabled else 0.0),
         )
 
         # Publish this agent's social signal so others can perceive it.
@@ -782,11 +953,21 @@ class CognitiveAgent:
                 dream=dream_text, sleep_ticks=int(self.sleep_cycle.sleep_ticks))
 
         learning_state = None
-        if cfg.learning_enabled or cfg.meta_learning_enabled:
+        if cfg.learning_enabled or cfg.meta_learning_enabled or cfg.td_learning_enabled:
             learning_state = LearningState(
-                q_values=self.policy_learner.values(),
-                last_reward=round(float(self.policy_learner.last_reward), 4),
-                effective_lr=round(float(effective_lr), 6))
+                q_values=(self.td_learner.values_for(td_ctx_now)
+                          if (cfg.td_learning_enabled and td_ctx_now is not None)
+                          else self.policy_learner.values()),
+                last_reward=round(float(
+                    self.td_learner.last_reward
+                    if cfg.td_learning_enabled
+                    else self.policy_learner.last_reward), 4),
+                effective_lr=round(float(effective_lr), 6),
+                td_context=(td_ctx_now if cfg.td_learning_enabled else None),
+                td_error=(round(float(self.td_learner.last_td_error), 4)
+                          if cfg.td_learning_enabled else 0.0),
+                n_contexts=(int(self.td_learner.n_contexts())
+                            if cfg.td_learning_enabled else 0))
 
         # 19) Assemble the trace (with the 5 new sub-objects) and persist.
         # Individuation ("become someone", gated): recompute how far the agent has
@@ -859,10 +1040,17 @@ class CognitiveAgent:
             inner_speech=inner_speech_state,
             phi_ar=phi_ar_state,
             language=language_state,
+            phi_causal=phi_causal_state,
+            hierarchy=hierarchy_state,
+            planning=planning_state,
+            semantic_memory=semantic_state,
+            wandering=wandering_state,
+            task=task_state,
         )
         # Per-tick JSONL trace write is the second-largest per-tick I/O cost;
         # ``trace_logging=False`` skips it for fast/headless training.
-        if cfg.trace_logging:
+        if cfg.trace_logging and not getattr(
+                self, "_defer_trace_logging", False):
             self.trace_logger.log(trace)
 
         # Update rolling state for the next tick.
@@ -876,6 +1064,7 @@ class CognitiveAgent:
         self._last_workspace = workspace
         self._pending_imagination = imagination_state
         self._pending_dream = dream_text
+        self._last_curiosity = curiosity_state
         return trace
 
     @staticmethod
@@ -1341,7 +1530,10 @@ class CognitiveAgent:
             updates = patch.model_dump(exclude_none=True)
         else:
             updates = {k: v for k, v in dict(patch).items() if v is not None}
-        merged = self.config.model_copy(update=updates)
+        merged = SimConfig.model_validate({
+            **self.config.model_dump(),
+            **updates,
+        })
         self._build(merged, preserve_identity=True)
         return self.config
 
@@ -1371,6 +1563,9 @@ class CognitiveAgent:
         carries the canonical functional-simulation disclaimer.
         """
         if self.last_trace is None:
+            if self._shared_world is not None:
+                raise RuntimeError(
+                    "A shared agent must be primed through SocietyManager.tick().")
             self.cognitive_cycle()
         trace = self.last_trace
         self_state = self.self_model.snapshot()
@@ -1420,29 +1615,38 @@ class CognitiveAgent:
         clamped to their valid ranges.
         """
         ptype = str(req.type).strip().lower()
+        ptype = {"shock": "choc", "soothe": "apaisement"}.get(ptype, ptype)
         magnitude = float(req.magnitude)
         if ptype == "choc":
             cap = float(self.config.initial_energy) * ENERGY_CAP_FACTOR
             if self._shared_world is not None:
                 body = self._shared_world.agents[self.agent_id]
-                new_energy = float(min(cap, max(0.0, float(body.energy) - magnitude * 10.0)))
+                before_energy = float(body.energy)
+                new_energy = float(min(
+                    cap, max(0.0, before_energy - magnitude * 10.0)))
                 body.energy = new_energy
             else:
+                before_energy = float(self.world.agent_energy)
                 new_energy = float(
-                    min(cap, max(0.0, float(self.world.agent_energy) - magnitude * 10.0))
+                    min(cap, max(0.0, before_energy - magnitude * 10.0))
                 )
                 self.world.agent_energy = new_energy
             # Sync the self-model's energy view so reports stay consistent.
             self.self_model._state.energy = new_energy
             return {
                 "type": "choc",
+                "applied": True,
                 "energy": round(new_energy, 4),
-                "drained": round(magnitude * 10.0, 4),
+                "drained": round(max(0.0, before_energy - new_energy), 4),
             }
         if ptype == "surprise":
             forced = float(min(1.0, max(0.0, magnitude)))
             self._pending_surprise = forced
-            return {"type": "surprise", "pending_prediction_error": round(forced, 4)}
+            return {
+                "type": "surprise",
+                "applied": True,
+                "pending_prediction_error": round(forced, 4),
+            }
         if ptype == "apaisement":
             mag = float(min(1.0, max(0.0, magnitude)))
             old_fear = float(self.last_emotion.fear)
@@ -1454,6 +1658,7 @@ class CognitiveAgent:
             self.self_model._state.mood = new_mood
             return {
                 "type": "apaisement",
+                "applied": True,
                 "fear": round(new_fear, 4),
                 "mood": round(new_mood, 4),
             }
@@ -1541,6 +1746,12 @@ class CognitiveAgent:
                 "inner_speech": _opt("inner_speech"),
                 "phi_ar": _opt("phi_ar"),
                 "language": _opt("language"),
+                "phi_causal": _opt("phi_causal"),
+                "hierarchy": _opt("hierarchy"),
+                "planning": _opt("planning"),
+                "semantic_memory": _opt("semantic_memory"),
+                "wandering": _opt("wandering"),
+                "task": _opt("task"),
             }
         # No cycle yet: neutral placeholders.
         return {

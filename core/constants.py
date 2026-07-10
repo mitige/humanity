@@ -32,7 +32,7 @@ COHERENCE_WINDOW: int = 12                 # ticks used to compute self-coherenc
 WORKSPACE_SOURCES: list[str] = [
     "perception", "memory", "motivation", "prediction_error",
     "interoception", "metacognition", "communication", "social",
-    "imagination", "dream", "concept", "inner_speech",
+    "imagination", "dream", "concept", "inner_speech", "wandering",
 ]
 SUBLIMINAL_FACTOR: float = 0.3       # broadcast strength multiplier when NOT ignited (subliminal)
 
@@ -94,3 +94,25 @@ CONTAGION_EMA: float = 0.15     # default; SimConfig.contagion_rate overrides pe
 TRUST_EMA: float = 0.25         # how fast reputation moves toward observed reward sign
 FAMILIARITY_EMA: float = 0.30   # how fast familiarity saturates with exposure
 SOCIAL_PERCEPT_NORM: float = 1.0  # reserved scale for social salience normalization
+
+# === Phase 7 — the horizon (every remaining future extension) ===
+# Every constant parameterizes a FUNCTIONAL mechanism; none of them brings the
+# project closer to level 1 (phenomenal consciousness) — nothing can.
+PHI_CAUSAL_LAPLACE: float = 0.5        # Laplace smoothing of the empirical TPM counts
+PHI_CAUSAL_MIN_SAMPLES: int = 24       # ticks of history required before computing Φ_c
+HIERARCHY_REGIMES: list[str] = ["abundance", "scarcity", "peril", "calm"]
+HIERARCHY_VFE_EMA: float = 0.3         # smoothing of the explicit variational free energy
+PLANNING_BRANCH_FIRST: int = 4         # first-step candidates kept in the policy tree
+PLANNING_BRANCH_DEEP: int = 4          # branching factor at depths >= 2
+PLANNING_BONUS: float = 0.35           # additive policy bonus for the planned best action
+VECTOR_DIM_FEATURES: int = 16          # structured-feature block of the embedding
+VECTOR_DIM_TEXT: int = 48              # hashed char-3-gram block of the embedding
+VECTOR_RECENCY_HALF_LIFE: float = 200.0  # ticks for the recency term to halve
+WANDERING_THRESHOLD: float = 0.55      # pressure above which a wandering episode fires
+WANDERING_HOPS: int = 2                # associative hops per wandering chain
+WANDERING_OCCUPANCY_EMA: float = 0.1   # smoothing of the default-mode occupancy measure
+WANDERING_PRECISION: float = 0.5       # precision of the wandering coalition's bids
+TASK_SEQUENCE: list[str] = ["forage", "reach", "patrol"]
+TASK_FORAGE_COUNT: int = 2             # food items to eat per forage task
+TASK_COMPLETION_BONUS: float = 1.0     # goal_progress granted on task completion
+DRIFT_EVERY: int = 12                  # ticks between drift steps of a mobile object

@@ -60,6 +60,7 @@ class SelfModel:
                 "no subjective experience is implied."
             ),
         )
+        self._goal_sources: dict[str, set[str]] = {}
         # Rolling history buffers used to estimate coherence.
         self._pref_history: list[dict[str, float]] = []
         self._mood_history: list[float] = []
@@ -242,11 +243,46 @@ class SelfModel:
     # ------------------------------------------------------------------ #
     # Goals / accessors
     # ------------------------------------------------------------------ #
-    def set_goal(self, goal: str) -> None:
-        """Append a unique active goal to the self-model."""
+    def _ensure_goal_sources(self) -> None:
+        """Treat goals from pre-provenance checkpoints as user-authored."""
+        if not hasattr(self, "_goal_sources"):
+            self._goal_sources = {
+                goal: {"user"}
+                for goal in self._state.active_goals
+            }
+            return
+        for goal in self._state.active_goals:
+            self._goal_sources.setdefault(goal, {"user"})
+
+    def set_goal(self, goal: str, source: str = "user") -> None:
+        """Activate a unique goal and record who requested it."""
         goal = goal.strip()
-        if goal and goal not in self._state.active_goals:
+        if not goal:
+            return
+        source = source.strip() or "user"
+        self._ensure_goal_sources()
+        self._goal_sources.setdefault(goal, set()).add(source)
+        if goal not in self._state.active_goals:
             self._state.active_goals.append(goal)
+
+    def remove_goal(self, goal: str, source: str = "user") -> None:
+        """Remove one provenance; deactivate only when none remain."""
+        goal = goal.strip()
+        if not goal:
+            return
+        source = source.strip() or "user"
+        self._ensure_goal_sources()
+        sources = self._goal_sources.get(goal)
+        if sources is None:
+            return
+        sources.discard(source)
+        if sources:
+            return
+        self._goal_sources.pop(goal, None)
+        self._state.active_goals[:] = [
+            active for active in self._state.active_goals
+            if active != goal
+        ]
 
     def _apply_agency(self, agency: float) -> None:
         """Nudge confidence toward a high sense of agency (Phase 2, gentle EMA)."""

@@ -15,6 +15,18 @@
   const POLL_MS = 350;
   const HIST = 60;            // sparkline history length
   const STREAM_MAX = 48;      // stream bars kept client-side
+  const IGNITION_HISTORY_MAX = 120;
+  const SOURCE_COLORS = {
+    perception: "#d8a84e", memory: "#7fb5a6", self: "#9b86c8",
+    emotion: "#c87463", goal: "#80a85e", imagination: "#739bc5",
+    dream: "#755c9f", social: "#c98ba7", inner_speech: "#d0b674",
+    wandering: "#69a9ad", language: "#b69462", unknown: "#7b7870",
+  };
+  const HORIZON_FLAGS = [
+    "phi_causal_enabled", "hierarchy_enabled", "planning_enabled",
+    "vector_memory_enabled", "td_learning_enabled", "mind_wandering_enabled",
+    "world_dynamics_enabled", "tasks_enabled",
+  ];
 
   // ---------- helpers ----------
   const $ = (s) => document.querySelector(s);
@@ -75,6 +87,10 @@
   // ---------- state ----------
   let running = false;
   let pollTimer = null;
+  let refreshInFlight = false;
+  let refreshQueued = false;
+  let refreshDrainPromise = null;
+  let stepInFlight = false;
   let lastGrid = 12;
   let lastTick = -1;
   // most recent CycleTrace (from POST /tick) — holds Phase-2 imagination/sleep detail
@@ -89,6 +105,40 @@
   };
   // client-side stream of ConsciousMoment {ignited, awareness_level}
   let streamData = [];
+  let ignitionHistory = [];
+  let memoryGraphCache = { nodes: [], edges: [] };
+  let lastMemoryGraphTick = -1;
+  let memoryGraphRequest = null;
+  let memoryGraphSelection = -1;
+  let horizonGeneration = 0;
+
+  function resetHorizonClientState() {
+    horizonGeneration += 1;
+    for (const key in HISTORY) delete HISTORY[key];
+    streamData = [];
+    ignitionHistory = [];
+    memoryGraphCache = { nodes: [], edges: [] };
+    lastMemoryGraphTick = -1;
+    memoryGraphRequest = null;
+    memoryGraphSelection = -1;
+    lastTrace = null;
+    lastTick = -1;
+
+    const searchResults = $("#memory-search-results");
+    if (searchResults) searchResults.replaceChildren();
+    const searchButton = $("#memory-search-form button[type='submit']");
+    if (searchButton) searchButton.disabled = false;
+    const tooltip = $("#memory-graph-tooltip");
+    if (tooltip) tooltip.hidden = true;
+    const selection = $("#memory-graph-selection");
+    if (selection) selection.textContent = "";
+
+    renderStream(null);
+    renderHorizonStream([]);
+    renderIgnitionDynamics(null, -1);
+    drawMemoryGraph(memoryGraphCache);
+    renderHorizon(null, null);
+  }
 
   // ============================================================
   //  STATUS + THEME
@@ -114,6 +164,8 @@
       document.documentElement.setAttribute("data-theme", next);
       localStorage.setItem("cws-theme", next);
       if (currentWorldSnap) drawWorld(currentWorldSnap); // re-tint canvas
+      renderIgnitionDynamics(null, lastTick);
+      drawMemoryGraph(memoryGraphCache);
     });
   })();
 
@@ -126,6 +178,42 @@
   //  WORLD CANVAS
   // ============================================================
   let currentWorldSnap = null;
+  let worldCursor = { x: null, y: null };
+  let worldStimulusPending = false;
+
+  function drawWorldCursor(ctx, cell, grid) {
+    if (worldCursor.x == null || worldCursor.y == null) {
+      worldCursor = { x: Math.floor(grid / 2), y: Math.floor(grid / 2) };
+    }
+    worldCursor.x = clamp(Math.round(worldCursor.x), 0, grid - 1);
+    worldCursor.y = clamp(Math.round(worldCursor.y), 0, grid - 1);
+    const inset = Math.max(2, cell * 0.08);
+    const x = worldCursor.x * cell + inset;
+    const y = worldCursor.y * cell + inset;
+    const size = Math.max(1, cell - inset * 2);
+    ctx.save();
+    ctx.fillStyle = cssVar("--accent");
+    ctx.globalAlpha = 0.08;
+    ctx.fillRect(x, y, size, size);
+    ctx.globalAlpha = 0.95;
+    ctx.strokeStyle = cssVar("--accent-bright");
+    ctx.lineWidth = Math.max(1.5, cell * 0.045);
+    ctx.setLineDash([Math.max(3, cell * 0.12), Math.max(2, cell * 0.08)]);
+    ctx.strokeRect(x, y, size, size);
+    ctx.restore();
+  }
+
+  function mapWorldPointToGrid(ev) {
+    const canvas = $("#world-canvas");
+    const rect = canvas.getBoundingClientRect();
+    const grid = Math.max(1, Math.round(lastGrid || 12));
+    const relativeX = rect.width ? (ev.clientX - rect.left) / rect.width : 0;
+    const relativeY = rect.height ? (ev.clientY - rect.top) / rect.height : 0;
+    return {
+      x: clamp(Math.floor(relativeX * grid), 0, grid - 1),
+      y: clamp(Math.floor(relativeY * grid), 0, grid - 1),
+    };
+  }
 
   function drawWorld(snapshot) {
     currentWorldSnap = snapshot;
@@ -210,6 +298,9 @@
     ctx.arc(ax, ay, cell * 0.13, 0, Math.PI * 2);
     ctx.fillStyle = bgInset;
     ctx.fill();
+
+    // The selected cell remains visible for both pointer and keyboard users.
+    drawWorldCursor(ctx, cell, grid);
   }
 
   // ============================================================
@@ -405,6 +496,10 @@
     ["self_coherence", "Self-coherence", "pos", f3, (v) => clamp01(v)],
     ["meta_confidence", "Meta-confidence", "accent", f3, (v) => clamp01(v)],
     ["energy", "Energy", "pos", f2, null],
+    ["phi_causal", "Causal Φ", "accent", f3, null],
+    ["vfe", "Variational free E.", "neg", f3, null],
+    ["wandering_occupancy", "Default-mode occupancy", "cool", f3, (v) => clamp01(v)],
+    ["task_progress", "Task progress", "pos", f3, (v) => clamp01(v)],
   ];
 
   function ensureMetricCells() {
@@ -444,6 +539,10 @@
     const cm = (consciousness && consciousness.conscious_moment) || {};
     const integ = (consciousness && consciousness.integration) || {};
     const meta = (consciousness && consciousness.metacognition) || {};
+    const phiCausal = (consciousness && consciousness.phi_causal) || {};
+    const hierarchy = (consciousness && consciousness.hierarchy) || {};
+    const wandering = (consciousness && consciousness.wandering) || {};
+    const task = (consciousness && consciousness.task) || {};
     const merged = {
       phi_proxy: m.phi_proxy != null ? m.phi_proxy : integ.phi_proxy,
       arousal: m.arousal != null ? m.arousal : cm.arousal,
@@ -452,6 +551,11 @@
       self_coherence: m.self_coherence,
       meta_confidence: m.meta_confidence != null ? m.meta_confidence : meta.meta_confidence,
       energy: m.energy,
+      phi_causal: m.phi_causal != null ? m.phi_causal : phiCausal.phi_causal,
+      vfe: m.vfe != null ? m.vfe : hierarchy.vfe,
+      wandering_occupancy: m.wandering_occupancy != null
+        ? m.wandering_occupancy : wandering.occupancy,
+      task_progress: m.task_progress != null ? m.task_progress : task.progress,
     };
 
     METRIC_DEFS.forEach(([key, , , fmt]) => {
@@ -595,6 +699,10 @@
     priming_enabled: true,
     // Phase 6 — the invention of language (naming games)
     language_drive_enabled: true,
+    // Phase 7 — the horizon (core defaults remain off for compatibility)
+    phi_causal_enabled: true, hierarchy_enabled: true, planning_enabled: true,
+    vector_memory_enabled: true, td_learning_enabled: true,
+    mind_wandering_enabled: true, world_dynamics_enabled: true, tasks_enabled: true,
   };
 
   // applyControlStates — reflect a config object into the Settings-panel DOM so
@@ -827,6 +935,431 @@
       isd ? "· re-entries: " + num(isd.reentry_count) : "";
   }
 
+  // the horizon (Phase 7, level-2) — mechanism states remain explicitly
+  // dormant until their flag is active and a cycle has populated them.
+  function renderHorizon(trace, world) {
+    const t = trace || {};
+    const phi = t.phi_causal;
+    const hierarchy = t.hierarchy;
+    const planning = t.planning;
+    const semantic = t.semantic_memory;
+    const td = t.learning && t.learning.td_context ? t.learning : null;
+    const wandering = t.wandering;
+    const cells = [
+      {
+        label: "Causal Φ", state: phi,
+        value: phi ? f3(phi.phi_causal) : "—",
+        note: phi
+          ? `exact coarse substrate · ${num(phi.n_nodes)} nodes · computed t${num(phi.computed_at_tick)}`
+          : "dormant — enable causal Φ and accumulate its observation window",
+      },
+      {
+        label: "Predictive level", state: hierarchy,
+        value: hierarchy ? (hierarchy.regime || "unclassified") : "—",
+        note: hierarchy
+          ? `explicit VFE ${f3(hierarchy.vfe)} · precision ${f3(hierarchy.context_precision)}`
+          : "dormant — predictive hierarchy has no current regime",
+      },
+      {
+        label: "Policy horizon", state: planning,
+        value: planning ? f0(planning.horizon) : "—",
+        note: planning
+          ? ((planning.best_sequence || []).length
+              ? (planning.best_sequence || []).join(" → ")
+              : "bounded search returned no action sequence")
+          : "dormant — multi-step expected-free-energy search is off",
+      },
+      {
+        label: "Semantic memory", state: semantic,
+        value: semantic ? f0(semantic.index_size) : "—",
+        note: semantic
+          ? `${semantic.mode || "feature"} retrieval · mean cosine ${f3(semantic.mean_similarity)}`
+          : "dormant — no vector-memory retrieval state this cycle",
+      },
+      {
+        label: "TD(λ)", state: td,
+        value: td ? f3(td.td_error) : "—",
+        note: td
+          ? `${td.td_context || "no context"} · ${num(td.n_contexts)} learned contexts`
+          : "dormant — contextual TD learning has no active trace",
+      },
+      {
+        label: "Default mode", state: wandering,
+        value: wandering ? pctTxt(wandering.occupancy) : "—",
+        note: wandering
+          ? (wandering.active
+              ? `associative episode active · pressure ${f3(wandering.pressure)}`
+              : `externally coupled · pressure ${f3(wandering.pressure)}`)
+          : "dormant — functional mind-wandering is disabled",
+      },
+    ];
+
+    const host = $("#horizon-readouts");
+    if (host) {
+      host.innerHTML = cells.map((cell) =>
+        `<article class="horizon-readout ${cell.state ? "is-live" : "is-dormant"}">` +
+          `<span class="hr-label">${esc(cell.label)}</span>` +
+          `<strong class="hr-value">${esc(cell.value)}</strong>` +
+          `<span class="hr-note">${esc(cell.note)}</span>` +
+        `</article>`
+      ).join("");
+    }
+
+    const taskHost = $("#horizon-task");
+    const task = t.task || (world && world.task);
+    if (taskHost) {
+      taskHost.innerHTML = task
+        ? `<b>${esc(task.kind || "task")}</b> · ${esc(pctTxt(task.progress))} · ` +
+          `${esc(task.description || "No task description supplied.")} · ` +
+          `${esc(num(task.completed_total))} completed`
+        : "World task system dormant — no structured task is active.";
+    }
+  }
+
+  // Draw score and homeostatic threshold on their shared, honest 0..1 scale.
+  // Repeated HTTP polls at the same simulation tick update rather than duplicate
+  // a sample, so the x-axis remains simulation time rather than browser time.
+  function renderIgnitionDynamics(workspace, tick) {
+    if (workspace) {
+      const sample = {
+        tick: num(tick),
+        score: clamp01(num(workspace.ignition_score)),
+        effective_threshold: clamp01(num(
+          workspace.effective_threshold != null
+            ? workspace.effective_threshold : workspace.threshold
+        )),
+        ignited: !!(workspace.ignited != null ? workspace.ignited : workspace.ignition),
+      };
+      const previous = ignitionHistory[ignitionHistory.length - 1];
+      if (previous && previous.tick === sample.tick) ignitionHistory[ignitionHistory.length - 1] = sample;
+      else ignitionHistory.push(sample);
+      if (ignitionHistory.length > IGNITION_HISTORY_MAX) {
+        ignitionHistory.splice(0, ignitionHistory.length - IGNITION_HISTORY_MAX);
+      }
+    }
+
+    const canvas = $("#ignition-chart");
+    const summary = $("#ignition-chart-summary");
+    if (!canvas || !canvas.getContext) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const W = canvas.width, H = canvas.height;
+    const left = 44, right = 16, top = 26, bottom = 32;
+    const plotW = W - left - right, plotH = H - top - bottom;
+    const n = ignitionHistory.length;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = cssVar("--bg-inset");
+    ctx.fillRect(0, 0, W, H);
+    ctx.font = "10px monospace";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const value = i / 4;
+      const y = top + (1 - value) * plotH + 0.5;
+      ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(W - right, y);
+      ctx.strokeStyle = cssVar("--line");
+      ctx.globalAlpha = i === 0 || i === 4 ? 0.72 : 0.38;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = cssVar("--ink-faint");
+      ctx.textAlign = "right";
+      ctx.fillText(value.toFixed(2), left - 7, y);
+    }
+
+    // Compact in-canvas legend; threshold is dashed, score is solid brass.
+    ctx.textAlign = "left";
+    ctx.fillStyle = cssVar("--accent");
+    ctx.fillRect(left, 9, 18, 2);
+    ctx.fillStyle = cssVar("--ink-soft");
+    ctx.fillText("score", left + 24, 10);
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = cssVar("--ink-faint");
+    ctx.beginPath(); ctx.moveTo(left + 78, 10); ctx.lineTo(left + 96, 10); ctx.stroke();
+    ctx.restore();
+    ctx.fillText("effective threshold", left + 102, 10);
+
+    if (!n) {
+      ctx.fillStyle = cssVar("--ink-faint");
+      ctx.textAlign = "center";
+      ctx.fillText("No access-dynamics samples yet", left + plotW / 2, top + plotH / 2);
+      if (summary) summary.textContent = "No access-dynamics samples yet.";
+      canvas.setAttribute("aria-label", "Ignition dynamics: no samples yet");
+      return;
+    }
+
+    const xAt = (i) => left + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+    const yAt = (value) => top + (1 - clamp01(num(value))) * plotH;
+    const drawLine = (key, color, dashed) => {
+      ctx.save();
+      ctx.beginPath();
+      ignitionHistory.forEach((sample, i) => {
+        const x = xAt(i), y = yAt(sample[key]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = color;
+      ctx.lineWidth = key === "score" ? 2 : 1.35;
+      if (dashed) ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.restore();
+    };
+    drawLine("effective_threshold", cssVar("--ink-faint"), true);
+    drawLine("score", cssVar("--accent"), false);
+
+    ignitionHistory.forEach((sample, i) => {
+      if (!sample.ignited) return;
+      ctx.beginPath();
+      ctx.arc(xAt(i), yAt(sample.score), 2.7, 0, Math.PI * 2);
+      ctx.fillStyle = cssVar("--accent-bright");
+      ctx.fill();
+      ctx.strokeStyle = cssVar("--bg-inset");
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    const first = ignitionHistory[0], latest = ignitionHistory[n - 1];
+    ctx.fillStyle = cssVar("--ink-faint");
+    ctx.textAlign = "left";
+    ctx.fillText("t" + f0(first.tick), left, H - 13);
+    ctx.textAlign = "right";
+    ctx.fillText("t" + f0(latest.tick), W - right, H - 13);
+    const ignitionCount = ignitionHistory.reduce((sum, sample) => sum + (sample.ignited ? 1 : 0), 0);
+    const rate = ignitionCount / n;
+    const summaryText = `Latest t${f0(latest.tick)}: score ${f3(latest.score)}, ` +
+      `effective threshold ${f3(latest.effective_threshold)}; ignition rate ${pctTxt(rate)} across ${n} sample${n === 1 ? "" : "s"}.`;
+    if (summary) summary.textContent = summaryText;
+    canvas.setAttribute("aria-label", "Ignition score and effective-threshold history. " + summaryText);
+  }
+
+  function renderHorizonStream(moments) {
+    const host = $("#horizon-stream");
+    if (!host) return;
+    const data = (Array.isArray(moments) ? moments : streamData).slice(-STREAM_MAX);
+    host.innerHTML = "";
+    const fragment = document.createDocumentFragment();
+    const sources = new Set();
+    let ignitedCount = 0;
+    data.forEach((moment) => {
+      const source = String(moment && moment.dominant_source || "unknown").toLowerCase();
+      const color = SOURCE_COLORS[source] || SOURCE_COLORS.unknown;
+      const awareness = clamp01(num(moment && moment.awareness_level));
+      const ignited = !!(moment && moment.ignited);
+      const tickLabel = "t" + f0(moment && moment.tick);
+      const content = String(moment && moment.contents || "no content label");
+      const description = `${tickLabel} · ${source} · awareness ${f3(awareness)} · ` +
+        `${ignited ? "ignited" : "subliminal"} · ${content}`;
+      const bar = el("span", "moment" + (ignited ? " ignited" : ""));
+      bar.style.height = Math.max(4, awareness * 50).toFixed(1) + "px";
+      bar.style.backgroundColor = color;
+      bar.style.color = color;
+      bar.title = description;
+      bar.setAttribute("aria-label", description);
+      fragment.appendChild(bar);
+      sources.add(source);
+      if (ignited) ignitedCount++;
+    });
+    host.appendChild(fragment);
+    const latestSource = data.length
+      ? String(data[data.length - 1].dominant_source || "unknown") : "none";
+    host.setAttribute("aria-label", data.length
+      ? `${data.length} recent workspace moments; ${ignitedCount} ignited; ` +
+        `${sources.size} dominant sources; latest source ${latestSource}.`
+      : "No dominant-source moments recorded yet.");
+  }
+
+  async function refreshMemoryGraph(force) {
+    const requestedTick = num(lastTick);
+    const generation = horizonGeneration;
+    if (!force && (
+      requestedTick < 0 ||
+      (lastMemoryGraphTick >= 0 && requestedTick - lastMemoryGraphTick < 20)
+    )) return memoryGraphCache;
+    if (memoryGraphRequest) return memoryGraphRequest;
+    if (!force) lastMemoryGraphTick = requestedTick;
+
+    let request = null;
+    request = (async () => {
+      try {
+        const graph = await api("agent/memory/graph?limit=60&edges=3");
+        if (generation !== horizonGeneration) return memoryGraphCache;
+        memoryGraphCache = {
+          nodes: Array.isArray(graph && graph.nodes) ? graph.nodes : [],
+          edges: Array.isArray(graph && graph.edges) ? graph.edges : [],
+        };
+        drawMemoryGraph(memoryGraphCache);
+        return memoryGraphCache;
+      } catch (e) {
+        if (generation !== horizonGeneration) return memoryGraphCache;
+        drawMemoryGraph(memoryGraphCache);
+        const summary = $("#memory-graph-summary");
+        if (summary) {
+          summary.textContent = memoryGraphCache.nodes.length
+            ? `Memory graph unavailable; showing ${memoryGraphCache.nodes.length} cached nodes.`
+            : "Memory graph unavailable; no indexed memories could be loaded.";
+        }
+        return memoryGraphCache;
+      } finally {
+        if (memoryGraphRequest === request) memoryGraphRequest = null;
+      }
+    })();
+    memoryGraphRequest = request;
+    return request;
+  }
+
+  function drawGraphEdge(ctx, source, target, similarity) {
+    if (!source || !target) return;
+    const strength = clamp01((num(similarity) + 1) / 2);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(source.x, source.y);
+    ctx.lineTo(target.x, target.y);
+    ctx.strokeStyle = cssVar("--cool");
+    ctx.globalAlpha = 0.06 + strength * 0.42;
+    ctx.lineWidth = 0.45 + strength * 1.05;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function graphNodeColor(node) {
+    const valence = num(node && node.valence);
+    if (valence > 0.12) return cssVar("--pos");
+    if (valence < -0.12) return cssVar("--neg");
+    const action = String(node && node.action || "").toLowerCase();
+    if (action === "explore" || action === "analyze") return cssVar("--curio");
+    if (action === "approach" || action === "interact") return cssVar("--accent");
+    if (action === "avoid") return cssVar("--neg");
+    if (action === "rest") return cssVar("--cool");
+    return cssVar("--ink-soft");
+  }
+
+  function drawGraphNode(ctx, point, selected) {
+    if (!point) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
+    ctx.fillStyle = graphNodeColor(point.node);
+    ctx.globalAlpha = 0.84;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = cssVar("--bg-inset");
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    if (selected) {
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, point.radius + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = cssVar("--accent-bright");
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawMemoryGraph(graph) {
+    const canvas = $("#memory-graph");
+    const summary = $("#memory-graph-summary");
+    if (!canvas || !canvas.getContext) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const nodes = Array.isArray(graph && graph.nodes) ? graph.nodes : [];
+    const edges = Array.isArray(graph && graph.edges) ? graph.edges : [];
+    const nodeList = $("#memory-graph-nodes");
+    if (nodeList) {
+      nodeList.replaceChildren();
+      const listFragment = document.createDocumentFragment();
+      nodes.forEach((node) => {
+        const item = document.createElement("li");
+        item.textContent = `${String(node && node.action || "memory")} at tick ${f0(node && node.tick)}; ` +
+          `importance ${f2(node && node.importance)}; valence ${f2(node && node.valence)}; ` +
+          `${String(node && node.summary || "No summary stored.")}`;
+        listFragment.appendChild(item);
+      });
+      nodeList.appendChild(listFragment);
+    }
+    const edgeList = $("#memory-graph-edges");
+    if (edgeList) {
+      edgeList.replaceChildren();
+      const edgeFragment = document.createDocumentFragment();
+      const nodeById = new Map(nodes.map((node) => [String(node && node.id), node]));
+      edges.forEach((edge) => {
+        const source = nodeById.get(String(edge && edge.source));
+        const target = nodeById.get(String(edge && edge.target));
+        const sourceLabel = source
+          ? `${String(source.action || "memory")} at tick ${f0(source.tick)}`
+          : `memory ${String(edge && edge.source)}`;
+        const targetLabel = target
+          ? `${String(target.action || "memory")} at tick ${f0(target.tick)}`
+          : `memory ${String(edge && edge.target)}`;
+        const item = document.createElement("li");
+        item.textContent = `${sourceLabel} is linked to ${targetLabel}; ` +
+          `cosine similarity ${f3(edge && edge.similarity)}.`;
+        edgeFragment.appendChild(item);
+      });
+      edgeList.appendChild(edgeFragment);
+    }
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2;
+    const maxRadius = Math.min(W, H) * 0.43;
+    const goldenAngle = 2.399963229728653;
+    const placed = new Map();
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = cssVar("--bg-inset");
+    ctx.fillRect(0, 0, W, H);
+
+    if (!nodes.length) {
+      memoryGraphSelection = -1;
+      canvas._placedNodes = [];
+      const tooltip = $("#memory-graph-tooltip");
+      if (tooltip) tooltip.hidden = true;
+      const selection = $("#memory-graph-selection");
+      if (selection) selection.textContent = "No memory node is available for selection.";
+      ctx.fillStyle = cssVar("--ink-faint");
+      ctx.font = "11px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("No indexed autobiographical memories", cx, cy);
+      if (summary) summary.textContent = "No indexed memories yet.";
+      canvas.setAttribute("aria-label", "Autobiographical memory graph: no indexed memories yet");
+      return;
+    }
+
+    if (memoryGraphSelection >= nodes.length) memoryGraphSelection = nodes.length - 1;
+
+    nodes.forEach((node, index) => {
+      const tickPhase = (Math.abs(num(node && node.tick)) % 24) * 0.004;
+      const angle = index * goldenAngle + tickPhase;
+      const spiralRadius = Math.min(maxRadius, 18 + Math.sqrt(index + 1) * 24);
+      const point = {
+        x: cx + Math.cos(angle) * spiralRadius,
+        y: cy + Math.sin(angle) * spiralRadius,
+        radius: 3.5 + clamp01(num(node && node.importance)) * 5.5,
+        node,
+      };
+      placed.set(node.id, point);
+    });
+    edges.forEach((edge) => drawGraphEdge(
+      ctx, placed.get(edge.source), placed.get(edge.target), edge.similarity
+    ));
+    const placedNodes = Array.from(placed.values());
+    placedNodes.forEach((point, index) => drawGraphNode(
+      ctx, point, index === memoryGraphSelection
+    ));
+    canvas._placedNodes = placedNodes;
+    if (memoryGraphSelection >= 0) {
+      const selection = $("#memory-graph-selection");
+      if (selection) selection.textContent =
+        `Selected memory ${memoryGraphSelection + 1} of ${placedNodes.length}: ` +
+        memoryGraphNodeDescription(placedNodes[memoryGraphSelection].node);
+    }
+
+    const summaryText = `${nodes.length} indexed memor${nodes.length === 1 ? "y" : "ies"} and ` +
+      `${edges.length} similarity edge${edges.length === 1 ? "" : "s"}. ` +
+      "Node radius encodes stored importance; colour encodes valence and action family.";
+    if (summary) summary.textContent = summaryText;
+    canvas.setAttribute("aria-label", "Autobiographical memory similarity graph. " + summaryText);
+  }
+
   // the invention of language (Phase 6, level-2) — the agent-side readouts ride
   // on the trace/consciousness payload (language sub-object); the SOCIETY-side
   // dictionary + convergence come from GET /society/language. Emergent
@@ -869,11 +1402,12 @@
     }
   }
 
-  async function refreshSocietyLanguage() {
+  async function refreshSocietyLanguage(generation) {
     const box = $("#lang-dictionary");
     if (!box) return;
     let d;
     try { d = await api("society/language"); } catch (e) { return; }
+    if (generation != null && generation !== horizonGeneration) return;
     if ($("#lang-convergence")) {
       $("#lang-convergence").textContent =
         d.convergence != null ? f2(d.convergence) : "—";
@@ -998,6 +1532,27 @@
   //  REFRESH (poll /state + agent endpoints)
   // ============================================================
   async function refreshAll() {
+    refreshQueued = true;
+    if (refreshInFlight) {
+      return refreshDrainPromise;
+    }
+    refreshInFlight = true;
+    refreshDrainPromise = (async () => {
+      while (refreshQueued) {
+        refreshQueued = false;
+        await performRefreshAll();
+      }
+    })();
+    try {
+      await refreshDrainPromise;
+    } finally {
+      refreshInFlight = false;
+      refreshDrainPromise = null;
+    }
+  }
+
+  async function performRefreshAll() {
+    const generation = horizonGeneration;
     try {
       const [state, metrics, consciousness, ws, stream, self, mem, intro] = await Promise.all([
         api("state").catch(() => null),
@@ -1009,11 +1564,19 @@
         api("agent/memory?limit=20").catch(() => []),
         api("agent/introspection").catch(() => null),
       ]);
+      if (generation !== horizonGeneration) return;
 
+      let snap = null;
+      let tick = lastTick;
+      let tickChanged = false;
       if (state) {
-        const snap = state.world || state.snapshot || state;
+        snap = state.world || state.snapshot || state;
+        const incomingTick = num(
+          snap.tick != null ? snap.tick : (metrics && metrics.tick));
+        if (incomingTick < lastTick) return;
+        tick = incomingTick;
+        tickChanged = tick !== lastTick;
         drawWorld(snap);
-        const tick = num(snap.tick != null ? snap.tick : (metrics && metrics.tick));
         $("#world-meta").textContent = "tick " + tick + " · GET /state";
         lastTick = tick;
         // canonical arousal source: GET /state.arousal
@@ -1045,6 +1608,14 @@
       // every panel refreshes during BACKGROUND runs; a client-side CycleTrace
       // (manual Step) is only the fallback.
       const traceish = consciousness || lastTrace;
+      const horizonWorkspace = ws || (consciousness && consciousness.workspace);
+      try { renderHorizon(traceish, snap || (state && (state.world || state.snapshot))); } catch (e) { /* non-fatal */ }
+      try { renderIgnitionDynamics(horizonWorkspace, tick); } catch (e) { /* non-fatal */ }
+      try { renderHorizonStream(stream || streamData); } catch (e) { /* non-fatal */ }
+      if (tickChanged) {
+        try { await refreshMemoryGraph(false); } catch (e) { /* non-fatal */ }
+        if (generation !== horizonGeneration) return;
+      }
       // deep-consciousness panel (Phase 2) — guarded so it can't break the loop
       try { refreshDeep(state, traceish); } catch (e) { /* non-fatal */ }
       // learning & personality panel (Phase 3)
@@ -1057,11 +1628,13 @@
       try { renderAsymptote(traceish); } catch (e) { /* non-fatal */ }
       // the invention of language (Phase 6) — agent readouts + society dictionary
       try { renderLanguage(traceish); } catch (e) { /* non-fatal */ }
-      try { await refreshSocietyLanguage(); } catch (e) { /* non-fatal */ }
+      try { await refreshSocietyLanguage(generation); } catch (e) { /* non-fatal */ }
+      if (generation !== horizonGeneration) return;
       // laboratory time series (Phase 4) — guarded so it can't break the loop
-      try { await refreshLabChart(); } catch (e) { /* non-fatal */ }
-      // society view updates alongside the single-agent instrument
-      refreshSociety();
+      try { await refreshLabChart(generation); } catch (e) { /* non-fatal */ }
+      if (generation !== horizonGeneration) return;
+      // society view updates inside the same serialized network batch
+      try { await refreshSociety(generation); } catch (e) { /* non-fatal */ }
     } catch (err) {
       console.error("refresh failed", err);
       setStatus("error", "API error");
@@ -1071,20 +1644,12 @@
   // After a manual tick we have a full CycleTrace — apply it for the richest update.
   function applyTrace(trace) {
     if (!trace) return;
+    const traceTick = num(trace.tick);
+    if (traceTick < lastTick) return;
     lastTrace = trace;  // retain for the deep panel (imagined plan / dream)
-    if (trace.observation) {
-      drawWorld({
-        grid_size: lastGrid,
-        tick: trace.observation.tick,
-        radius: trace.observation.radius,
-        agent: {
-          x: trace.observation.agent_x, y: trace.observation.agent_y,
-          energy: trace.observation.agent_energy,
-        },
-        objects: trace.observation.visible || [],
-      });
-      $("#world-meta").textContent = "tick " + num(trace.tick) + " · POST /tick";
-    }
+    lastTick = traceTick;
+    $("#world-meta").textContent =
+      "tick " + num(trace.tick) + " · synchronizing post-action world";
     // synthesize a consciousness view from the trace sub-objects
     const consc = {
       conscious_moment: trace.conscious_moment,
@@ -1121,6 +1686,9 @@
     try { renderAsymptote(trace); } catch (e) { /* non-fatal */ }
     // the invention of language (Phase 6) — agent-side readouts
     try { renderLanguage(trace); } catch (e) { /* non-fatal */ }
+    try { renderHorizon(trace, currentWorldSnap); } catch (e) { /* non-fatal */ }
+    try { renderIgnitionDynamics(trace.workspace, trace.tick); } catch (e) { /* non-fatal */ }
+    try { renderHorizonStream(streamData); } catch (e) { /* non-fatal */ }
   }
 
   // ============================================================
@@ -1132,13 +1700,254 @@
   // ============================================================
   //  CONTROLS
   // ============================================================
+  const INTERVENTION_ENDPOINTS = {
+    ask: "/agent/ask",
+    stimulus: "/world/stimulus",
+    inject: "/agent/inject",
+    attend: "/agent/attend",
+    perturb: "/agent/perturb",
+  };
+  let interactionSequence = 0;
+  let interventionPending = false;
+
+  function compactLogValue(value) {
+    let rendered;
+    try { rendered = JSON.stringify(value, null, 2); }
+    catch (e) { rendered = String(value); }
+    return rendered.length > 1200 ? rendered.slice(0, 1197) + "..." : rendered;
+  }
+
+  function appendInterventionLog(kind, endpoint, payload, correlationId) {
+    const host = $("#interaction-log");
+    if (!host) return;
+    const sequence = correlationId == null ? ++interactionSequence : correlationId;
+    const entry = el("li", `interaction-entry is-${kind}`);
+    const head = el("div", "interaction-entry-head");
+    head.appendChild(el("span", "interaction-sequence mono", "#" + String(sequence).padStart(3, "0")));
+    head.appendChild(el("strong", "interaction-kind", esc(kind)));
+    head.appendChild(el("code", "interaction-endpoint", esc(endpoint)));
+    entry.appendChild(head);
+    const body = el("pre", "interaction-payload");
+    body.textContent = compactLogValue(payload);
+    entry.appendChild(body);
+    host.appendChild(entry);
+    while (host.children.length > 40) host.firstElementChild.remove();
+    host.scrollTop = host.scrollHeight;
+  }
+
+  function setInterventionBusy(busy) {
+    const panel = $("#experimental-interventions");
+    if (panel) {
+      if (busy) panel.setAttribute("aria-busy", "true");
+      else panel.removeAttribute("aria-busy");
+    }
+    document.querySelectorAll(
+      "#intervention-tabs button, .intervention-form button[type='submit'], #btn-clear-interactions"
+    ).forEach((button) => { button.disabled = busy; });
+  }
+
+  function interventionPayload(name) {
+    const value = (selector) => $(selector).value.trim();
+    const number = (selector) => Number($(selector).value);
+    if (name === "ask") {
+      const payload = { question: value("#intervention-ask-question") };
+      const intent = value("#intervention-ask-intent");
+      if (intent) payload.intent = intent;
+      return payload;
+    }
+    if (name === "stimulus") {
+      const payload = {
+        kind: value("#intervention-stimulus-kind"),
+        intensity: number("#intervention-stimulus-intensity"),
+      };
+      const x = value("#intervention-stimulus-x");
+      const y = value("#intervention-stimulus-y");
+      if (x !== "") payload.x = Number(x);
+      if (y !== "") payload.y = Number(y);
+      return payload;
+    }
+    if (name === "inject") return {
+      content: value("#intervention-inject-content"),
+      activation: number("#intervention-inject-activation"),
+      precision: number("#intervention-inject-precision"),
+      ttl: number("#intervention-inject-ttl"),
+    };
+    if (name === "attend") return {
+      target_id: number("#intervention-attend-target"),
+      strength: number("#intervention-attend-strength"),
+      ttl: number("#intervention-attend-ttl"),
+    };
+    return {
+      type: value("#intervention-perturb-type"),
+      magnitude: number("#intervention-perturb-magnitude"),
+    };
+  }
+
+  function interventionResult(name, response) {
+    if (name === "ask") return {
+      intent: response && response.intent,
+      answer: response && response.answer,
+      grounding: response && response.grounding,
+      disclaimer: response && response.disclaimer,
+    };
+    if (name === "stimulus") return { object: response && response.object };
+    if (name === "perturb") return { effect: response && response.effect };
+    return response;
+  }
+
+  async function submitIntervention(form) {
+    if (interventionPending) return;
+    const name = form.dataset.interventionPanel;
+    const endpoint = INTERVENTION_ENDPOINTS[name];
+    if (!endpoint) return;
+    const payload = interventionPayload(name);
+    const button = form.querySelector("button[type='submit']");
+    const correlationId = ++interactionSequence;
+    interventionPending = true;
+    appendInterventionLog("request", endpoint, payload, correlationId);
+    setInterventionBusy(true);
+    if (button) button.disabled = true;
+    form.setAttribute("aria-busy", "true");
+    try {
+      const response = await postJSON(endpoint.slice(1), payload);
+      if (name === "perturb" && response && response.effect && response.effect.applied === false) {
+        throw new Error(response.effect.reason || "perturbation was not applied");
+      }
+      appendInterventionLog(
+        "result", endpoint, interventionResult(name, response), correlationId,
+      );
+      await refreshAll();
+    } catch (error) {
+      appendInterventionLog(
+        "error", endpoint, { message: error.message || String(error) }, correlationId,
+      );
+      setStatus("error", "Intervention error");
+    } finally {
+      form.removeAttribute("aria-busy");
+      interventionPending = false;
+      setInterventionBusy(false);
+      if (button) button.disabled = false;
+    }
+  }
+
+  function activateIntervention(name, moveFocus) {
+    const tabs = Array.from(document.querySelectorAll("#intervention-tabs [role='tab']"));
+    const panels = Array.from(document.querySelectorAll("[data-intervention-panel]"));
+    tabs.forEach((tab) => {
+      const selected = tab.dataset.intervention === name;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      if (selected && moveFocus) tab.focus();
+    });
+    panels.forEach((panel) => { panel.hidden = panel.dataset.interventionPanel !== name; });
+  }
+
+  const interventionTabs = Array.from(document.querySelectorAll("#intervention-tabs [role='tab']"));
+  interventionTabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => activateIntervention(tab.dataset.intervention, false));
+    tab.addEventListener("keydown", (ev) => {
+      let next = index;
+      if (ev.key === "ArrowRight" || ev.key === "ArrowDown") next = (index + 1) % interventionTabs.length;
+      else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") next = (index - 1 + interventionTabs.length) % interventionTabs.length;
+      else if (ev.key === "Home") next = 0;
+      else if (ev.key === "End") next = interventionTabs.length - 1;
+      else return;
+      ev.preventDefault();
+      activateIntervention(interventionTabs[next].dataset.intervention, true);
+    });
+  });
+  document.querySelectorAll(".intervention-form").forEach((form) => {
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      void submitIntervention(form);
+    });
+  });
+  $("#btn-clear-interactions")?.addEventListener("click", () => {
+    $("#interaction-log").replaceChildren();
+    interactionSequence = 0;
+  });
+
+  async function postWorldStimulusAt(x, y) {
+    const status = $("#world-interaction-status");
+    if (worldStimulusPending || interventionPending) {
+      if (status) status.textContent = "Another intervention is still running.";
+      return;
+    }
+    const payload = {
+      kind: $("#world-stimulus-kind").value,
+      x,
+      y,
+      intensity: Number($("#world-stimulus-intensity").value),
+    };
+    const correlationId = ++interactionSequence;
+    worldStimulusPending = true;
+    interventionPending = true;
+    setInterventionBusy(true);
+    if (status) status.textContent = `Injecting ${payload.kind} at (${x}, ${y})...`;
+    appendInterventionLog("request", "/world/stimulus", payload, correlationId);
+    try {
+      const response = await postJSON("world/stimulus", payload);
+      appendInterventionLog(
+        "result", "/world/stimulus", { object: response && response.object }, correlationId,
+      );
+      if (status) status.textContent = `${payload.kind} injected at cell (${x}, ${y}).`;
+      await refreshAll();
+    } catch (error) {
+      appendInterventionLog(
+        "error", "/world/stimulus", { message: error.message || String(error) }, correlationId,
+      );
+      if (status) status.textContent = `Could not inject at cell (${x}, ${y}).`;
+      setStatus("error", "Stimulus error");
+    } finally {
+      worldStimulusPending = false;
+      interventionPending = false;
+      setInterventionBusy(false);
+    }
+  }
+
+  const worldCanvas = $("#world-canvas");
+  worldCanvas.addEventListener("click", (ev) => {
+    worldCursor = mapWorldPointToGrid(ev);
+    if (currentWorldSnap) drawWorld(currentWorldSnap);
+    void postWorldStimulusAt(worldCursor.x, worldCursor.y);
+  });
+  worldCanvas.addEventListener("keydown", (ev) => {
+    const grid = Math.max(1, Math.round(lastGrid || 12));
+    let handled = true;
+    if (ev.key === "ArrowLeft") worldCursor.x = clamp((worldCursor.x ?? Math.floor(grid / 2)) - 1, 0, grid - 1);
+    else if (ev.key === "ArrowRight") worldCursor.x = clamp((worldCursor.x ?? Math.floor(grid / 2)) + 1, 0, grid - 1);
+    else if (ev.key === "ArrowUp") worldCursor.y = clamp((worldCursor.y ?? Math.floor(grid / 2)) - 1, 0, grid - 1);
+    else if (ev.key === "ArrowDown") worldCursor.y = clamp((worldCursor.y ?? Math.floor(grid / 2)) + 1, 0, grid - 1);
+    else if (ev.key === "Enter" || ev.key === " ") {
+      void postWorldStimulusAt(worldCursor.x ?? Math.floor(grid / 2), worldCursor.y ?? Math.floor(grid / 2));
+    } else handled = false;
+    if (!handled) return;
+    ev.preventDefault();
+    if (currentWorldSnap) drawWorld(currentWorldSnap);
+    const status = $("#world-interaction-status");
+    if (status && ev.key !== "Enter" && ev.key !== " ") {
+      status.textContent = `Selected cell (${worldCursor.x}, ${worldCursor.y}); press Enter to inject.`;
+    }
+  });
+
   $("#btn-step").addEventListener("click", async () => {
+    if (stepInFlight) return;
+    const generation = horizonGeneration;
+    const stepButton = $("#btn-step");
+    stepInFlight = true;
+    stepButton.disabled = true;
     try {
       const trace = await postJSON("tick");
+      if (generation !== horizonGeneration) return;
       applyTrace(trace);
-      const mem = await api("agent/memory?limit=20").catch(() => []);
-      renderMemories(mem || []);
+      await refreshAll();
+      if (generation !== horizonGeneration) return;
+      await refreshMemoryGraph(true);
     } catch (e) { setStatus("error", "Tick error"); }
+    finally {
+      stepInFlight = false;
+      stepButton.disabled = false;
+    }
   });
 
   $("#btn-start").addEventListener("click", async () => {
@@ -1162,13 +1971,11 @@
   $("#btn-reset").addEventListener("click", async () => {
     try {
       stopPolling();
-      // wipe client-side history so sparklines/stream restart clean
-      for (const k in HISTORY) delete HISTORY[k];
-      streamData = [];
-      renderStream(null);
       await postJSON("reset", currentConfigPatch());
+      resetHorizonClientState();
       setRunningUI(false);
-      refreshAll();
+      await refreshAll();
+      await refreshMemoryGraph(true);
     } catch (e) { setStatus("error", "Reset error"); }
   });
 
@@ -1183,6 +1990,169 @@
       input.value = "";
       renderSelfModel(self);
     } catch (e) { setStatus("error", "Goal error"); }
+  });
+
+  // ---------- Phase-7 semantic memory search ----------
+  $("#memory-search-form")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const input = $("#memory-search-input");
+    const host = $("#memory-search-results");
+    const button = ev.currentTarget.querySelector("button[type='submit']");
+    if (!input || !host) return;
+    const query = input.value.trim();
+    if (!query) {
+      host.innerHTML = '<div class="memory-search-status">Enter a search phrase to query stored episodes.</div>';
+      input.focus();
+      return;
+    }
+    const generation = horizonGeneration;
+    host.innerHTML = '<div class="memory-search-status">Searching the deterministic semantic index…</div>';
+    if (button) button.disabled = true;
+    try {
+      const payload = await api(`agent/memory/search?q=${encodeURIComponent(query)}&limit=8`);
+      if (generation !== horizonGeneration) return;
+      const results = Array.isArray(payload && payload.results) ? payload.results : [];
+      host.innerHTML = results.length
+        ? results.map((record) =>
+            `<article class="memory-search-result">` +
+              `<div class="msr-top">` +
+                `<span class="msr-action">${esc(record.action || "unknown action")}</span>` +
+                `<span class="msr-meta">t${esc(f0(record.tick))} · imp ${esc(f2(record.importance))} · sim ${esc(f3(record.similarity))}</span>` +
+              `</div>` +
+              `<div class="msr-summary">${esc(record.summary || "No summary stored.")}</div>` +
+            `</article>`
+          ).join("")
+        : '<div class="memory-search-status">No stored episode matched this query.</div>';
+    } catch (e) {
+      if (generation !== horizonGeneration) return;
+      host.innerHTML = '<div class="memory-search-status is-error">Memory search unavailable. The current run may have no index yet.</div>';
+    } finally {
+      if (generation === horizonGeneration && button) button.disabled = false;
+    }
+  });
+
+  function memoryGraphNodeDescription(node) {
+    const n = node || {};
+    return `${String(n.action || "memory")} at tick ${f0(n.tick)}; ` +
+      `importance ${f2(n.importance)}; valence ${f2(n.valence)}; ` +
+      `${String(n.summary || "No summary stored.")}`;
+  }
+
+  function showMemoryGraphTooltip(canvas, point, clientX, clientY, announce) {
+    const tooltip = $("#memory-graph-tooltip");
+    if (!tooltip || !canvas || !point) return;
+    const node = point.node || {};
+    tooltip.replaceChildren();
+    const title = document.createElement("strong");
+    title.textContent = `${String(node.action || "memory")} · t${f0(node.tick)}`;
+    const summaryLine = document.createElement("span");
+    summaryLine.textContent = String(node.summary || "No summary stored.");
+    const metricLine = document.createElement("span");
+    metricLine.textContent = `importance ${f2(node.importance)} · valence ${f2(node.valence)}`;
+    tooltip.append(title, document.createElement("br"), summaryLine,
+      document.createElement("br"), metricLine);
+
+    const shellRect = canvas.parentElement.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const anchorX = clientX == null
+      ? canvasRect.left - shellRect.left + point.x / canvas.width * canvasRect.width
+      : clientX - shellRect.left;
+    const anchorY = clientY == null
+      ? canvasRect.top - shellRect.top + point.y / canvas.height * canvasRect.height
+      : clientY - shellRect.top;
+    tooltip.hidden = false;
+    tooltip.style.left = "0px";
+    tooltip.style.top = "0px";
+    const tooltipWidth = tooltip.offsetWidth;
+    const tooltipHeight = tooltip.offsetHeight;
+    const maxLeft = Math.max(8, shellRect.width - tooltipWidth - 8);
+    const maxTop = Math.max(8, shellRect.height - tooltipHeight - 8);
+    let left = anchorX + 12;
+    let top = anchorY + 12;
+    if (left > maxLeft) left = anchorX - tooltipWidth - 12;
+    if (top > maxTop) top = anchorY - tooltipHeight - 12;
+    tooltip.style.left = clamp(left, 8, maxLeft).toFixed(0) + "px";
+    tooltip.style.top = clamp(top, 8, maxTop).toFixed(0) + "px";
+
+    if (announce) {
+      const selection = $("#memory-graph-selection");
+      const points = Array.isArray(canvas._placedNodes) ? canvas._placedNodes : [];
+      if (selection) selection.textContent =
+        `Selected memory ${memoryGraphSelection + 1} of ${points.length}: ` +
+        memoryGraphNodeDescription(node);
+    }
+  }
+
+  function selectMemoryGraphNode(index) {
+    const canvas = $("#memory-graph");
+    const points = canvas && Array.isArray(canvas._placedNodes) ? canvas._placedNodes : [];
+    if (!canvas || !points.length) return;
+    memoryGraphSelection = clamp(index, 0, points.length - 1);
+    drawMemoryGraph(memoryGraphCache);
+    showMemoryGraphTooltip(canvas, canvas._placedNodes[memoryGraphSelection], null, null, true);
+  }
+
+  // Pointer inspection is optional: the hidden ordered list and keyboard
+  // selection expose the same graph without depending on pixels.
+  $("#memory-graph")?.addEventListener("pointermove", (ev) => {
+    const canvas = ev.currentTarget;
+    const tooltip = $("#memory-graph-tooltip");
+    const points = Array.isArray(canvas._placedNodes) ? canvas._placedNodes : [];
+    if (!tooltip) return;
+    if (!points.length) {
+      tooltip.hidden = true;
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const x = (ev.clientX - rect.left) * canvas.width / Math.max(1, rect.width);
+    const y = (ev.clientY - rect.top) * canvas.height / Math.max(1, rect.height);
+    let hit = null;
+    let nearest = Infinity;
+    points.forEach((point) => {
+      const distance = Math.hypot(point.x - x, point.y - y);
+      if (distance <= point.radius + 7 && distance < nearest) {
+        hit = point;
+        nearest = distance;
+      }
+    });
+    if (!hit) {
+      tooltip.hidden = true;
+      return;
+    }
+    showMemoryGraphTooltip(canvas, hit, ev.clientX, ev.clientY, false);
+  });
+  $("#memory-graph")?.addEventListener("pointerleave", () => {
+    const tooltip = $("#memory-graph-tooltip");
+    if (tooltip) tooltip.hidden = true;
+  });
+  $("#memory-graph")?.addEventListener("keydown", (ev) => {
+    const canvas = ev.currentTarget;
+    const points = Array.isArray(canvas._placedNodes) ? canvas._placedNodes : [];
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      memoryGraphSelection = -1;
+      const tooltip = $("#memory-graph-tooltip");
+      if (tooltip) tooltip.hidden = true;
+      const selection = $("#memory-graph-selection");
+      if (selection) selection.textContent = "Memory graph selection cleared.";
+      drawMemoryGraph(memoryGraphCache);
+      return;
+    }
+    if (!points.length || ![
+      "ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End",
+    ].includes(ev.key)) return;
+    ev.preventDefault();
+    let next = memoryGraphSelection;
+    if (ev.key === "Home") next = 0;
+    else if (ev.key === "End") next = points.length - 1;
+    else if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
+      next = memoryGraphSelection < 0 ? 0 : (memoryGraphSelection + 1) % points.length;
+    } else {
+      next = memoryGraphSelection < 0
+        ? points.length - 1
+        : (memoryGraphSelection - 1 + points.length) % points.length;
+    }
+    selectMemoryGraphNode(next);
   });
 
   // ============================================================
@@ -1251,16 +2221,42 @@
     });
   });
 
+  $("#btn-horizon-profile")?.addEventListener("click", async (ev) => {
+    const button = ev.currentTarget;
+    const patch = {};
+    HORIZON_FLAGS.forEach((flag) => { patch[flag] = true; });
+    button.disabled = true;
+    button.textContent = "Activating…";
+    try {
+      await postJSON("config", patch);
+      persistSetting(patch);
+      applyControlStates(patch);
+      try { await refreshCoverage(); } catch (e) { /* non-fatal */ }
+      await refreshAll();
+    } catch (e) {
+      setStatus("error", "Phase 7 config error");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Activate all Phase 7";
+    }
+  });
+
+  $("#btn-export-analysis")?.addEventListener("click", () => {
+    const opened = window.open(`${API}/export/analysis`, "_blank", "noopener");
+    if (opened) opened.opener = null;
+  });
+
   // ============================================================
   //  SOCIETY VIEW (multi-agent) — GET /society
   // ============================================================
   let SOC_SELECTED = 0;
 
-  async function refreshSociety() {
+  async function refreshSociety(generation) {
     let data;
     try {
       data = await api("society");
     } catch (e) { return; }
+    if (generation != null && generation !== horizonGeneration) return;
     if (!data) return;
     drawSociety(data.world, SOC_SELECTED);
     renderRelations(data.relations, data.agents);
@@ -1306,9 +2302,14 @@
   document.getElementById("btn-society-apply")?.addEventListener("click", async () => {
     const n = parseInt(document.getElementById("input-nagents").value, 10) || 1;
     try {
-      await postJSON("society/config", { n_agents: n });
+      const state = await postJSON("society/config", { n_agents: n });
+      resetHorizonClientState();
+      setRunningUI(!!(state && state.running));
+      if (state && state.running) startPolling();
+      else stopPolling();
+      await refreshAll();
+      await refreshMemoryGraph(true);
     } catch (e) { setStatus("error", "Society error"); }
-    refreshSociety();
   });
 
   document.getElementById("society-canvas")?.addEventListener("click", (ev) => {
@@ -1334,7 +2335,7 @@
   // ============================================================
   // Draw one polyline per agent for the selected metric, auto-scaling y to the
   // metric's min/max over the window. Reads GET /metrics/history (last 200 rows).
-  async function refreshLabChart() {
+  async function refreshLabChart(generation) {
     const cv = $("#lab-chart");
     if (!cv) return;
     const ctx = cv.getContext("2d");
@@ -1343,6 +2344,7 @@
 
     const metric = ($("#lab-metric") && $("#lab-metric").value) || "energy";
     const d = await api("metrics/history?limit=200");
+    if (generation != null && generation !== horizonGeneration) return;
     const rows = (d && d.series && d.series.rows) || [];
     if (!rows.length) return;
 
@@ -1392,8 +2394,10 @@
     refreshLabChart().catch(() => {});
   });
 
-  $("#btn-export-csv")?.addEventListener("click", () => window.open("export.csv", "_blank"));
-  $("#btn-export-json")?.addEventListener("click", () => window.open("export.json", "_blank"));
+  $("#btn-export-csv")?.addEventListener(
+    "click", () => window.open(`${API}/export.csv`, "_blank"));
+  $("#btn-export-json")?.addEventListener(
+    "click", () => window.open(`${API}/export.json`, "_blank"));
 
   $("#btn-scenario-run")?.addEventListener("click", async () => {
     const out = $("#lab-scenario-summary");
@@ -1544,12 +2548,19 @@
       const actions = el("div", "ckpt-actions");
       const loadBtn = el("button", "btn btn-quiet micro");
       loadBtn.textContent = "Load";
+      if (c.compatible === false) {
+        loadBtn.disabled = true;
+        loadBtn.title = "Legacy checkpoint: incompatible with this build";
+        tag.textContent += " · legacy";
+      }
       loadBtn.addEventListener("click", async () => {
         setCkptStatus("loading " + name + "…");
         try {
           const r = await postJSON("checkpoint/load", { name });
           setCkptStatus("loaded " + name + " @ tick " + num(r && r.tick));
-          refreshAll();   // repaint the restored run
+          resetHorizonClientState();
+          await refreshAll();
+          await refreshMemoryGraph(true);
         } catch (e) {
           setCkptStatus("load failed");
         }
@@ -1812,14 +2823,18 @@
   ensureMetricCells();
   drawWorld(null);
   drawCircadianDial(1);
+  drawMemoryGraph(memoryGraphCache);
+  renderIgnitionDynamics(null, -1);
   // apply the saved settings (or first-run defaults), then take the first reading
-  applyDeepDefaults().finally(() => {
-    refreshAll();
-    // theory-coverage checklist reflects the applied config (on-demand only)
-    try { refreshCoverage(); } catch (e) { /* non-fatal */ }
-  });
+  async function bootstrap() {
+    try { await applyDeepDefaults(); } catch (e) { /* first reading still useful */ }
+    await refreshAll();
+    try { await refreshCoverage(); } catch (e) { /* non-fatal */ }
+    try { await refreshMemoryGraph(true); } catch (e) { /* non-fatal */ }
+    try { await refreshCheckpoints(); } catch (e) { /* non-fatal */ }
+  }
+  void bootstrap();
   // load the checkpoint list once (on-demand only — not in the polling loop)
-  refreshCheckpoints();
 
   // compact the sticky masthead once the user scrolls into the instrument
   // (the framing epigraph folds away; the transport stays within reach)

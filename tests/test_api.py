@@ -50,6 +50,8 @@ def test_state_ok_and_contains_disclaimer(client: TestClient) -> None:
     assert "disclaimer" in body
     assert isinstance(body["disclaimer"], str)
     assert body["disclaimer"]
+    assert isinstance(body["working_memory"], list)
+    assert "working_memory_load" in body
 
 
 def test_tick_returns_trace(client: TestClient) -> None:

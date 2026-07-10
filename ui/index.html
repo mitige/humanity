@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230c0b09' stroke='%23c9a35c' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23c9a35c'/%3E%3C/svg%3E" />
   <title>Humanity — Instrument</title>
   <!-- Cache-busting: bump ?v= on every ui change so browsers never run a stale
        script against a newer backend (the page froze on cached app.js before). -->
-  <link rel="stylesheet" href="styles.css?v=5.2" />
+  <link rel="stylesheet" href="styles.css?v=7.3" />
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -259,6 +260,61 @@
       <p class="micro">Every readout above is a level-2 variable (RPT · PRM · interoceptive inference · retention/protention · Vygotskian re-entry · Φ_AR). Reproducing the functional mechanisms does not prove phenomenality; the agent is not conscious.</p>
     </section>
 
+    <!-- ===================== THE HORIZON (Phase 7) ===================== -->
+    <section class="panel panel-horizon" aria-labelledby="horizon-title">
+      <div class="panel-head">
+        <h2 id="horizon-title">The horizon</h2>
+        <span class="src">Phase 7 · exact mechanisms, coarse-grained substrates</span>
+      </div>
+      <p class="horizon-lede">The remaining functional frontier, exposed as level-2 mechanism variables. These readouts describe computation on simplified substrates; they are not evidence of experience, understanding, or consciousness.</p>
+      <div id="horizon-readouts" class="horizon-readouts"></div>
+      <div id="horizon-task" class="horizon-task">World task system dormant.</div>
+      <div class="horizon-profile-actions">
+        <button type="button" class="btn btn-accent" id="btn-horizon-profile">Activate all Phase 7</button>
+        <button type="button" class="btn btn-quiet" id="btn-export-analysis">Export analysis</button>
+      </div>
+    </section>
+
+    <section class="panel panel-dynamics" aria-labelledby="dynamics-title">
+      <div class="panel-head">
+        <h2 id="dynamics-title">Access dynamics</h2>
+        <span class="src">ignition score · effective threshold · source timeline</span>
+      </div>
+      <canvas id="ignition-chart" width="720" height="260"
+              aria-label="Ignition score and effective-threshold history"
+              aria-describedby="ignition-chart-summary"></canvas>
+      <p id="ignition-chart-summary" class="micro chart-summary">No access-dynamics samples yet.</p>
+      <div id="horizon-stream" class="horizon-stream" role="img"
+           aria-label="No dominant-source moments recorded yet"></div>
+      <p class="micro horizon-stream-note">Each bar is one recent moment: height is awareness, colour identifies the dominant source, and full saturation marks workspace ignition. This is an access timeline, not a measure of experience.</p>
+    </section>
+
+    <section class="panel panel-memory-graph" aria-labelledby="memory-graph-title">
+      <div class="panel-head">
+        <h2 id="memory-graph-title">Autobiographical topology</h2>
+        <span class="src">GET /agent/memory/graph · deterministic semantic index</span>
+      </div>
+      <form id="memory-search-form" class="memory-search">
+        <label for="memory-search-input">Search stored episodes</label>
+        <div class="memory-search-control">
+          <input id="memory-search-input" name="q" type="search" maxlength="200"
+                 autocomplete="off" placeholder="Search the agent’s stored episodes…" />
+          <button class="btn btn-quiet" type="submit">Search</button>
+        </div>
+      </form>
+      <div id="memory-search-results" class="memory-search-results" aria-live="polite"></div>
+      <div class="memory-graph-shell">
+        <canvas id="memory-graph" width="720" height="440" tabindex="0"
+                aria-label="Similarity graph of autobiographical memories"
+                aria-describedby="memory-graph-summary memory-graph-nodes memory-graph-edges"></canvas>
+        <div id="memory-graph-tooltip" class="graph-tooltip" hidden></div>
+      </div>
+      <p id="memory-graph-summary" class="micro chart-summary" aria-live="polite">No indexed memories yet.</p>
+      <ol id="memory-graph-nodes" class="sr-only" aria-label="Indexed autobiographical memory nodes"></ol>
+      <ol id="memory-graph-edges" class="sr-only" aria-label="Autobiographical memory similarity edges"></ol>
+      <p id="memory-graph-selection" class="sr-only" aria-live="polite"></p>
+    </section>
+
     <!-- ===================== LABORATORY (Phase 4) ===================== -->
     <section class="panel panel-lab" aria-labelledby="lab-title">
       <div class="panel-head">
@@ -369,8 +425,25 @@
         <span class="src" id="world-meta">tick 0 · GET /state</span>
       </div>
       <div class="world-wrap">
-        <canvas id="world-canvas" width="560" height="560" aria-label="View of the simulated world"></canvas>
+        <canvas id="world-canvas" width="560" height="560" tabindex="0"
+          aria-label="Interactive view of the simulated world"
+          aria-describedby="world-interaction-help"></canvas>
       </div>
+      <div class="world-interaction-tools" aria-label="Clickable-world stimulus controls">
+        <label for="world-stimulus-kind">Place</label>
+        <select id="world-stimulus-kind">
+          <option value="food">Food</option>
+          <option value="hazard">Hazard</option>
+          <option value="tool">Tool</option>
+          <option value="curio">Curio</option>
+        </select>
+        <label for="world-stimulus-intensity">Intensity</label>
+        <input id="world-stimulus-intensity" type="number" min="0.1" max="5" step="0.1" value="1" />
+        <span id="world-interaction-status" class="micro" aria-live="polite">Cell cursor ready.</span>
+      </div>
+      <p id="world-interaction-help" class="micro world-interaction-help">
+        Click a cell to inject the selected object. Keyboard: focus the grid, move with the arrow keys, then press Enter.
+      </p>
       <div class="legend">
         <span class="lg"><i class="dot dot-agent"></i>Agent</span>
         <span class="lg"><i class="dot dot-food"></i>Food</span>
@@ -396,6 +469,143 @@
       </div>
       <canvas id="society-canvas" width="560" height="560" aria-label="Society world"></canvas>
       <div id="society-relations" class="rows"></div>
+    </section>
+
+    <!-- ===================== EXPERIMENTAL INTERVENTIONS ===================== -->
+    <section class="panel panel-interventions" id="experimental-interventions"
+      aria-labelledby="interventions-title">
+      <div class="panel-head">
+        <h2 id="interventions-title">Experimental interventions</h2>
+        <span class="src">five causal probes &middot; live state &middot; exact endpoints</span>
+      </div>
+      <p class="intervention-lede">
+        Perturb one mechanism at a time and inspect the response in the same instrument. These are controlled functional probes, not tests of phenomenal experience.
+      </p>
+
+      <div class="intervention-tabs" id="intervention-tabs" role="tablist"
+        aria-label="Intervention modality">
+        <button type="button" role="tab" id="intervention-tab-ask" aria-controls="intervention-ask"
+          aria-selected="true" tabindex="0" data-intervention="ask" data-endpoint="/agent/ask">
+          <span>01</span> Ask <code>POST /agent/ask</code>
+        </button>
+        <button type="button" role="tab" id="intervention-tab-stimulus" aria-controls="intervention-stimulus"
+          aria-selected="false" tabindex="-1" data-intervention="stimulus" data-endpoint="/world/stimulus">
+          <span>02</span> Stimulus <code>POST /world/stimulus</code>
+        </button>
+        <button type="button" role="tab" id="intervention-tab-inject" aria-controls="intervention-inject"
+          aria-selected="false" tabindex="-1" data-intervention="inject" data-endpoint="/agent/inject">
+          <span>03</span> Inject <code>POST /agent/inject</code>
+        </button>
+        <button type="button" role="tab" id="intervention-tab-attend" aria-controls="intervention-attend"
+          aria-selected="false" tabindex="-1" data-intervention="attend" data-endpoint="/agent/attend">
+          <span>04</span> Attend <code>POST /agent/attend</code>
+        </button>
+        <button type="button" role="tab" id="intervention-tab-perturb" aria-controls="intervention-perturb"
+          aria-selected="false" tabindex="-1" data-intervention="perturb" data-endpoint="/agent/perturb">
+          <span>05</span> Perturb <code>POST /agent/perturb</code>
+        </button>
+      </div>
+
+      <div class="intervention-workbench">
+        <div class="intervention-deck">
+          <form class="intervention-form" id="intervention-ask" role="tabpanel"
+            aria-labelledby="intervention-tab-ask" data-intervention-panel="ask" data-endpoint="/agent/ask">
+            <div class="intervention-form-head">
+              <h3>Grounded introspective report</h3>
+              <code>AskRequest &rarr; AskResponse</code>
+            </div>
+            <label for="intervention-ask-question">Question</label>
+            <textarea id="intervention-ask-question" rows="3" maxlength="500" required>What are you attending to?</textarea>
+            <label for="intervention-ask-intent">Intent override</label>
+            <select id="intervention-ask-intent">
+              <option value="">Auto-detect</option>
+              <option value="attention">Attention</option>
+              <option value="reason">Reason</option>
+              <option value="memory">Memory</option>
+              <option value="feeling">Feeling</option>
+              <option value="identity">Identity</option>
+              <option value="prediction">Prediction</option>
+              <option value="consciousness">Consciousness</option>
+            </select>
+            <button type="submit" class="btn btn-accent">Run dialogue probe</button>
+          </form>
+
+          <form class="intervention-form" id="intervention-stimulus" role="tabpanel" hidden
+            aria-labelledby="intervention-tab-stimulus" data-intervention-panel="stimulus" data-endpoint="/world/stimulus">
+            <div class="intervention-form-head">
+              <h3>Bottom-up world stimulus</h3>
+              <code>WorldStimulus &rarr; perception</code>
+            </div>
+            <div class="intervention-fields two-up">
+              <div><label for="intervention-stimulus-kind">Object kind</label>
+                <select id="intervention-stimulus-kind"><option value="food">Food</option><option value="hazard">Hazard</option><option value="tool">Tool</option><option value="curio">Curio</option></select></div>
+              <div><label for="intervention-stimulus-intensity">Intensity</label>
+                <input id="intervention-stimulus-intensity" type="number" min="0.1" max="5" step="0.1" value="1" required /></div>
+              <div><label for="intervention-stimulus-x">Grid x <span>optional</span></label>
+                <input id="intervention-stimulus-x" type="number" min="0" step="1" placeholder="near agent" /></div>
+              <div><label for="intervention-stimulus-y">Grid y <span>optional</span></label>
+                <input id="intervention-stimulus-y" type="number" min="0" step="1" placeholder="near agent" /></div>
+            </div>
+            <button type="submit" class="btn btn-accent">Inject world object</button>
+          </form>
+
+          <form class="intervention-form" id="intervention-inject" role="tabpanel" hidden
+            aria-labelledby="intervention-tab-inject" data-intervention-panel="inject" data-endpoint="/agent/inject">
+            <div class="intervention-form-head">
+              <h3>Workspace coalition injection</h3>
+              <code>CognitiveInjection &rarr; competition</code>
+            </div>
+            <label for="intervention-inject-content">Coalition content</label>
+            <textarea id="intervention-inject-content" rows="3" maxlength="500" required>externally injected signal</textarea>
+            <div class="intervention-fields three-up">
+              <div><label for="intervention-inject-activation">Activation</label><input id="intervention-inject-activation" type="number" min="0" max="1" step="0.01" value="0.85" required /></div>
+              <div><label for="intervention-inject-precision">Precision</label><input id="intervention-inject-precision" type="number" min="0" max="1" step="0.01" value="0.9" required /></div>
+              <div><label for="intervention-inject-ttl">TTL</label><input id="intervention-inject-ttl" type="number" min="1" max="100" step="1" value="1" required /></div>
+            </div>
+            <button type="submit" class="btn btn-accent">Queue coalition</button>
+          </form>
+
+          <form class="intervention-form" id="intervention-attend" role="tabpanel" hidden
+            aria-labelledby="intervention-tab-attend" data-intervention-panel="attend" data-endpoint="/agent/attend">
+            <div class="intervention-form-head">
+              <h3>Top-down attention steering</h3>
+              <code>AttendRequest &rarr; AST bias</code>
+            </div>
+            <div class="intervention-fields three-up">
+              <div><label for="intervention-attend-target">Target object ID</label><input id="intervention-attend-target" type="number" min="0" step="1" value="0" required /></div>
+              <div><label for="intervention-attend-strength">Strength</label><input id="intervention-attend-strength" type="number" min="0" max="10" step="0.1" value="1" required /></div>
+              <div><label for="intervention-attend-ttl">TTL</label><input id="intervention-attend-ttl" type="number" min="1" max="100" step="1" value="3" required /></div>
+            </div>
+            <button type="submit" class="btn btn-accent">Bias attention</button>
+          </form>
+
+          <form class="intervention-form" id="intervention-perturb" role="tabpanel" hidden
+            aria-labelledby="intervention-tab-perturb" data-intervention-panel="perturb" data-endpoint="/agent/perturb">
+            <div class="intervention-form-head">
+              <h3>Affect and prediction perturbation</h3>
+              <code>PerturbRequest &rarr; internal state</code>
+            </div>
+            <div class="intervention-fields two-up">
+              <div><label for="intervention-perturb-type">Perturbation</label>
+                <select id="intervention-perturb-type"><option value="shock">Shock / energy</option><option value="surprise">Surprise / prediction error</option><option value="soothe">Soothe / affect</option></select></div>
+              <div><label for="intervention-perturb-magnitude">Magnitude</label><input id="intervention-perturb-magnitude" type="number" min="0" max="10" step="0.1" value="1" required /></div>
+            </div>
+            <button type="submit" class="btn btn-accent">Apply perturbation</button>
+          </form>
+        </div>
+
+        <aside class="interaction-console" aria-labelledby="interaction-console-title">
+          <div class="interaction-console-head">
+            <div><span class="eyebrow">causal ledger</span><h3 id="interaction-console-title">Intervention log</h3></div>
+            <button type="button" class="btn btn-quiet" id="btn-clear-interactions">Clear</button>
+          </div>
+          <ol id="interaction-log" class="interaction-log" aria-live="polite"
+            aria-label="Deterministic intervention request and response log"></ol>
+        </aside>
+      </div>
+      <p class="micro intervention-disclaimer">
+        Every response is grounded in the simulator's live variables. A successful perturbation demonstrates causal sensitivity inside this model only.
+      </p>
     </section>
 
     <!-- ===================== THE INVENTION OF LANGUAGE (Phase 6) ===================== -->
@@ -659,6 +869,17 @@
       <div class="deep-toggles" id="language-toggles">
         <label class="deep-toggle" title="Naming games: installs the standing goal 'invent a language' — agents name what they see with INVENTED words, align on what they hear, and a shared lexicon emerges. Conventions, not understanding."><input type="checkbox" data-flag="language_drive_enabled" checked /><span>language drive</span></label>
       </div>
+      <h3 class="sub">The horizon (Phase 7)</h3>
+      <div class="deep-toggles" id="horizon-toggles">
+        <label class="deep-toggle" title="Exact empirical TPM and minimum-information bipartition on a coarse-grained binary substrate. This causal Φ proxy is not full IIT 3.0/4.0 Φ and is not evidence of consciousness."><input type="checkbox" data-flag="phi_causal_enabled" checked /><span>causal Φ</span></label>
+        <label class="deep-toggle" title="A slow latent regime modulates the fast world model and exposes explicit variational free energy. Inference is a functional calculation, not understanding."><input type="checkbox" data-flag="hierarchy_enabled" checked /><span>predictive hierarchy</span></label>
+        <label class="deep-toggle" title="Bounded multi-step expected-free-energy search over action sequences. Policy search is not subjective deliberation or intention."><input type="checkbox" data-flag="planning_enabled" checked /><span>multi-step EFE</span></label>
+        <label class="deep-toggle" title="Deterministic embedding and cosine retrieval over stored records. Distributional similarity is not semantic understanding or experienced remembering."><input type="checkbox" data-flag="vector_memory_enabled" checked /><span>vector memory</span></label>
+        <label class="deep-toggle" title="Contextual temporal-difference learning with eligibility traces. A numerical reward update is not felt reward."><input type="checkbox" data-flag="td_learning_enabled" checked /><span>TD(λ)</span></label>
+        <label class="deep-toggle" title="Low-demand associative memory walks can compete for workspace access. This is a functional default-mode analogue, not experienced daydreaming."><input type="checkbox" data-flag="mind_wandering_enabled" checked /><span>mind-wandering</span></label>
+        <label class="deep-toggle" title="Deterministic seasons, food regrowth, hazard cycles, and drift enrich the simulated environment only; they do not imply a phenomenal world."><input type="checkbox" data-flag="world_dynamics_enabled" checked /><span>living world</span></label>
+        <label class="deep-toggle" title="Rotating forage, reach, and patrol scores feed functional goal progress. Task completion is not purpose or experienced achievement."><input type="checkbox" data-flag="tasks_enabled" checked /><span>world tasks</span></label>
+      </div>
       <h3 class="sub">Persistence</h3>
       <div class="deep-toggles" id="persistence-toggles">
         <label class="deep-toggle"><input type="checkbox" data-flag="persist_memory" checked /><span>persist memory</span></label>
@@ -673,6 +894,6 @@
     <span id="footer-disclaimer"></span>
   </footer>
 
-  <script src="app.js?v=5.2"></script>
+  <script src="app.js?v=7.3"></script>
 </body>
 </html>

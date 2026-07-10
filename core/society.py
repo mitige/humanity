@@ -8,11 +8,57 @@ reproduces the single-agent instrument. Nothing here is conscious.
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 
 from core.agent import CognitiveAgent
+from core.individuation import compute_individuation
 from core.metrics_recorder import MetricsRecorder
 from core.shared_world import SharedWorld
+from core.world_tasks import TaskManager
 from schemas.models import ConfigPatch, CycleTrace, RunRequest, SimConfig
+from storage.persistence import MemoryStore, atomic_save_batch
+
+
+RESET_REQUIRED_FIELDS = frozenset({
+    "grid_size",
+    "n_objects",
+    "random_seed",
+    "n_agents",
+    "stream_length",
+    "metrics_history_max",
+    "phi_ar_window",
+    "phi_causal_window",
+    "n_concepts",
+})
+
+
+async def _run_cancellation_safe_worker(operation, *args):
+    """Finish a started thread job before allowing task cancellation to escape.
+
+    ``asyncio.to_thread`` itself cannot stop its worker. Shielding and draining
+    it keeps the society lock/busy gate held until the worker has either
+    completed or failed, so cancellation can never expose a half-migrated state.
+    Returns ``(result, cancellation_was_requested)``.
+    """
+    worker = asyncio.create_task(asyncio.to_thread(operation, *args))
+    cancelled = False
+    while not worker.done():
+        try:
+            return await asyncio.shield(worker), cancelled
+        except asyncio.CancelledError:
+            cancelled = True
+    return worker.result(), cancelled
+
+
+class ConfigRequiresReset(ValueError):
+    """Raised when a live patch changes fields that define object structure."""
+
+    def __init__(self, fields) -> None:
+        self.fields = sorted(set(fields))
+        super().__init__(
+            "Structural config fields require an explicit reset: "
+            + ", ".join(self.fields)
+        )
 
 
 class SocietyManager:
@@ -24,17 +70,42 @@ class SocietyManager:
         self._lock = asyncio.Lock()
         self._task: asyncio.Task | None = None
         self.running: bool = False
+        # Set while a worker thread has exclusive access to the live society
+        # (headless training or an optional LLM job). HTTP readers fail fast;
+        # the WebSocket waits on ``_lock`` and never observes partial mutation.
+        self._exclusive_worker: bool = False
         # Last run request, so a config patch applied mid-run can resume the
         # loop at the same pace instead of silently pausing the instrument.
         self.last_run_request: RunRequest | None = None
 
     def _build(self) -> None:
-        self.world = SharedWorld(self.config)
-        self.agents: dict[int, CognitiveAgent] = {
-            i: CognitiveAgent(self.config, agent_id=i, shared_world=self.world)
-            for i in self.world.agents
+        self.world, self.agents, self.recorder = self._build_artifacts(
+            self.config)
+
+    @staticmethod
+    def _build_artifacts(config: SimConfig) -> tuple[
+        SharedWorld, dict[int, CognitiveAgent], MetricsRecorder,
+    ]:
+        """Construct a complete society off to the side before committing it."""
+        world = SharedWorld(config)
+        agents = {
+            agent_id: CognitiveAgent(
+                config,
+                agent_id=agent_id,
+                shared_world=world,
+                defer_trace_logging=True,
+            )
+            for agent_id in world.agents
         }
-        self.recorder = MetricsRecorder(int(self.config.metrics_history_max))
+        recorder = MetricsRecorder(int(config.metrics_history_max))
+        return world, agents, recorder
+
+    def _validated_merge(self, updates: dict) -> SimConfig:
+        """Return a fully validated config built from the live values + patch."""
+        return SimConfig.model_validate({
+            **self.config.model_dump(),
+            **updates,
+        })
 
     # ------------------------------------------------------------- ticking
     def tick(self) -> list[CycleTrace]:
@@ -49,7 +120,13 @@ class SocietyManager:
         # (one-tick deferred => order-independent => deterministic).
         if self.config.social_mirror_enabled:
             self._update_reflected_appraisals()
-        self.world.advance_tick()
+        world_events = self.world.advance_tick()
+        if world_events:
+            for trace in traces:
+                trace.result.events.extend(world_events)
+        if self.config.trace_logging:
+            for agent_id, trace in zip(sorted(self.agents), traces):
+                self.agents[agent_id].trace_logger.log(trace)
         return traces
 
     def _models_of(self, aid: int) -> list:
@@ -119,17 +196,280 @@ class SocietyManager:
             # Detach BEFORE cancelling so the dying loop's finally-guard sees it
             # is no longer the current task and leaves the flag alone.
             task, self._task = self._task, None
-            task.cancel()
+            if isinstance(task, asyncio.Task):
+                loop = task.get_loop()
+                try:
+                    current_loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    current_loop = None
+                if current_loop is loop:
+                    task.cancel()
+                elif loop.is_running():
+                    loop.call_soon_threadsafe(task.cancel)
+                else:
+                    task.cancel()
+            else:
+                task.cancel()
 
     # ------------------------------------------------------------- lifecycle
     def reset(self, patch: dict | ConfigPatch | None = None) -> None:
-        self.pause()
+        updates = {}
         if patch is not None:
             updates = (patch.model_dump(exclude_none=True)
                        if isinstance(patch, ConfigPatch)
                        else {k: v for k, v in dict(patch).items() if v is not None})
-            self.config = self.config.model_copy(update=updates)
-        self._build()
+        candidate = self._validated_merge(updates)
+        world, agents, recorder = self._build_artifacts(candidate)
+        self.pause()
+        self.config = candidate
+        self.world = world
+        self.agents = agents
+        self.recorder = recorder
+
+    async def apply_config(self, patch: dict | ConfigPatch) -> list[str]:
+        """Validate and apply a non-structural config patch without rebuilding.
+
+        The shared :class:`SimConfig` instance is mutated under the society lock,
+        preserving every module's reference and all accumulated simulation state.
+        """
+        updates = (patch.model_dump(exclude_none=True)
+                   if isinstance(patch, ConfigPatch)
+                   else {k: v for k, v in dict(patch).items() if v is not None})
+
+        candidate = self._validated_merge(updates)
+        changed = sorted(
+            field for field in updates
+            if getattr(self.config, field) != getattr(candidate, field)
+        )
+        structural = RESET_REQUIRED_FIELDS.intersection(changed)
+        if structural:
+            raise ConfigRequiresReset(structural)
+
+        async with self._lock:
+            candidate = self._validated_merge(updates)
+            changed = sorted(
+                field for field in updates
+                if getattr(self.config, field) != getattr(candidate, field)
+            )
+            structural = RESET_REQUIRED_FIELDS.intersection(changed)
+            if structural:
+                raise ConfigRequiresReset(structural)
+            if not changed:
+                return []
+
+            old_values = {
+                field: getattr(self.config, field)
+                for field in changed
+            }
+            # Index rebuilds and all-store persistence can scale with an
+            # unbounded life history. Keep the event loop responsive while the
+            # society lock + public busy gate preserve an atomic live view.
+            self._exclusive_worker = True
+            try:
+                migration_plan, prepare_cancelled = (
+                    await _run_cancellation_safe_worker(
+                    self._prepare_hot_config_migrations,
+                    old_values,
+                    candidate,
+                ))
+                if prepare_cancelled:
+                    raise asyncio.CancelledError
+                rollback_state = self._snapshot_hot_config_state(
+                    migration_plan)
+                try:
+                    for field in changed:
+                        setattr(self.config, field, getattr(candidate, field))
+                    _unused, commit_cancelled = (
+                        await _run_cancellation_safe_worker(
+                            self._commit_hot_config_migrations,
+                            migration_plan,
+                        ))
+                except Exception:
+                    self._rollback_hot_config(
+                        old_values, rollback_state)
+                    raise
+                if commit_cancelled:
+                    # The transaction is complete and internally consistent;
+                    # only now may request cancellation propagate.
+                    raise asyncio.CancelledError
+            finally:
+                self._exclusive_worker = False
+            return changed
+
+    def _prepare_hot_config_migrations(
+        self, old_values: dict, candidate: SimConfig,
+    ) -> dict:
+        """Build every fallible migration result without touching live state."""
+        plan: dict = {}
+
+        if (old_values.get("vector_memory_enabled") is False
+                and candidate.vector_memory_enabled):
+            indexes = {}
+            for agent_id, agent in self.agents.items():
+                index = type(agent.vector_index)()
+                index.rebuild(agent.memory._records)
+                indexes[agent_id] = index
+            plan["vector_indexes"] = indexes
+
+        if "tasks_enabled" in old_values:
+            enabled = bool(candidate.tasks_enabled)
+            plan["world_task_manager"] = (
+                TaskManager(candidate.grid_size) if enabled else None)
+            plan["agent_task_managers"] = {
+                agent_id: (
+                    TaskManager(candidate.grid_size) if enabled else None)
+                for agent_id in self.agents
+            }
+
+        if "persist_memory" in old_values:
+            plan["memory_stores"] = {
+                agent_id: (
+                    MemoryStore.for_agent(agent.agent_id, candidate.n_agents)
+                    if candidate.persist_memory else None
+                )
+                for agent_id, agent in self.agents.items()
+            }
+
+        goals_changed = (
+            "language_drive_enabled" in old_values
+            or "individuation_enabled" in old_values
+        )
+        if goals_changed:
+            prepared_models = {}
+            for agent_id, agent in self.agents.items():
+                prepared = deepcopy(agent.self_model)
+                if "language_drive_enabled" in old_values:
+                    if candidate.language_drive_enabled:
+                        prepared.set_goal(
+                            "invent a language", source="system")
+                    else:
+                        prepared.remove_goal(
+                            "invent a language", source="system")
+                if "individuation_enabled" in old_values:
+                    if candidate.individuation_enabled:
+                        prepared.set_goal(
+                            "become someone", source="system")
+                    else:
+                        prepared.remove_goal(
+                            "become someone", source="system")
+
+                prepared_state = {
+                    "active_goals": list(prepared._state.active_goals),
+                    "goal_sources": deepcopy(prepared._goal_sources),
+                }
+                if "individuation_enabled" in old_values:
+                    prepared_state["last_individuation"] = (
+                        compute_individuation(
+                            prepared.snapshot(),
+                            memory_count=len(agent.memory._records),
+                        )
+                        if candidate.individuation_enabled else None
+                    )
+                prepared_models[agent_id] = prepared_state
+            plan["self_models"] = prepared_models
+
+        return plan
+
+    def _snapshot_hot_config_state(self, plan: dict) -> dict:
+        """Capture only live references that the prepared plan may replace."""
+        snapshot: dict = {}
+        if "vector_indexes" in plan:
+            snapshot["vector_indexes"] = {
+                agent_id: self.agents[agent_id].vector_index
+                for agent_id in plan["vector_indexes"]
+            }
+        if "world_task_manager" in plan:
+            snapshot["world_task_manager"] = self.world.task_manager
+            snapshot["agent_task_managers"] = {
+                agent_id: self.agents[agent_id].world.task_manager
+                for agent_id in plan["agent_task_managers"]
+            }
+        if "memory_stores" in plan:
+            snapshot["memory_stores"] = {
+                agent_id: (
+                    self.agents[agent_id].memory_store,
+                    self.agents[agent_id].memory._store,
+                )
+                for agent_id in plan["memory_stores"]
+            }
+        if "self_models" in plan:
+            snapshot["self_models"] = {}
+            for agent_id in plan["self_models"]:
+                agent = self.agents[agent_id]
+                has_sources = hasattr(agent.self_model, "_goal_sources")
+                snapshot["self_models"][agent_id] = {
+                    "active_goals": list(
+                        agent.self_model._state.active_goals),
+                    "has_goal_sources": has_sources,
+                    "goal_sources": deepcopy(getattr(
+                        agent.self_model, "_goal_sources", {})),
+                    "last_individuation": agent._last_individuation,
+                }
+        return snapshot
+
+    def _commit_hot_config_migrations(self, plan: dict) -> None:
+        """Attach prepared migration objects to the live society."""
+        for agent_id, index in plan.get("vector_indexes", {}).items():
+            self.agents[agent_id].vector_index = index
+
+        if "world_task_manager" in plan:
+            self.world.task_manager = plan["world_task_manager"]
+            for agent_id, task_manager in plan["agent_task_managers"].items():
+                self.agents[agent_id].world.task_manager = task_manager
+
+        for agent_id, prepared in plan.get("self_models", {}).items():
+            agent = self.agents[agent_id]
+            agent.self_model._state.active_goals[:] = prepared["active_goals"]
+            agent.self_model._goal_sources = deepcopy(
+                prepared["goal_sources"])
+            if "last_individuation" in prepared:
+                agent._last_individuation = prepared["last_individuation"]
+
+        # Persist last: after this transaction succeeds, only infallible
+        # reference assignments remain. Earlier attachment failures therefore
+        # cannot leave newly written files behind a rolled-back config.
+        memory_stores = plan.get("memory_stores", {})
+        durable = [
+            (store, self.agents[agent_id].memory._records)
+            for agent_id, store in memory_stores.items()
+            if store is not None
+        ]
+        if durable:
+            atomic_save_batch(durable)
+        for agent_id, store in memory_stores.items():
+            agent = self.agents[agent_id]
+            agent.memory_store = store
+            agent.memory._store = store
+
+    def _rollback_hot_config(
+        self, old_values: dict, snapshot: dict,
+    ) -> None:
+        """Defensively restore config and live references after commit failure."""
+        for field, value in old_values.items():
+            setattr(self.config, field, value)
+
+        for agent_id, index in snapshot.get("vector_indexes", {}).items():
+            self.agents[agent_id].vector_index = index
+
+        if "world_task_manager" in snapshot:
+            self.world.task_manager = snapshot["world_task_manager"]
+            for agent_id, task_manager in snapshot[
+                    "agent_task_managers"].items():
+                self.agents[agent_id].world.task_manager = task_manager
+
+        for agent_id, stores in snapshot.get("memory_stores", {}).items():
+            agent = self.agents[agent_id]
+            agent.memory_store, agent.memory._store = stores
+
+        for agent_id, prior in snapshot.get("self_models", {}).items():
+            agent = self.agents[agent_id]
+            agent.self_model._state.active_goals[:] = prior["active_goals"]
+            if prior["has_goal_sources"]:
+                agent.self_model._goal_sources = deepcopy(
+                    prior["goal_sources"])
+            elif hasattr(agent.self_model, "_goal_sources"):
+                delattr(agent.self_model, "_goal_sources")
+            agent._last_individuation = prior["last_individuation"]
 
     # ------------------------------------------------------------- accessors
     def agent(self, agent_id: int) -> CognitiveAgent:

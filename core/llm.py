@@ -126,13 +126,24 @@ def _r(x, n: int = 3):
         return x
 
 
+def _report_trace(agent):
+    """Use an established trace; only standalone agents may self-prime."""
+    trace = getattr(agent, "last_trace", None)
+    if trace is not None:
+        return trace
+    if getattr(agent, "_shared_world", None) is not None:
+        raise RuntimeError(
+            "A shared agent must be primed through SocietyManager.tick().")
+    return agent.cognitive_cycle()
+
+
 def build_narration_state(agent) -> dict:
     """Extract a compact, JSON-safe dict of the agent's real variables to narrate.
 
     Reads the last CycleTrace (running one cycle first if none exists). Nothing
     here is fabricated — every field is a value the mechanisms already computed.
     """
-    trace = agent.last_trace if getattr(agent, "last_trace", None) is not None else agent.cognitive_cycle()
+    trace = _report_trace(agent)
     cm, ws, sm = trace.conscious_moment, trace.workspace, trace.self_model
     emo, meta, ast = trace.emotion, trace.metacognition, trace.attention_schema
     state = {
@@ -291,7 +302,7 @@ def _extract_json(text: str) -> dict | None:
 def _audit_state(agent) -> dict:
     """A COMPREHENSIVE ground-truth dump of the agent's variables for the auditor,
     so it can fairly verify the agent's introspective claims (not just a subset)."""
-    trace = agent.last_trace if getattr(agent, "last_trace", None) is not None else agent.cognitive_cycle()
+    trace = _report_trace(agent)
 
     def dump(x):
         return x.model_dump() if x is not None else None
@@ -592,7 +603,7 @@ def inner_voice(backend: LLMBackend, agent) -> dict:
     other specialist for the agent to 'hear itself think' it. The LLM changes
     what competes, never how; a fluent thought winning access is still level 2+3.
     """
-    trace = agent.last_trace if getattr(agent, "last_trace", None) is not None else agent.cognitive_cycle()
+    trace = _report_trace(agent)
     cm = trace.conscious_moment
     state = {
         "moment": cm.contents, "ignited": bool(cm.ignited),

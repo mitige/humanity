@@ -7,7 +7,9 @@ experience — the agent is not conscious, sentient, or alive.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import tempfile
 
 from schemas.models import MemoryRecord
 
@@ -27,6 +29,16 @@ class MemoryStore:
         """Create a store backed by ``path`` (defaults to storage/data/memory.json)."""
         self._path: Path = Path(path) if path is not None else _DEFAULT_PATH
 
+    @classmethod
+    def for_agent(cls, agent_id: int, n_agents: int) -> "MemoryStore":
+        """Create the legacy solo store or an agent-specific society store."""
+        path = (
+            _DEFAULT_PATH
+            if int(n_agents) <= 1
+            else _DATA_DIR / f"memory-agent-{int(agent_id)}.json"
+        )
+        return cls(path)
+
     def path(self) -> str:
         """Return the absolute path of the backing JSON file."""
         return str(self._path)
@@ -35,12 +47,33 @@ class MemoryStore:
         """Create the parent directory if it does not yet exist."""
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
-    def save_records(self, records: list[MemoryRecord]) -> None:
-        """Overwrite the backing file with ``records`` serialized as a JSON list."""
+    def _prepare_records(self, records: list[MemoryRecord]) -> Path:
+        """Write and fsync a complete replacement beside the target file."""
         self._ensure_dir()
         payload = [record.model_dump(mode="json") for record in records]
-        with self._path.open("w", encoding="utf-8") as handle:
-            json.dump(payload, handle, ensure_ascii=False, indent=2)
+        fd, temp_name = tempfile.mkstemp(
+            dir=str(self._path.parent),
+            prefix=f".{self._path.name}.",
+            suffix=".tmp",
+            text=True,
+        )
+        temp_path = Path(temp_name)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, ensure_ascii=False, indent=2)
+                handle.flush()
+                os.fsync(handle.fileno())
+            return temp_path
+        except Exception:
+            try:
+                temp_path.unlink()
+            except OSError:
+                pass
+            raise
+
+    def save_records(self, records: list[MemoryRecord]) -> None:
+        """Atomically replace the backing file with the serialized records."""
+        atomic_save_batch([(self, records)])
 
     def load_records(self) -> list[MemoryRecord]:
         """Load and validate all records. Returns ``[]`` if the file is absent or empty."""
@@ -77,3 +110,74 @@ class MemoryStore:
             return
         except OSError:
             return
+
+
+def atomic_save_batch(
+    entries: list[tuple[MemoryStore, list[MemoryRecord]]],
+) -> None:
+    """Commit several memory stores as one rollback-safe filesystem batch.
+
+    All JSON replacements are fully serialized and fsynced before the first
+    live path changes. Existing files are moved to same-directory rollback
+    names while the prepared files are installed; any failure restores every
+    prior file, including stores already committed earlier in the batch.
+    """
+    if not entries:
+        return
+    targets = [store._path.resolve() for store, _records in entries]
+    if len(set(targets)) != len(targets):
+        raise ValueError("memory persistence targets must be distinct")
+
+    prepared: list[tuple[Path, Path]] = []
+    committed: list[tuple[Path, Path | None]] = []
+    commit_succeeded = False
+    try:
+        for store, records in entries:
+            prepared.append((store._path, store._prepare_records(records)))
+
+        for target, desired in prepared:
+            backup: Path | None = None
+            if target.exists():
+                fd, backup_name = tempfile.mkstemp(
+                    dir=str(target.parent),
+                    prefix=f".{target.name}.",
+                    suffix=".rollback",
+                )
+                os.close(fd)
+                backup = Path(backup_name)
+                backup.unlink()
+                target.replace(backup)
+            committed.append((target, backup))
+            desired.replace(target)
+        commit_succeeded = True
+    except Exception as exc:
+        rollback_errors: list[str] = []
+        for target, backup in reversed(committed):
+            try:
+                if backup is not None and backup.exists():
+                    # Replace atomically; never unlink the installed target
+                    # first or a failed recovery could destroy both copies.
+                    backup.replace(target)
+                elif backup is None and target.exists():
+                    target.unlink()
+            except OSError as rollback_exc:
+                rollback_errors.append(
+                    f"{target} (recovery copy: {backup}): {rollback_exc}")
+        if rollback_errors:
+            raise RuntimeError(
+                "memory batch commit failed and rollback was incomplete; "
+                "recovery copies were retained: " + "; ".join(rollback_errors)
+            ) from exc
+        raise
+    finally:
+        for _target, desired in prepared:
+            try:
+                desired.unlink()
+            except OSError:
+                pass
+        for _target, backup in committed:
+            if commit_succeeded and backup is not None:
+                try:
+                    backup.unlink()
+                except OSError:
+                    pass

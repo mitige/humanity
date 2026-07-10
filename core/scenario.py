@@ -11,7 +11,7 @@ from core.introspection import DISCLAIMER_EN
 from core.society import SocietyManager
 from schemas.models import (
     AttendRequest, CognitiveInjection, Intervention, PerturbRequest, Scenario,
-    ScenarioResult, WorldStimulus,
+    ScenarioResult, SimConfig, WorldStimulus,
 )
 
 
@@ -19,13 +19,14 @@ class ScenarioRunner:
     """Runs a declarative Scenario on a fresh society and returns its time series."""
 
     def run(self, scenario: Scenario) -> ScenarioResult:
-        patch = scenario.config
+        config_values = scenario.config.model_dump(exclude_none=True)
         if scenario.seed is not None:
-            patch = patch.model_copy(update={"random_seed": int(scenario.seed)})
-        mgr = SocietyManager()
-        mgr.reset(patch)
-        mgr.recorder.clear()
-        self._isolate_persistence(mgr)
+            config_values["random_seed"] = int(scenario.seed)
+        # Scientific probes are hermetic regardless of a caller's persistence
+        # preferences.  Apply this before construction so no live memory is read
+        # and no trace or memory write can occur during the run.
+        config_values.update(persist_memory=False, trace_logging=False)
+        mgr = SocietyManager(SimConfig.model_validate(config_values))
 
         by_tick: dict[int, list[Intervention]] = {}
         for iv in scenario.interventions:
@@ -48,44 +49,21 @@ class ScenarioRunner:
                               disclaimer=DISCLAIMER_EN)
 
     @staticmethod
-    def _isolate_persistence(mgr: SocietyManager) -> None:
-        """Make the run hermetic: detach every agent's autobiographical memory from
-        the shared on-disk ``memory.json`` (in-RAM only) and drop any records the
-        default store loaded.
-
-        Without this a scenario would read and write the global memory file, so
-        successive runs would start from accumulated records and diverge -- the
-        runner is meant to be reproducible, so it must never touch persisted state.
-        In-RAM only also leaves zero filesystem footprint.
-        """
-        for ag in mgr.agents.values():
-            ag.memory_store = None
-            ag.memory._store = None
-            ag.memory._records = []
-            ag.memory._next_id = 1
-
-    @staticmethod
     def _apply(mgr: SocietyManager, iv: Intervention) -> None:
         ag = mgr.agents.get(int(iv.agent_id))
         if ag is None:
-            return
+            raise ValueError(f"scenario agent {iv.agent_id} does not exist")
         p = dict(iv.params or {})
         kind = str(iv.type)
         if kind == "stimulus":
-            ag.world_stimulus(WorldStimulus(
-                kind=str(p.get("kind", "curio")), x=p.get("x"), y=p.get("y"),
-                intensity=float(p.get("intensity", 1.0))))
+            ag.world_stimulus(WorldStimulus.model_validate(p))
         elif kind == "perturb":
-            ag.perturb(PerturbRequest(type=str(p.get("ptype", p.get("type", "surprise"))),
-                                      magnitude=float(p.get("magnitude", 1.0))))
+            ag.perturb(PerturbRequest.model_validate(p))
         elif kind == "goal":
-            ag.set_goal(str(p.get("goal", "")))
+            ag.set_goal(str(p["goal"]))
         elif kind == "inject":
-            ag.inject(CognitiveInjection(
-                content=str(p.get("content", "signal")),
-                activation=float(p.get("activation", 0.85)),
-                precision=float(p.get("precision", 0.9)), ttl=int(p.get("ttl", 1))))
+            ag.inject(CognitiveInjection.model_validate(p))
         elif kind == "attend":
-            ag.attend(AttendRequest(target_id=int(p.get("target_id", 0)),
-                                    strength=float(p.get("strength", 1.0)),
-                                    ttl=int(p.get("ttl", 3))))
+            ag.attend(AttendRequest.model_validate(p))
+        else:  # defensive for model_construct()/version-skewed checkpoints
+            raise ValueError(f"unknown scenario intervention type {kind!r}")

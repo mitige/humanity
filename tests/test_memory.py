@@ -185,3 +185,25 @@ def test_store_round_trips_through_autobiographical_memory(tmp_path) -> None:
     )
     reloaded = MemoryStore(path).load_records()
     assert len(reloaded) == 1
+
+
+def test_boost_only_consolidation_persists_across_restart(tmp_path) -> None:
+    path = tmp_path / "memory.json"
+    config = SimConfig(memory_importance_threshold=0.0)
+    memory = AutobiographicalMemory(config, MemoryStore(path))
+    memory.store_experience(
+        tick=0,
+        perception=[_percept(0, danger=0.5)],
+        action=ActionType.AVOID,
+        result_energy_delta=-1.0,
+        prediction_error=0.3,
+        emotion=EmotionState(),
+        importance=0.5,
+    )
+
+    boosted, pruned = memory.consolidate(
+        k=1, boost=1.5, prune_threshold=0.0)
+    reloaded = AutobiographicalMemory(config, MemoryStore(path))
+
+    assert (boosted, pruned) == (1, 0)
+    assert reloaded.recent(1)[0].importance == pytest.approx(0.75)

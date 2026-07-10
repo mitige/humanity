@@ -10,16 +10,56 @@ from __future__ import annotations
 import numpy as np
 
 from core.constants import (
-    ACTION_COSTS, ENERGY_CAP_FACTOR, INTERACT_DANGER_DAMAGE,
+    ACTION_COSTS, DRIFT_EVERY, ENERGY_CAP_FACTOR, INTERACT_DANGER_DAMAGE,
     NOVELTY_DECAY_ON_INTERACT, NOVELTY_DECAY_ON_SEE, PASSIVE_ENERGY_DECAY,
     REST_RECOVERY,
 )
+from core.world_dynamics import apply_dynamics, season_factor
+from core.world_tasks import TaskManager
 from schemas.models import (
     ActionDecision, ActionType, AgentView, Message, Observation, SimConfig,
     StepResult, WorldObject,
 )
 
 _MOVEMENT_ACTIONS = {ActionType.MOVE, ActionType.EXPLORE, ActionType.APPROACH, ActionType.AVOID}
+
+
+def _agent_cells(grid_size: int, n_agents: int) -> list[tuple[int, int]]:
+    """Return deterministic, unique spawn cells without unbounded searching."""
+    grid_size = int(grid_size)
+    n_agents = int(n_agents)
+    if grid_size < 1:
+        raise ValueError("grid_size must be at least 1")
+    if n_agents < 1:
+        raise ValueError("n_agents must be at least 1")
+    if n_agents > grid_size * grid_size:
+        raise ValueError("n_agents cannot exceed the number of grid cells")
+
+    center = grid_size // 2
+    row_major = iter(
+        (x, y)
+        for y in range(grid_size)
+        for x in range(grid_size)
+    )
+    cells: list[tuple[int, int]] = []
+    used: set[tuple[int, int]] = set()
+
+    for idx in range(n_agents):
+        candidate = (
+            min(grid_size - 1, max(0, center + (idx % 3) - 1)),
+            min(grid_size - 1, max(0, center + (idx // 3) - 1)),
+        )
+        if candidate in used:
+            for fallback in row_major:
+                if fallback not in used:
+                    candidate = fallback
+                    break
+            else:  # Defensive: the capacity check above makes this unreachable.
+                raise ValueError("no free grid cell remains for agent placement")
+        used.add(candidate)
+        cells.append(candidate)
+
+    return cells
 
 
 class AgentBody:
@@ -55,20 +95,17 @@ class SharedWorld:
         self.objects: dict[int, WorldObject] = {}
         self.seen_counts: dict[int, int] = {}
         self._next_id: int = 0
+        # Phase 7 — spawn metadata for continuous dynamics + shared task rotation.
+        # Pure copies at spawn (no RNG cost): prior-phase runs stay byte-identical.
+        self._spawn_meta: dict[int, dict] = {}
+        self.task_manager: TaskManager | None = (
+            TaskManager(cfg.grid_size) if cfg.tasks_enabled else None)
+        self._last_ate_food: bool = False
         for _ in range(cfg.n_objects):
             self._spawn_object()
         # Agents placed deterministically near the centre on distinct cells.
         self.agents: dict[int, AgentBody] = {}
-        center = cfg.grid_size // 2
-        used: set[tuple[int, int]] = set()
-        for idx in range(max(1, int(cfg.n_agents))):
-            x = int(np.clip(center + (idx % 3) - 1, 0, cfg.grid_size - 1))
-            y = int(np.clip(center + (idx // 3) - 1, 0, cfg.grid_size - 1))
-            while (x, y) in used:
-                x = int(np.clip(x + 1, 0, cfg.grid_size - 1))
-                if (x, y) in used:
-                    y = int(np.clip(y + 1, 0, cfg.grid_size - 1))
-            used.add((x, y))
+        for idx, (x, y) in enumerate(_agent_cells(cfg.grid_size, cfg.n_agents)):
             self.agents[idx] = AgentBody(idx, x, y, cfg.initial_energy)
         # Message pool: list of (Message). Delivered to observers next tick.
         self.messages: list[Message] = []
@@ -100,6 +137,7 @@ class SharedWorld:
                           novelty=round(nv, 4), utility=round(ut, 4))
         self.objects[obj.id] = obj
         self.seen_counts[obj.id] = 0
+        self._spawn_meta[obj.id] = {"max_energy": float(ev), "base_danger": float(dn)}
         self._next_id += 1
         return obj
 
@@ -157,6 +195,8 @@ class SharedWorld:
                           novelty=round(novelty, 4), utility=round(utility, 4))
         self.objects[obj.id] = obj
         self.seen_counts[obj.id] = 0
+        self._spawn_meta[obj.id] = {"max_energy": float(energy_value),
+                                    "base_danger": float(danger)}
         self._next_id += 1
         return obj
 
@@ -224,6 +264,7 @@ class SharedWorld:
         action = decision.action
         events: list[str] = []
         start_energy = float(me.energy)
+        self._last_ate_food = False
         me.energy -= ACTION_COSTS.get(action.value, 0.0) + PASSIVE_ENERGY_DECAY
 
         actual_danger = actual_novelty = actual_energy_value = actual_utility = 0.0
@@ -238,10 +279,12 @@ class SharedWorld:
                 if action == ActionType.AVOID:
                     goal_progress += 0.1 * target.danger
         elif action == ActionType.INTERACT:
+            consumed_energy = target.energy_value if target is not None else 0.0
+            consumed_utility = target.utility if target is not None else 0.0
             goal_progress += self._apply_interact(me, target, events)
             if target is not None:
-                actual_energy_value, actual_danger = target.energy_value, target.danger
-                actual_utility, actual_novelty = target.utility, target.novelty
+                actual_energy_value, actual_danger = consumed_energy, target.danger
+                actual_utility, actual_novelty = consumed_utility, target.novelty
         elif action == ActionType.REST:
             me.energy += REST_RECOVERY
             events.append("The agent rests and regains energy.")
@@ -253,6 +296,14 @@ class SharedWorld:
             events.append("The agent verbalizes an internal report (a social message).")
 
         self._maybe_random_event(events)
+
+        # Phase 7 (gated) — shared task scoring: any agent's resolved step can
+        # advance the society's current task.
+        if self.task_manager is not None:
+            goal_progress += self.task_manager.on_step(
+                action=action, events=events, agent_x=me.x, agent_y=me.y,
+                ate_food=self._last_ate_food)
+
         me.energy = float(np.clip(me.energy, 0.0, self._energy_cap()))
         energy_delta = float(me.energy) - start_energy
         if energy_delta > 0.0:
@@ -270,10 +321,28 @@ class SharedWorld:
                           energy_delta=round(energy_delta, 4), new_energy=round(float(me.energy), 4),
                           events=events, actual=actual)
 
-    def advance_tick(self) -> None:
-        """Advance society time by one tick and expire stale messages."""
+    def advance_tick(self) -> list[str]:
+        """Advance society time and return notable shared-environment events."""
         self.tick += 1
         self.purge_messages()
+        events: list[str] = []
+        # Phase 7 (gated) — continuous dynamics, once per society tick. Pure
+        # functions of (tick, id, spawn metadata): consumes no RNG.
+        if self.config.world_dynamics_enabled:
+            events.extend(apply_dynamics(
+                self.objects,
+                getattr(self, "_spawn_meta", {}),
+                self.tick,
+                self.config,
+                DRIFT_EVERY,
+            ))
+        if self.task_manager is not None:
+            self.task_manager.tick_task()
+        return events
+
+    def task_state(self):
+        """Current shared TaskState, or ``None`` when the task system is off."""
+        return self.task_manager.state() if self.task_manager is not None else None
 
     # --------------------------------------------------------------- helpers
     def _occupied_cells(self, exclude_id: int) -> set[tuple[int, int]]:
@@ -321,10 +390,19 @@ class SharedWorld:
             gp += 0.3 * target.utility
         target.novelty = round(float(max(0.0, target.novelty - NOVELTY_DECAY_ON_INTERACT)), 4)
         self.seen_counts[target.id] = self.seen_counts.get(target.id, 0) + 1
+        # Food is consumed once eaten. Under Phase-7 continuous dynamics the
+        # patch stays, depleted, and regrows; otherwise it disappears outright.
         if target.kind == "food" and target.energy_value > 0.0:
-            self.objects.pop(target.id, None)
-            self.seen_counts.pop(target.id, None)
-            events.append(f"Food {target.id} is consumed.")
+            self._last_ate_food = True
+            if self.config.world_dynamics_enabled:
+                target.energy_value = 0.0
+                target.utility = round(float(target.utility * 0.5), 4)
+                events.append(f"Food patch {target.id} is grazed down (it will regrow).")
+            else:
+                self.objects.pop(target.id, None)
+                self.seen_counts.pop(target.id, None)
+                self._spawn_meta.pop(target.id, None)
+                events.append(f"Food {target.id} is consumed.")
         return gp
 
     def _apply_reveal(self, target, events) -> float:
@@ -342,8 +420,15 @@ class SharedWorld:
         noise = self.config.world_noise
         if noise <= 0.0:
             return
-        if float(self.rng.random()) < noise * 0.25:
+        # Phase 7 (gated) — seasonal abundance modulates spawn probability and
+        # new-food richness (same number of RNG draws either way).
+        season = (season_factor(self.tick, self.config.season_period)
+                  if self.config.world_dynamics_enabled else 1.0)
+        if float(self.rng.random()) < noise * 0.25 * season:
             obj = self._spawn_object()
+            if self.config.world_dynamics_enabled and obj.kind == "food":
+                obj.energy_value = round(float(min(10.0, obj.energy_value * season)), 4)
+                self._spawn_meta[obj.id]["max_energy"] = float(obj.energy_value)
             events.append(f"A new object {obj.id} ({obj.kind}) appears in the world.")
         if float(self.rng.random()) < noise * 0.25:
             hazards = [o for o in self.objects.values() if o.kind == "hazard"]
@@ -359,7 +444,7 @@ class SharedWorld:
 
     # ----------------------------------------------------------- snapshot
     def snapshot(self) -> dict:
-        return {
+        snap = {
             "grid_size": int(self.config.grid_size),
             "tick": int(self.tick),
             "agents": [{"id": b.id, "x": b.x, "y": b.y, "energy": round(b.energy, 4),
@@ -369,3 +454,10 @@ class SharedWorld:
             "objects": [o.model_dump() for o in self.objects.values()],
             "messages": [m.model_dump() for m in self.messages],
         }
+        # Phase 7 (gated) — environment extras for the UI (absent when off).
+        if self.config.world_dynamics_enabled:
+            snap["season"] = round(float(
+                season_factor(self.tick, self.config.season_period)), 4)
+        if self.task_manager is not None:
+            snap["task"] = self.task_manager.state().model_dump()
+        return snap

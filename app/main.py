@@ -9,11 +9,13 @@ variables.
 """
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router
@@ -29,6 +31,31 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+
+def _json_safe_validation(value):
+    """Make validation details serializable even for raw NaN/Infinity input."""
+    if value is None or isinstance(value, (str, int, bool)):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else str(value)
+    if isinstance(value, dict):
+        return {str(key): _json_safe_validation(item)
+                for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe_validation(item) for item in value]
+    return str(value)
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_handler(
+    _request: Request, exc: RequestValidationError,
+) -> JSONResponse:
+    """Return a stable 422 instead of crashing while encoding hostile numbers."""
+    return JSONResponse(
+        status_code=422,
+        content={"detail": _json_safe_validation(exc.errors())},
+    )
 
 # Permissive CORS for local development.
 app.add_middleware(

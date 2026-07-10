@@ -4,7 +4,8 @@ from schemas.models import (Intervention, Scenario, MetricSeries, ScenarioResult
 
 def test_models_default_safely():
     iv = Intervention(at_tick=3, type="stimulus")
-    assert iv.agent_id == 0 and iv.params == {}
+    assert iv.agent_id == 0
+    assert iv.params["kind"] == "curio" and iv.params["intensity"] == 1.0
     sc = Scenario(name="s")
     assert sc.ticks == 20 and sc.interventions == [] and isinstance(sc.config, ConfigPatch)
     ms = MetricSeries(fields=["tick"])
