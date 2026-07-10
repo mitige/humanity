@@ -20,6 +20,7 @@ from schemas.models import (
 )
 from core.constants import (
     ACTION_COSTS,
+    DRIFT_EVERY,
     ENERGY_CAP_FACTOR,
     INTERACT_DANGER_DAMAGE,
     NOVELTY_DECAY_ON_INTERACT,
@@ -27,6 +28,8 @@ from core.constants import (
     PASSIVE_ENERGY_DECAY,
     REST_RECOVERY,
 )
+from core.world_dynamics import apply_dynamics, season_factor
+from core.world_tasks import TaskManager
 
 # Movement actions that displace the agent on the grid.
 _MOVEMENT_ACTIONS = {
@@ -63,6 +66,14 @@ class World:
         self.objects: dict[int, WorldObject] = {}
         self.seen_counts: dict[int, int] = {}
         self._next_id: int = 0
+        # Phase 7 — spawn-time metadata for continuous dynamics (max food energy,
+        # base hazard danger). Pure copies at spawn: costs no RNG, so prior-phase
+        # runs stay byte-identical whether or not the dynamics flag is on.
+        self._spawn_meta: dict[int, dict] = {}
+        # Phase 7 — structured tasks (rotation lives in the ENVIRONMENT).
+        self.task_manager: TaskManager | None = (
+            TaskManager(cfg.grid_size) if cfg.tasks_enabled else None)
+        self._last_ate_food: bool = False
         for _ in range(cfg.n_objects):
             self._spawn_object()
 
@@ -120,6 +131,8 @@ class World:
         )
         self.objects[obj.id] = obj
         self.seen_counts[obj.id] = 0
+        self._spawn_meta[obj.id] = {"max_energy": float(energy_value),
+                                    "base_danger": float(danger)}
         self._next_id += 1
         return obj
 
@@ -183,6 +196,8 @@ class World:
         )
         self.objects[obj.id] = obj
         self.seen_counts[obj.id] = 0
+        self._spawn_meta[obj.id] = {"max_energy": float(energy_value),
+                                    "base_danger": float(danger)}
         self._next_id += 1
         return obj
 
@@ -258,6 +273,7 @@ class World:
         action = decision.action
         events: list[str] = []
         start_energy = float(self.agent_energy)
+        self._last_ate_food = False
 
         # 1) Fixed costs: action cost + passive decay.
         cost = ACTION_COSTS.get(action.value, 0.0)
@@ -282,13 +298,15 @@ class World:
                 if action == ActionType.AVOID:
                     goal_progress += 0.1 * target.danger
         elif action == ActionType.INTERACT:
+            consumed_energy = target.energy_value if target is not None else 0.0
+            consumed_utility = target.utility if target is not None else 0.0
             goal_progress += self._apply_interact(
                 target, events
             )
             if target is not None:
-                actual_energy_value = target.energy_value
+                actual_energy_value = consumed_energy
                 actual_danger = target.danger
-                actual_utility = target.utility
+                actual_utility = consumed_utility
                 actual_novelty = target.novelty
         elif action == ActionType.REST:
             self.agent_energy += REST_RECOVERY
@@ -305,6 +323,14 @@ class World:
         # 4) Stochastic world events governed by world_noise.
         self._maybe_random_event(events)
 
+        # Phase 7 (gated) — structured task scoring on the resolved step.
+        if self.task_manager is not None:
+            goal_progress += self.task_manager.on_step(
+                action=action, events=events,
+                agent_x=self.agent_x, agent_y=self.agent_y,
+                ate_food=self._last_ate_food)
+            self.task_manager.tick_task()
+
         # 5) Clamp energy.
         self.agent_energy = float(np.clip(self.agent_energy, 0.0, self._energy_cap()))
 
@@ -314,6 +340,13 @@ class World:
 
         # 6) Advance time.
         self.tick += 1
+
+        # Phase 7 (gated) — continuous dynamics: regrowth, hazard cycles, drift.
+        # Pure functions of (tick, id, spawn metadata): consumes no RNG.
+        if cfg.world_dynamics_enabled:
+            events.extend(apply_dynamics(
+                self.objects, getattr(self, "_spawn_meta", {}),
+                self.tick, cfg, DRIFT_EVERY))
 
         actual = {
             "danger": round(float(np.clip(actual_danger, 0.0, 1.0)), 4),
@@ -421,11 +454,20 @@ class World:
         target.novelty = round(float(max(0.0, target.novelty - NOVELTY_DECAY_ON_INTERACT)), 4)
         self.seen_counts[target.id] = self.seen_counts.get(target.id, 0) + 1
 
-        # Food is consumed once eaten.
+        # Food is consumed once eaten. Under Phase-7 continuous dynamics the
+        # patch stays in place, depleted, and regrows toward its spawn maximum;
+        # otherwise (prior-phase behaviour) the object disappears outright.
         if target.kind == "food" and target.energy_value > 0.0:
-            self.objects.pop(target.id, None)
-            self.seen_counts.pop(target.id, None)
-            events.append(f"Food {target.id} is consumed and disappears.")
+            self._last_ate_food = True
+            if self.config.world_dynamics_enabled:
+                target.energy_value = 0.0
+                target.utility = round(float(target.utility * 0.5), 4)
+                events.append(f"Food patch {target.id} is grazed down (it will regrow).")
+            else:
+                self.objects.pop(target.id, None)
+                self.seen_counts.pop(target.id, None)
+                self._spawn_meta.pop(target.id, None)
+                events.append(f"Food {target.id} is consumed and disappears.")
         return goal_progress
 
     def _apply_reveal(self, target: WorldObject | None, events: list[str]) -> float:
@@ -450,9 +492,16 @@ class World:
         noise = self.config.world_noise
         if noise <= 0.0:
             return
+        # Phase 7 (gated) — seasonal abundance modulates spawn probability and
+        # the richness of newly spawned food (same number of RNG draws either way).
+        season = (season_factor(self.tick, self.config.season_period)
+                  if self.config.world_dynamics_enabled else 1.0)
         # Spawn probability and flare probability both scale with noise.
-        if float(self.rng.random()) < noise * 0.25:
+        if float(self.rng.random()) < noise * 0.25 * season:
             obj = self._spawn_object()
+            if self.config.world_dynamics_enabled and obj.kind == "food":
+                obj.energy_value = round(float(min(10.0, obj.energy_value * season)), 4)
+                self._spawn_meta[obj.id]["max_energy"] = float(obj.energy_value)
             events.append(
                 f"A new object {obj.id} ({obj.kind}) appears in the world."
             )
@@ -497,7 +546,7 @@ class World:
 
     def snapshot(self) -> dict:
         """Return a JSON-serializable view of the world for UI/state."""
-        return {
+        snap = {
             "grid_size": int(self.config.grid_size),
             "tick": int(self.tick),
             "agent": {
@@ -507,3 +556,14 @@ class World:
             },
             "objects": [obj.model_dump() for obj in self.objects.values()],
         }
+        # Phase 7 (gated) — environment extras for the UI (absent when off).
+        if self.config.world_dynamics_enabled:
+            snap["season"] = round(float(
+                season_factor(self.tick, self.config.season_period)), 4)
+        if self.task_manager is not None:
+            snap["task"] = self.task_manager.state().model_dump()
+        return snap
+
+    def task_state(self):
+        """Current TaskState, or ``None`` when the task system is off."""
+        return self.task_manager.state() if self.task_manager is not None else None

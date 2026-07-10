@@ -11,14 +11,12 @@ sentient, or alive.
 from __future__ import annotations
 
 import asyncio
-import json
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core.agent import get_manager
-from core.society import SocietyManager
+from core.society import ConfigRequiresReset, SocietyManager
 from core.constants import THEORY_FRAMING_EN, THEORY_FRAMING_FR
 from core.scenario import ScenarioRunner
 from core.test_battery import ConsciousnessTestBattery
@@ -60,7 +58,14 @@ router = APIRouter()
 
 def _manager() -> SocietyManager:
     """Lazily obtain the process-wide society manager."""
-    return get_manager()
+    manager = get_manager()
+    if manager._exclusive_worker:
+        raise HTTPException(
+            status_code=503,
+            detail="Live society is busy; retry after the atomic job completes.",
+            headers={"Retry-After": "1"},
+        )
+    return manager
 
 
 def _agent0():
@@ -68,16 +73,42 @@ def _agent0():
     return _manager().agent(0)
 
 
+async def _run_live_agent_job(operation, *, require_trace: bool = True):
+    """Run one exclusive reporting/LLM job off-loop on coherent live state."""
+    mgr = _manager()
+    async with mgr._lock:
+        mgr._exclusive_worker = True
+        try:
+            def invoke():
+                agent = mgr.agent(0)
+                if require_trace and agent.last_trace is None:
+                    mgr.tick()
+                return operation(agent)
+
+            return await _run_cpu_bound(invoke)
+        finally:
+            mgr._exclusive_worker = False
+
+
 def _legacy_world_snapshot() -> dict:
     """Solo-shaped world snapshot (singular ``agent``) for agent 0 of the society."""
     w = _manager().world
-    a0 = w.agents[0]
-    return {
+    shared = w.snapshot()
+    a0 = next(agent for agent in shared["agents"] if agent["id"] == 0)
+    snapshot = {
         "grid_size": int(w.config.grid_size),
         "tick": int(w.tick),
-        "agent": {"x": int(a0.x), "y": int(a0.y), "energy": round(float(a0.energy), 4)},
-        "objects": [o.model_dump() for o in w.objects.values()],
+        "agent": {
+            "x": int(a0["x"]),
+            "y": int(a0["y"]),
+            "energy": round(float(a0["energy"]), 4),
+        },
+        "objects": shared["objects"],
     }
+    for optional in ("season", "task"):
+        if optional in shared:
+            snapshot[optional] = shared[optional]
+    return snapshot
 
 
 def _society_state_legacy() -> dict:
@@ -95,6 +126,8 @@ def _society_state_legacy() -> dict:
             intro.self_state if intro is not None else "No introspective report generated yet."
         ),
         "self_model": ag.self_model_state().model_dump(),
+        "working_memory": [item.model_dump()
+                           for item in ag.working_memory.contents()],
         "working_memory_load": float(ag.working_memory.load()),
         "phi_proxy": float(metrics.phi_proxy),
         "free_energy": float(metrics.free_energy),
@@ -130,8 +163,12 @@ async def post_tick() -> CycleTrace:
 async def post_reset(patch: ConfigPatch | None = None) -> dict:
     """Reset the society (optionally applying a config patch); return agent 0 state."""
     mgr = _manager()
-    mgr.reset(patch)
+    try:
+        mgr.reset(patch)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     state = _society_state_legacy()
+    state["mode"] = "reset"
     state["disclaimer"] = DISCLAIMER_EN
     return state
 
@@ -200,7 +237,8 @@ async def post_goal(req: GoalRequest) -> SelfModelState:
 @router.post("/agent/ask", response_model=AskResponse)
 async def post_ask(req: AskRequest) -> AskResponse:
     """Introspective-dialogue probe on agent 0 (grounded report from variables)."""
-    return _agent0().ask(req.question, req.intent)
+    return await _run_live_agent_job(
+        lambda agent: agent.ask(req.question, req.intent))
 
 
 @router.post("/agent/narrate")
@@ -219,7 +257,8 @@ async def post_narrate() -> dict:
         raise HTTPException(status_code=503,
                             detail="No LLM backend configured. Set OPENROUTER_API_KEY to enable /agent/narrate.")
     try:
-        result = narrate(backend, _agent0())
+        result = await _run_live_agent_job(
+            lambda agent: narrate(backend, agent))
     except RuntimeError as e:
         raise HTTPException(status_code=502, detail=str(e))
     result["disclaimer"] = DISCLAIMER_EN
@@ -240,7 +279,8 @@ async def post_grounding_audit() -> dict:
         raise HTTPException(status_code=503,
                             detail="No LLM backend configured. Set OPENROUTER_API_KEY to enable /agent/audit.")
     try:
-        return grounding_audit(backend, _agent0())
+        return await _run_live_agent_job(
+            lambda agent: grounding_audit(backend, agent))
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
@@ -256,14 +296,23 @@ async def post_report_card() -> dict:
         raise HTTPException(status_code=503,
                             detail="No LLM backend configured. Set OPENROUTER_API_KEY to enable /agent/report-card.")
     try:
-        return report_card(backend)
+        return await _run_cpu_bound(report_card, backend)
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
 
+class _ConverseTurn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    role: str = Field(min_length=1, max_length=32)
+    content: str = Field(min_length=1, max_length=4000)
+
+
 class _ConverseReq(BaseModel):
-    question: str
-    history: list[dict] = []
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    question: str = Field(min_length=1, max_length=2000)
+    history: list[_ConverseTurn] = Field(default_factory=list, max_length=6)
 
 
 def _llm_backend_or_503(feature: str):
@@ -285,7 +334,10 @@ async def post_converse(req: _ConverseReq) -> dict:
     from core.llm import converse
     backend = _llm_backend_or_503("/agent/converse")
     try:
-        return converse(backend, _agent0(), req.question, req.history)
+        return await _run_live_agent_job(
+            lambda agent: converse(
+                backend, agent, req.question,
+                [turn.model_dump() for turn in req.history]))
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
@@ -299,7 +351,8 @@ async def post_biography() -> dict:
     from core.llm import biography
     backend = _llm_backend_or_503("/agent/biography")
     try:
-        return biography(backend, _agent0())
+        return await _run_live_agent_job(
+            lambda agent: biography(backend, agent))
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
@@ -314,7 +367,8 @@ async def post_cross_examine() -> dict:
     from core.llm import cross_examine
     backend = _llm_backend_or_503("/agent/cross-examine")
     try:
-        return cross_examine(backend, _agent0())
+        return await _run_live_agent_job(
+            lambda agent: cross_examine(backend, agent))
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
@@ -329,7 +383,8 @@ async def post_inner_voice() -> dict:
     from core.llm import inner_voice
     backend = _llm_backend_or_503("/agent/inner-voice")
     try:
-        return inner_voice(backend, _agent0())
+        return await _run_live_agent_job(
+            lambda agent: inner_voice(backend, agent))
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
@@ -368,21 +423,29 @@ async def get_config() -> dict:
 
 @router.post("/config")
 async def post_config(patch: ConfigPatch) -> dict:
-    """Apply a partial config patch (rebuilds the society) and return config + state.
-
-    A patch applied while the background loop is running RESUMES the loop on
-    the rebuilt society (same tps) instead of silently pausing the instrument —
-    so toggling a mechanism, or a page-load settings sync, never kills a run.
-    """
+    """Hot-apply a validated, non-structural patch without rebuilding society."""
     mgr = _manager()
-    was_running = bool(mgr.running)
-    resume = mgr.last_run_request
-    mgr.reset(patch)
-    if was_running:
-        await mgr.run(resume or RunRequest())
+    try:
+        changed_fields = await mgr.apply_config(patch)
+    except ConfigRequiresReset as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "fields": exc.fields,
+                "instruction": "Use POST /reset for structural changes.",
+            },
+        ) from exc
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     state = _society_state_legacy()
     state["disclaimer"] = DISCLAIMER_EN
-    return {"config": mgr.config.model_dump(), "state": state}
+    return {
+        "mode": "hot",
+        "changed_fields": changed_fields,
+        "config": mgr.config.model_dump(),
+        "state": state,
+        "disclaimer": DISCLAIMER_EN,
+    }
 
 
 @router.get("/metrics", response_model=Metrics)
@@ -394,25 +457,102 @@ async def get_metrics() -> Metrics:
 @router.get("/trace")
 async def get_trace(limit: int = Query(default=50, ge=1, le=1000)) -> list[dict]:
     """Return agent 0's most recent cognitive traces from the JSONL export."""
-    path = Path(_agent0().trace_logger.path())
-    if not path.exists():
-        return []
-    try:
-        with path.open("r", encoding="utf-8") as handle:
-            lines = handle.readlines()
-    except OSError:
-        return []
-    tail = lines[-limit:]
-    traces: list[dict] = []
-    for line in tail:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            traces.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return traces
+    from storage.trace_export import tail_traces
+
+    path = _agent0().trace_logger.path()
+    return await _run_cpu_bound(tail_traces, path, limit=limit)
+
+
+# --------------------------------------------------------------------------- #
+# Phase 7 — semantic memory search / graph + richer trace export
+# --------------------------------------------------------------------------- #
+@router.get("/agent/memory/search")
+async def get_memory_search(q: str = Query(min_length=1, max_length=200),
+                            limit: int = Query(default=8, ge=1, le=50)) -> dict:
+    """Free-text semantic search over agent 0's autobiographical memory.
+
+    Deterministic hashed-n-gram embeddings + cosine ranking (Phase 7). Works
+    whatever the vector_memory flag says — the index is synced on demand.
+    Distributional similarity of records, NOT remembering as an experience.
+    """
+    def search(agent):
+        records = agent.memory._records
+        agent.vector_index.sync(records)
+        hits = agent.vector_index.search_text(records, q, limit)
+        return {
+            "query": q,
+            "results": [
+                {"similarity": round(float(score), 4), **record.model_dump()}
+                for record, score in hits
+            ],
+            "disclaimer": DISCLAIMER_EN,
+        }
+
+    return await _run_live_agent_job(search, require_trace=False)
+
+
+@router.get("/agent/memory/graph")
+async def get_memory_graph(limit: int = Query(default=60, ge=2, le=200),
+                           edges: int = Query(default=3, ge=1, le=8)) -> dict:
+    """Similarity graph over agent 0's recent autobiographical memory (Phase 7).
+
+    Nodes are episodes; edges link each episode to its nearest neighbours by
+    embedding cosine. A visualization of stored variables — not a mind map.
+    """
+    def graph(agent):
+        records = agent.memory._records
+        agent.vector_index.sync(records)
+        payload = agent.vector_index.graph(
+            records, limit=limit, top_edges=edges)
+        payload["disclaimer"] = DISCLAIMER_EN
+        return payload
+
+    return await _run_live_agent_job(graph, require_trace=False)
+
+
+@router.get("/export/traces")
+async def get_export_traces(
+    from_tick: int | None = Query(default=None, ge=0),
+    to_tick: int | None = Query(default=None, ge=0),
+    ignited_only: bool = Query(default=False),
+    fields: str | None = Query(default=None, description="comma-separated top-level fields"),
+    format_: str | None = Query(
+        default=None, alias="format", pattern="^(jsonl|json|csv)$",
+        description="Canonical output format.",
+    ),
+    fmt: str | None = Query(
+        default=None, pattern="^(jsonl|json|csv)$", deprecated=True,
+        description="Legacy alias for format.",
+    ),
+    limit: int = Query(default=1000, ge=1, le=20000),
+) -> Response:
+    """Filtered, projected, multi-format export of the JSONL cognitive traces (Phase 7)."""
+    from storage.trace_export import format_rows, iter_traces
+    path = _agent0().trace_logger.path()
+    field_list = [f.strip() for f in fields.split(",") if f.strip()] if fields else None
+
+    def build_export() -> tuple[str, str]:
+        rows = list(iter_traces(
+            path,
+            from_tick=from_tick,
+            to_tick=to_tick,
+            ignited_only=ignited_only,
+            fields=field_list,
+            limit=limit,
+        ))
+        return format_rows(rows, format_ or fmt or "jsonl")
+
+    payload, media_type = await _run_cpu_bound(build_export)
+    return Response(content=payload, media_type=media_type)
+
+
+@router.get("/export/analysis")
+async def get_export_analysis(window: int = Query(default=50, ge=1, le=1000)) -> dict:
+    """Aggregate analysis of the full trace file: ignition rate, Φ statistics,
+    windowed error curve, action histogram, sleep fraction (Phase 7)."""
+    from storage.trace_export import analysis
+    path = _agent0().trace_logger.path()
+    return await _run_cpu_bound(analysis, path, window=window)
 
 
 # --------------------------------------------------------------------------- #
@@ -457,10 +597,14 @@ async def post_society_config(patch: ConfigPatch) -> dict:
     mgr = _manager()
     was_running = bool(mgr.running)
     resume = mgr.last_run_request
-    mgr.reset(patch)
+    try:
+        mgr.reset(patch)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if was_running:
         await mgr.run(resume or RunRequest())
     state = mgr.state()
+    state["mode"] = "reset"
     state["disclaimer"] = DISCLAIMER_EN
     return state
 
@@ -527,12 +671,29 @@ async def get_society_agent_workspace(agent_id: int) -> WorkspaceState:
 # Scientific-instrument endpoints (Phase 4)
 # --------------------------------------------------------------------------- #
 class _BatteryReq(BaseModel):
-    seed: int = 42
-    ticks: int = 12
+    model_config = ConfigDict(extra="forbid")
+
+    seed: int = Field(default=42, ge=0, le=2**32 - 1)
+    ticks: int = Field(default=12, ge=1, le=100_000)
 
 
 class _TrainReq(BaseModel):
-    ticks: int = 200
+    model_config = ConfigDict(extra="forbid")
+
+    ticks: int = Field(default=200, ge=0, le=100_000)
+
+
+async def _run_cpu_bound(func, /, *args, **kwargs):
+    """Run sync CPU work off-loop and wait it out before propagating cancel."""
+    worker = asyncio.create_task(asyncio.to_thread(func, *args, **kwargs))
+    try:
+        return await asyncio.shield(worker)
+    except asyncio.CancelledError as cancelled:
+        try:
+            await worker
+        except Exception:
+            pass
+        raise cancelled
 
 
 @router.post("/train")
@@ -545,13 +706,19 @@ async def post_train(req: _TrainReq) -> dict:
     """
     mgr = _manager()
     async with mgr._lock:
-        result = mgr.train(req.ticks)
+        mgr._exclusive_worker = True
+        try:
+            result = await _run_cpu_bound(mgr.train, req.ticks)
+        finally:
+            mgr._exclusive_worker = False
     result["disclaimer"] = DISCLAIMER_EN
     return result
 
 
 class _CheckpointReq(BaseModel):
-    name: str = "run"
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str = Field(default="run", min_length=1, max_length=100)
 
 
 @router.post("/checkpoint/save")
@@ -561,14 +728,18 @@ async def post_checkpoint_save(req: _CheckpointReq) -> dict:
     from core import checkpoint
     mgr = _manager()
     async with mgr._lock:
-        return checkpoint.save(mgr, req.name)
+        mgr._exclusive_worker = True
+        try:
+            return await _run_cpu_bound(checkpoint.save, mgr, req.name)
+        finally:
+            mgr._exclusive_worker = False
 
 
 @router.get("/checkpoint/list")
 async def get_checkpoint_list() -> dict:
     """List the saved checkpoints (name, tick, agent count, timestamp)."""
     from core import checkpoint
-    return {"checkpoints": checkpoint.listing()}
+    return {"checkpoints": await _run_cpu_bound(checkpoint.listing)}
 
 
 @router.post("/checkpoint/load")
@@ -576,13 +747,18 @@ async def post_checkpoint_load(req: _CheckpointReq) -> dict:
     """Resume a run: restore the live society from a saved checkpoint in place."""
     from core import checkpoint
     mgr = _manager()
-    mgr.pause()  # stop any running loop before swapping state
     try:
         async with mgr._lock:
-            info = checkpoint.load(mgr, req.name)
+            mgr._exclusive_worker = True
+            try:
+                info = await _run_cpu_bound(
+                    checkpoint.load, mgr, req.name)
+            finally:
+                mgr._exclusive_worker = False
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    info["state"] = mgr.state()
+    except checkpoint.InvalidCheckpointError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     return info
 
 
@@ -590,7 +766,7 @@ async def post_checkpoint_load(req: _CheckpointReq) -> dict:
 async def post_checkpoint_delete(req: _CheckpointReq) -> dict:
     """Delete a saved checkpoint."""
     from core import checkpoint
-    if not checkpoint.delete(req.name):
+    if not await _run_cpu_bound(checkpoint.delete, req.name):
         raise HTTPException(status_code=404, detail=f"checkpoint '{req.name}' not found")
     return {"deleted": checkpoint._safe(req.name)}
 
@@ -598,7 +774,7 @@ async def post_checkpoint_delete(req: _CheckpointReq) -> dict:
 @router.post("/scenario/run", response_model=ScenarioResult)
 async def post_scenario_run(scenario: Scenario) -> ScenarioResult:
     """Run a reproducible scripted scenario and return its metrics time series."""
-    return ScenarioRunner().run(scenario)
+    return await _run_cpu_bound(ScenarioRunner().run, scenario)
 
 
 @router.post("/battery/{test_name}", response_model=BatteryResult)
@@ -607,29 +783,46 @@ async def post_battery(test_name: str, req: _BatteryReq) -> BatteryResult:
     | masking | blink | priming | reality_monitor)."""
     battery = ConsciousnessTestBattery()
     if test_name == "mirror":
-        return battery.mirror_test(seed=req.seed, ticks=req.ticks)
+        return await _run_cpu_bound(
+            battery.mirror_test, seed=req.seed, ticks=req.ticks)
     if test_name == "false_memory":
-        return battery.false_memory_test(seed=req.seed, ticks=req.ticks)
+        return await _run_cpu_bound(
+            battery.false_memory_test, seed=req.seed, ticks=req.ticks)
     if test_name == "calibration":
-        return battery.calibration_test(seed=req.seed, ticks=req.ticks)
+        return await _run_cpu_bound(
+            battery.calibration_test, seed=req.seed, ticks=req.ticks)
     if test_name == "relational_self":
         # this probe runs isolated-vs-society and needs enough ticks for the
         # agents to come into mutual view.
-        return battery.relational_self_test(seed=req.seed, ticks=max(int(req.ticks), 30))
+        return await _run_cpu_bound(
+            battery.relational_self_test,
+            seed=req.seed,
+            ticks=max(int(req.ticks), 30),
+        )
     # Phase 5 — psychophysics signatures of conscious ACCESS (functional). The
     # ``ticks`` body field is the pre-stimulus warmup; it is clamped so the
     # probes stay in the stimulus regime they were calibrated for.
     if test_name == "masking":
-        return battery.masking_test(seed=req.seed, ticks=min(int(req.ticks), 4))
+        return await _run_cpu_bound(
+            battery.masking_test, seed=req.seed,
+            ticks=min(int(req.ticks), 4))
     if test_name == "blink":
-        return battery.blink_test(seed=req.seed, ticks=min(int(req.ticks), 4))
+        return await _run_cpu_bound(
+            battery.blink_test, seed=req.seed,
+            ticks=min(int(req.ticks), 4))
     if test_name == "priming":
-        return battery.priming_test(seed=req.seed, ticks=min(int(req.ticks), 4))
+        return await _run_cpu_bound(
+            battery.priming_test, seed=req.seed,
+            ticks=min(int(req.ticks), 4))
     if test_name == "reality_monitor":
-        return battery.reality_monitor_test(seed=req.seed, ticks=max(int(req.ticks), 30))
+        return await _run_cpu_bound(
+            battery.reality_monitor_test, seed=req.seed,
+            ticks=max(int(req.ticks), 30))
     # Phase 6 — does a shared lexicon emerge under the invent-a-language drive?
     if test_name == "language_genesis":
-        return battery.language_genesis_test(seed=req.seed, ticks=max(int(req.ticks), 80))
+        return await _run_cpu_bound(
+            battery.language_genesis_test, seed=req.seed,
+            ticks=max(int(req.ticks), 80))
     raise HTTPException(status_code=404, detail=f"unknown test '{test_name}'")
 
 
@@ -670,7 +863,9 @@ async def get_export_json() -> Response:
 async def ws_society(ws: WebSocket) -> None:
     """Push the society state roughly every 250ms until the client disconnects."""
     await ws.accept()
-    mgr = _manager()
+    # A socket accepted during /train waits on the society lock instead of
+    # invoking the HTTP fail-fast gate.
+    mgr = get_manager()
     try:
         while True:
             async with mgr._lock:

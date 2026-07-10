@@ -24,18 +24,18 @@ def _mean(xs: list[float]) -> float:
 
 
 def _isolated_agent(config: SimConfig) -> CognitiveAgent:
-    """Create a hermetic agent with in-RAM episodic memory only.
+    """Create a hermetic agent with in-RAM episodic memory and no trace I/O.
 
     Battery probes must be deterministic and must never read or write the live
-    instrument's shared ``storage/data/memory.json``; nulling the store and
-    clearing any preloaded records makes each probe start from an empty memory.
+    instrument's shared storage.  The disk-free flags are applied before agent
+    construction so a probe cannot briefly load persisted state and then clear it.
     """
-    agent = CognitiveAgent(config)
-    agent.memory_store = None
-    agent.memory._store = None
-    agent.memory._records = []
-    agent.memory._next_id = 1
-    return agent
+    hermetic_config = SimConfig.model_validate({
+        **config.model_dump(),
+        "persist_memory": False,
+        "trace_logging": False,
+    })
+    return CognitiveAgent(hermetic_config)
 
 
 class ConsciousnessTestBattery:

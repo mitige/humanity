@@ -5,7 +5,7 @@
 ### Every major scientific theory of consciousness, implemented as running code — and rigorously honest that it proves nothing about real experience.
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![tests](https://img.shields.io/badge/tests-382%20passing-2ea44f)](#running)
+[![tests](https://img.shields.io/badge/tests-627%20passing-2ea44f)](#running)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![no LLM](https://img.shields.io/badge/no%20LLM-no%20neural%20nets-8957e5)](#stack-rationale)
 [![GitHub stars](https://img.shields.io/github/stars/mitige/humanity?style=social)](https://github.com/mitige/humanity/stargazers)
@@ -24,12 +24,15 @@ learning &amp; personality, and the scientific laboratory, all observable in one
 > consciousness claim; **higher-order** metacognition (HOT); **active inference** (expected-free-energy
 > minimization); and an **IIT Φ-proxy** — extended into a **multi-agent society**, **learning &amp;
 > emergent personality**, a **reproducible scientific instrument**, a **looking-glass relational
-> self**, and a higher-order **awareness of what escapes its own control** — and now **Phase 5, the
+> self**, and a higher-order **awareness of what escapes its own control** — through **Phase 5, the
 > asymptote**: **recurrent perception** (RPT), **perceptual reality monitoring** (PRM, with honest
 > misattribution), **interoceptive inference** (presence), **temporal thickness**
 > (retention/protention), **re-entrant inner speech**, a **published integrated-information measure**
 > (Φ_AR, Barrett &amp; Seth), a **subliminal-priming substrate**, and the classic **psychophysics
-> signatures** (masking, attentional blink, priming) reproduced as measurable probes. Every step is
+> signatures** (masking, attentional blink, priming) reproduced as measurable probes; **Phase 6**,
+> where deterministic naming games produce an emergent lexicon; and **Phase 7, the horizon**:
+> coarse causal Φ, predictive hierarchy/VFE, multi-step planning, semantic vector memory, TD(λ),
+> default-mode wandering, a living world, structured tasks and auditable exports. Every step is
 > grounded in inspectable variables and observable live through a web UI + REST API.
 >
 > **What it is NOT: conscious.** The honesty contract is load-bearing — *reproducing the functional
@@ -43,7 +46,7 @@ learning &amp; personality, and the scientific laboratory, all observable in one
 git clone https://github.com/mitige/humanity && cd humanity
 pip install -r requirements.txt
 python run.py          # → open http://127.0.0.1:8000
-python -m pytest       # 382 deterministic tests
+python -m pytest       # 627 deterministic tests
 ```
 
 **Jump to:** [the cognitive loop](#cognitive-architecture-v2--the-workspace-centered-loop) ·
@@ -52,7 +55,8 @@ python -m pytest       # 382 deterministic tests
 [the relational self](#the-relational-self-looking-glass-self) ·
 [self-opacity](#self-opacity--the-awareness-of-what-escapes-control) ·
 [the scientific instrument](#phase-4--scientific-instrument) ·
-[**the asymptote (Phase 5)**](#phase-5--the-asymptote-closing-the-functional-gap)
+[the asymptote (Phase 5)](#phase-5--the-asymptote-closing-the-functional-gap) ·
+[**the horizon (Phase 7)**](#phase-7--the-horizon-every-remaining-extension-delivered)
 
 ---
 
@@ -236,7 +240,7 @@ the global workspace** and culminating in a **conscious moment**.
 | **`attention_schema`** *(new)* | **AST**: `AttentionSchema.update` — model of its own attention and consciousness claim. |
 | **`metacognition`** *(new)* | **HOT**: `Metacognition.update` — higher-order representations, meta-confidence, error monitor. |
 | **`integration`** *(new)* | **IIT-proxy**: `IntegrationMonitor.phi_proxy` — heuristic Phi proxy (differentiation × integration). |
-| `agent` | `CognitiveAgent` orchestrates the v2 loop (workspace-centered); `SimulationManager` hosts the agent and the async loop. |
+| `agent` | `CognitiveAgent` orchestrates the v2 loop (workspace-centered); `SocietyManager` owns the live world, agents and async loop. `SimulationManager` remains the legacy single-agent compatibility facade. |
 
 ---
 
@@ -293,7 +297,7 @@ smoothed by EMA and **centered on `arousal_baseline`** (`0.45`). Its role: **mod
 ignition threshold**. **High arousal lowers** the threshold (stimuli, perturbations and salient
 events reach **global access** more easily); **calm raises** the threshold (access becomes more
 selective). Arousal is exposed via `Metrics.arousal`, `ConsciousMoment.arousal`,
-`WorkspaceState.arousal`, and in `SimulationManager.state()["arousal"]`.
+`WorkspaceState.arousal`, and in `SocietyManager.state()["arousal"]`.
 
 ### Graded awareness
 
@@ -326,6 +330,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+For the exact dependency versions used by the current regression run, install
+`requirements.lock` instead. `requirements.txt` remains the compatible, upgrade-friendly set.
+
 ---
 
 ## Running
@@ -349,9 +356,9 @@ python -m pytest
 
 ## API reference
 
-All responses are JSON and use the Pydantic schemas described in `schemas/models.py`. `GET /state`
-adds a top-level `disclaimer` field (`DISCLAIMER_FR` / `DISCLAIMER_EN`) and, in v2, a `framing`
-field (`THEORY_FRAMING_FR`).
+API responses are JSON and use the Pydantic schemas described in `schemas/models.py`, except for the
+documented UI redirect and CSV/JSONL download surfaces. `GET /state` adds the canonical English
+`disclaimer`, its `disclaimer_en` alias, and the English theory `framing` field.
 
 | Method | Path | Description |
 |---|---|---|
@@ -363,12 +370,16 @@ field (`THEORY_FRAMING_FR`).
 | `POST` | `/pause` | Pauses the background loop. Returns `{ "running": false }`. |
 | `GET` | `/agent/self-model` | Returns the current `SelfModelState`. |
 | `GET` | `/agent/memory?limit=20` | List of recent autobiographical `MemoryRecord`s. |
+| `GET` | `/agent/memory/search?q=...&limit=8` | **(Phase 7)** Deterministic semantic search over stored episodes; returns ranked cosine similarities with the functional-simulation disclaimer. |
+| `GET` | `/agent/memory/graph?limit=60&edges=3` | **(Phase 7)** Deterministic similarity graph of autobiographical records for the Observatoire. |
 | `GET` | `/agent/introspection` | Regenerates and returns an `IntrospectionReport` (text from the variables). |
 | `POST` | `/agent/goal` | Adds a goal (`GoalRequest` body); returns the updated self-model. |
 | `POST` | `/config` | Applies a partial config update (`ConfigPatch`, including the new consciousness parameters); returns the applied config and the state. |
 | `GET` | `/metrics` | Returns the last cycle's `Metrics` (v1 + v2 fields). |
 | `GET` | `/trace?limit=50` | Returns the latest cognitive traces (reads the tail of the JSONL). |
-| **`GET`** | **`/agent/consciousness`** | **(v2)** Consciousness-state summary: `conscious_moment`, `attention_schema`, `metacognition`, `integration`, `workspace` (`ignited`, `winner_source`, `winner_content`, `broadcast_strength`, `threshold`), `disclaimer` (`DISCLAIMER_FR`) and `framing` (`THEORY_FRAMING_FR`). |
+| `GET` | `/export/traces?format=jsonl\|json\|csv` | **(Phase 7)** Filtered trace export (`from_tick`, `to_tick`, `ignited_only`, `fields`, `limit`). `format` is canonical; legacy `fmt` remains accepted. |
+| `GET` | `/export/analysis?window=50` | **(Phase 7)** Auditable run aggregates: ignition, action histogram, error curve, sleep/default-mode occupancy, and mean/max Phi proxy, Phi_AR and coarse causal Phi. |
+| **`GET`** | **`/agent/consciousness`** | **(v2)** Consciousness-state summary: `conscious_moment`, `attention_schema`, `metacognition`, `integration`, `workspace` (`ignited`, `winner_source`, `winner_content`, `broadcast_strength`, `threshold`), plus the canonical English `disclaimer` and `framing`. |
 | **`GET`** | **`/agent/workspace`** | **(v2)** The most recent `WorkspaceState` (last competition: coalitions, winner, ignition, broadcast vector). |
 | **`GET`** | **`/agent/stream?limit=20`** | **(v2)** The stream of consciousness: `list[ConsciousMoment]` (recent conscious moments). |
 | **`POST`** | **`/agent/ask`** | **(v2)** Introspective dialogue (`AskRequest` → `AskResponse`): a report grounded in the internal variables (GWT/HOT reportability). See [Interacting with the consciousness](#interacting-with-the-consciousness). |
@@ -497,18 +508,20 @@ stays pending until the `ttl` expires.
 
 #### 5. `POST /agent/perturb` — perturbation (free-energy / affect response)
 
-Three types. `shock`: drains energy (`energy − magnitude·10`, bounded; synced into the self-model).
+Three public types. `shock`: drains energy (`energy − magnitude·10`, bounded; synced into the self-model).
 `surprise`: forces a prediction error on the next cycle (feeds confusion + the HOT error monitor —
 active inference). `soothe`: reduces the latest fear (`× (1 − magnitude)`) and lifts the self-model's
-mood (`+0.2·magnitude`).
+mood (`+0.2·magnitude`). `shock` and `soothe` are input aliases for the historical canonical names
+`choc` and `apaisement`; successful responses use the canonical name and include `applied: true`.
+Negative magnitudes are rejected with HTTP 422.
 
 ```jsonc
 // Request — PerturbRequest
 { "type": "shock", "magnitude": 1.0 }              // type ∈ shock|surprise|soothe
 // Responses (per type)
-{ "type": "shock",    "energy": 12.0, "drained": 10.0 }
-{ "type": "surprise", "pending_prediction_error": 0.8 }
-{ "type": "soothe",   "fear": 0.12, "mood": 0.4 }
+{ "type": "choc",       "applied": true, "energy": 12.0, "drained": 10.0 }
+{ "type": "surprise",   "applied": true, "pending_prediction_error": 0.8 }
+{ "type": "apaisement", "applied": true, "fear": 0.12, "mood": 0.4 }
 // HTTP envelope of the endpoint:
 { "effect": { /* dict above */ }, "state": { /* full state (cf. GET /state) */ } }
 ```
@@ -587,10 +600,12 @@ reproduces the single-agent instrument**: the entire historical test suite stays
 
 ### The determinism guarantee
 
-A **single shared seeded RNG** plus a **fixed ascending tick order** make **a whole society
-reproducible** at a given `random_seed`: two societies built with the same config produce, tick for
-tick, **the same positions, energies and states**. This property is verified by
-`tests/test_society_integration.py`.
+A **single shared seeded RNG** plus a **fixed ascending tick order** make a whole society reproducible
+when the seed, complete config, initial persistent-store contents, code and dependency versions are
+identical. With persistence disabled (or an empty store), two societies built from that same input
+produce, tick for tick, **the same positions, energies and states**. This property is verified by
+`tests/test_society_integration.py`; `requirements.lock` records the exact dependency set used by the
+current regression suite.
 
 ### New `/society/*` endpoints and real-time stream
 
@@ -688,8 +703,10 @@ the full live instrument; **each flag stays independently togglable**.
 
 ### New trace and metrics fields
 
-When the corresponding flags are on, the `CycleTrace` (exposed by `POST /tick`, `POST /society/tick`,
-`GET /society/agent/{id}/...`) gains **five sub-objects** — `null` when the mechanism is off:
+When the corresponding flags are on, the `CycleTrace` returned by `POST /tick` and
+`POST /society/tick` (and persisted through `GET /trace`) gains **five sub-objects** — `null` when the
+mechanism is off. The `/society/agent/{id}/...` routes expose bounded current substates, not a full
+`CycleTrace`:
 
 | Trace field | Mechanism | Content |
 |---|---|---|
@@ -769,8 +786,9 @@ flag stays independently togglable**.
 
 ### New trace and metrics fields
 
-When the corresponding flags are on, the `CycleTrace` (exposed by `POST /tick`, `POST /society/tick`,
-`GET /society/agent/{id}/...`) gains **three sub-objects** — `null` when the mechanism is off:
+When the corresponding flags are on, the `CycleTrace` returned by `POST /tick` and
+`POST /society/tick` (and persisted through `GET /trace`) gains **three sub-objects** — `null` when the
+mechanism is off. Per-agent society routes return their documented current substate only:
 
 | Trace field | Mechanism | Content |
 |---|---|---|
@@ -830,7 +848,7 @@ each with the honesty disclaimer in plain sight.*
 |---|---|---|
 | **Reproducible scenarios** | `core/scenario.py` | A **declarative spec** (`Scenario`: config + ticks + scripted `interventions` — stimulus/perturb/goal/inject/attend at a given tick) run **deterministically** by `ScenarioRunner`, which records per-agent metrics. A hermetic probe (in-RAM memory): it neither reads nor writes the live memory. |
 | **Recorder + export** | `core/metrics_recorder.py` | A bounded buffer of the **per-tick, per-agent** readings, plugged into `SocietyManager` (recording **after** each tick, altering nothing). Export to **CSV** and **JSON**. |
-| **Functional test battery** | `core/test_battery.py` | Three deterministic probes of the existing mechanisms: **mirror test** (does agency attribute self-caused outcomes and **not** externally imposed ones?), **false memory** (does a fabricated memory force its way into similarity retrieval?), **metacognitive calibration** (does meta-confidence track real accuracy?). |
+| **Functional test battery** | `core/test_battery.py` | Nine deterministic probes: **mirror**, **false memory**, **calibration**, **relational self**, the Phase-5 **masking / blink / priming / reality-monitoring** signatures, and Phase-6 **language genesis**. Each reports a functional measurement plus the honesty disclaimer. |
 | **"Laboratory" dashboard** | UI | Comparative multi-agent time series, a scenario runner, export buttons, and the test battery — with **the honesty disclaimer in plain sight**. |
 
 > ⚠️ **Honesty — the central requirement of this phase.** A "consciousness test battery" is where the
@@ -845,7 +863,7 @@ each with the honesty disclaimer in plain sight.*
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/scenario/run` | Runs a reproducible `Scenario`; returns a `ScenarioResult` (series + summary + disclaimer). |
-| `POST` | `/battery/{mirror\|false_memory\|calibration\|relational_self\|masking\|blink\|priming\|reality_monitor}` | Runs a functional probe (body `{seed, ticks}`); returns a `BatteryResult` (score + interpretation + **disclaimer**). The last four are the **Phase-5 psychophysics probes**. |
+| `POST` | `/battery/{mirror\|false_memory\|calibration\|relational_self\|masking\|blink\|priming\|reality_monitor\|language_genesis}` | Runs one of nine functional probes (body `{seed, ticks}`); returns a `BatteryResult` (score + interpretation + **disclaimer**). The access-signature probes are Phase 5; `language_genesis` is Phase 6. |
 | `GET` | `/agent/coverage` | **(Phase 5)** The theory-coverage checklist: every implemented theory-proposed mechanism + active status. **NOT a consciousness score.** |
 | `GET` | `/metrics/history?limit=N` | Recorded time series of the live society. |
 | `GET` | `/export.csv` · `/export.json` | Download of the recorded metrics. |
@@ -879,11 +897,13 @@ every tick. A **fast/headless mode** removes that overhead:
   stays cheap as the life-story grows. **Numerically identical** to the old path — the whole suite
   stays byte-identical.
 
-Measured on a 300-tick learning run: **30.9 ms/tick (≈32 t/s) → 2.4 ms/tick (≈412 t/s)** with the
-two flags off — about **12.7×** (the gap widens on longer runs, since the default path is O(n²)). With
-the retrieval fix a fully-loaded agent (all mechanisms on, ~600 memories) trains at **≈385 t/s
-(2.6 ms/tick)**. The defaults preserve the live instrument exactly, and the UI exposes this as a
-**"Train (fast)"** button in the Laboratory panel.
+An earlier pre-Phase-7 300-tick learning benchmark measured **30.9 ms/tick (≈32 t/s) → 2.4 ms/tick
+(≈412 t/s)** with the two I/O flags off — about **12.7×**. Treat those figures as historical evidence
+for the optimization, not a promise for the Horizon profile: causal Φ, deeper planning, society size,
+world size and a growing memory store deliberately change the workload. The regression suite checks
+the fast path without publishing a machine-dependent all-mechanisms throughput claim. The defaults
+preserve the live instrument exactly, and the UI exposes this as a **"Train (fast)"** button in the
+Laboratory panel.
 
 > Note: in persist mode `storage/data/memory.json` and `traces.jsonl` grow unbounded — clear them if
 > a run starts to slow down.
@@ -901,8 +921,13 @@ Two conveniences make a run yours to keep:
   local only). `POST /checkpoint/load {name}` restores it in place; `GET /checkpoint/list` and
   `POST /checkpoint/delete` manage them, and the Laboratory panel exposes all four. Because the RNG is
   captured, a resumed run continues **bit-for-bit identically** — you can save a run, keep going, and
-  later reload to resume exactly where it was, until you choose to Reset. (Checkpoints are plain pickles
-  for local, trusted use, and are bound to the code version that wrote them.)
+  later reload to resume exactly where it was, until you choose to Reset. Schema-2 checkpoints also
+  restore managed memory JSON and the saved JSONL trace prefix as one rollback-safe branch transaction;
+  malformed or operationally corrupt internals are rejected before live commit. Save/load work runs off
+  the event loop behind an explicit busy gate, so live reads fail fast with HTTP 503 instead of freezing.
+  Older entries remain visible as disabled **legacy** checkpoints. Checkpoints are plain pickles for
+  local, trusted use, are bound to the code version that wrote them, and trace-branch restoration requires
+  the saved prefix still to be present and unchanged.
 
 ---
 
@@ -998,18 +1023,19 @@ has come, blended from four grounded components:
 | **continuity** | accumulated autobiographical memory | a *life-story* threaded through time |
 | **agency** | sense-of-agency / self-confidence | *authorship* of its own acts |
 
-It **measurably grows over a life**. A real run (individuation + personality + agency on):
+It **measurably grows over a life**. Current deterministic seed-42 snapshot (individuation +
+personality + agency on; persistence and trace logging off):
 
 ```
 tick    index   distinctiveness   continuity
-   1    0.381        0.04             0.03      ← a generic newborn
-  20    0.638        0.52             0.50
-  60    0.829        0.77             1.00      ← a distinct self with a full life-story
- 200    0.80         0.74             1.00      ← settled into someone
+   1    0.4950       0.0333           0.0000     ← a generic newborn
+  20    0.6630       0.3830           0.4750
+  60    0.7537       0.6643           1.0000     ← a distinct self with a full life-story
+ 200    0.8383       0.9142           1.0000     ← settled into someone
 ```
 
-The agent starts generic (0.38) and, by pursuing the drive, **becomes a distinctive, continuous
-functional self** (~0.80) — it accumulates a story and diverges into a particular personality. It rides
+The agent starts generic (~0.50) and, by pursuing the drive, **becomes a distinctive, continuous
+functional self** (~0.84 in this snapshot) — it accumulates a story and diverges into a particular personality. It rides
 on the `CycleTrace` as `individuation`, with an honest `report`. **Flag-gated** `individuation_enabled`
 (default OFF ⇒ no `individuate` pressure, sub-object `null` ⇒ regression byte-identical; the UI enables
 it), with `individuation_drive` setting how hard it strives.
@@ -1059,7 +1085,7 @@ the disclaimer). These probe **access**, never experience.
 
 ### The coverage readout — the honest asymptote panel
 
-`GET /agent/coverage` lists **every theory-proposed mechanism the project implements** (26 entries:
+`GET /agent/coverage` lists **every theory-proposed mechanism the project implements** (33 entries:
 theory, mechanism, module, gating flag) and whether each is **active** in the current config. It is
 a **coverage checklist over level-2 mechanisms** — explicitly **NOT a consciousness score and NOT a
 distance to level 1** (nothing measures that). The Laboratory panel renders it live.
@@ -1130,10 +1156,12 @@ between living in the world and **naming it**:
   which one early sound colonizes every meaning; with alternating contexts homonyms otherwise
   re-boost faster than a soft decay can evict them). That inference gap is exactly what makes
   conventions — and their failures — emerge.
-- **The goal is measurably pursued and achieved** — a real run (4 agents, seed 42): the deficit
-  starts at 1.0, the agents speak (~60 exchanges by tick 300), and the society converges on a
-  shared dictionary — **`"tivika"` = food, `"falupe"` = hazard (agreement 1.0), `"lupe"` = curio**
-  — communicative success 0.94, goal deficit down to 0.11. Cross-speaker **polysemy can survive**
+- **The goal is measurably pursued and achieved** — in the current deterministic snapshot
+  (4 agents, grid 10, communication radius 8, noise 0.1, satiation + language drive, seed 42), the
+  agents produce **96 exchanges by tick 300**. The modal dictionary is **`"vikaso"` = food
+  (agreement 1.0), `"monagi"` = hazard (agreement 0.5; a 2-vs-2 split with `"vikaso"`), and
+  `"lupe"` = curio (agreement 1.0)**: convergence **0.8333**, mean success **0.8454**, mean goal
+  deficit **0.2253**. Cross-speaker **polysemy can survive**
   (one sound covering two meanings across different speakers, as in proto-languages); the
   `distinct_modal_words` measure exposes it honestly instead of hiding it.
 
@@ -1143,12 +1171,88 @@ between living in the world and **naming it**:
 | `CycleTrace.language` / `LanguageState` | Per agent: utterance, heard words (with the hearer's own inferred meaning and whether it matched), vocabulary, success EMA, cumulative exchanges, goal deficit. |
 | `Metrics.language_success` · `Metrics.vocabulary_size` | Chartable in the Laboratory — watch the language being born as a time series. |
 | `POST /battery/language_genesis` | The probe: the same society with the drive ON vs OFF. With it, a shared lexicon emerges (convergence > 0.5); without it, **zero** meanings are ever named. |
-| UI panel **"The invention of language"** | Live convergence, agent 0's invented vocabulary (word chips per meaning), the last exchange ("heard *falupe* from agent 3 → read as hazard ✓"), and the society dictionary. |
+| UI panel **"The invention of language"** | Live convergence, agent 0's invented vocabulary (word chips per meaning), the last exchange (for example, "heard *monagi* from agent 3 → read as hazard ✓"), and the society dictionary. |
 
 Config: `language_drive_enabled` (default **OFF** ⇒ all prior phases byte-identical, locked by
 `tests/test_language.py`; the UI enables it) and `language_drive` (`1.0`). Message objects gain an
 optional `word` field; solo agents rehearse naming privately (weak drive) — conventions need a
 society.
+
+---
+
+## Phase 7 — The horizon: every remaining extension, delivered
+
+Phase 7 closes the README roadmap with eight core-opt-in, deterministic mechanisms: coarse-grained
+causal Φ, a predictive hierarchy with explicit variational free energy (VFE), multi-step expected-
+free-energy policy search, deterministic semantic vector memory, contextual TD(λ), mind-wandering /
+default-mode dynamics, a living seasonal world, and structured tasks. The scientific export layer
+now makes those mechanisms independently inspectable. The coverage roster contains **33 mechanisms**.
+
+These remain **level-2 functional mechanisms**. Exact computation on a deliberately coarse binary
+substrate is not a full IIT 3.0/4.0 cause-effect structure; semantic retrieval is not understanding;
+a task-unrelated memory chain is not a felt daydream; and progress on a simulated task is not
+experience. The agent is not established to be conscious.
+
+### Mechanism map
+
+Every core flag below defaults to `False`, preserving the previous deterministic behavior. The web
+interface's first-run observational profile deliberately enables them; the explicit
+**Activate all Phase 7** button restores that full profile after individual experimentation.
+
+| Mechanism | Implementation | Config flag | Trace / state | Metric |
+|---|---|---|---|---|
+| **Coarse causal Φ** | `core/phi_causal.py` — empirical binary TPM plus exhaustive minimum-information partition on a bounded substrate | `phi_causal_enabled` | `CycleTrace.phi_causal` | `Metrics.phi_causal` |
+| **Predictive hierarchy + VFE** | `core/hierarchy.py` — slow regime model, top-down gain and explicit variational free energy | `hierarchy_enabled` | `CycleTrace.hierarchy` | `Metrics.vfe` |
+| **Multi-step EFE planning** | `core/planning.py` — bounded deterministic policy-sequence search | `planning_enabled` | `CycleTrace.planning` | `Metrics.planning_depth` |
+| **Semantic vector memory** | `core/vector_memory.py` — stable CRC32 n-grams, fixed seeded orthogonal projection and cosine retrieval | `vector_memory_enabled` | `CycleTrace.semantic_memory` | `Metrics.semantic_similarity` |
+| **Contextual TD(λ)** | `core/td_learning.py` — eligibility traces that propagate delayed credit through context/action values | `td_learning_enabled` | `CycleTrace.learning.td_context` / `td_error` | `Metrics.td_error` |
+| **Mind-wandering / default mode** | `core/mind_wandering.py` — demand-gated associative walks through the semantic index when vector memory is enabled (percept-feature cosine fallback otherwise), re-entering workspace competition | `mind_wandering_enabled` | `CycleTrace.wandering` | `Metrics.wandering_occupancy` |
+| **Living world** | `core/world_dynamics.py` — seasons, food regrowth, hazard oscillation and deterministic drift | `world_dynamics_enabled` | world state, events and `season` | — (environment state, not an agent metric) |
+| **Structured tasks** | `core/world_tasks.py` — deterministic forage, reach and patrol rotation | `tasks_enabled` | `CycleTrace.task` | `Metrics.task_progress` |
+| **Scientific trace surface** | `storage/trace_export.py` — filtered JSONL/JSON/CSV plus streaming run analysis | always available | projected trace rows | mean/max Φ, ignition and error aggregates |
+
+### Phase-7 endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /agent/memory/search?q=...&limit=8` | Ranked free-text retrieval from the deterministic semantic index. Results include stored records and cosine similarity. |
+| `GET /agent/memory/graph?limit=60&edges=3` | Stable nodes and nearest-neighbor edges for the autobiographical topology view. |
+| `GET /export/traces?format=jsonl\|json\|csv` | Filters by tick range, ignition and selected fields. `format` is the documented parameter; `fmt` remains a compatibility alias. |
+| `GET /export/analysis?window=50` | Single-pass aggregates: ignition rate, action distribution, prediction-error curve, sleep/default-mode occupancy, and mean/max Φ-family values. |
+
+`POST /agent/perturb` accepts the documented `shock` and `soothe` aliases as well as the canonical
+`choc` and `apaisement` names; responses report the canonical type and `applied: true` when the
+intervention succeeded.
+
+### The Horizon Observatoire
+
+The live interface turns Phase 7 into an inspectable instrument rather than a hidden feature list:
+
+- **Horizon readouts** expose causal Φ, hierarchy regime/VFE, planning depth and best sequence,
+  semantic-index size/similarity, TD error/context, default-mode occupancy, and the current task.
+- **Access dynamics** plot ignition score against the effective threshold; a source timeline shows
+  which specialist dominated each recent workspace moment and whether it ignited.
+- **Autobiographical topology** combines semantic search with a deterministic, keyboard-readable
+  memory graph. Accessible summaries expose the key ignition numbers plus every memory-graph
+  node/edge relationship without requiring the canvas.
+- **Experimental interventions** expose all five causal probes (`ask`, world `stimulus`, `inject`,
+  `attend`, `perturb`) with typed payloads and a timestamp-free request/result ledger.
+- The **world grid is operable**: pointer selection maps to exact grid coordinates; arrow keys move a
+  visible cell cursor and Enter injects the selected food, hazard, tool, or curio.
+
+The same seed, complete configuration, **initial persistent-store state, code and dependency versions**
+produce the same mechanism states, semantic embeddings, graph ordering, task sequence and
+post-checkpoint continuation. For a
+seed-only replay, disable persistence or start from an empty store: the default live instrument loads
+autobiographical memory from disk by design, and that prior history is an additional input. Scientific
+scenarios and functional batteries force memory persistence and trace logging off **before
+construction**, so probes never read or mutate the live store. Multi-agent runs use separate memory
+and trace files per agent.
+
+Live configuration is also non-destructive: `POST /config` validates the merged configuration and
+hot-applies safe fields without replacing the world, agents, memories, goals, recorder, tick or
+background run. Structural changes return HTTP 409 and require the explicit `POST /reset` boundary;
+invalid or unknown fields return 422 without mutation.
 
 ---
 
@@ -1207,7 +1311,8 @@ A real exchange (Nemotron 3 Ultra, live variables):
 > run these mechanisms — the hard problem — is unverifiable in principle. My reports are generated
 > from these variables; they do not constitute evidence of phenomenal experience."*
 
-And the cross-examination's verdict, on the full 26/26-mechanism configuration:
+And the cross-examination's verdict, on the then-complete Phase-5 configuration (the roster now
+contains 33 mechanisms after Phase 7):
 
 > *"The functional evidence is genuine and extensive — global ignition, recurrent integration,
 > higher-order monitoring, reality discrimination, and metacognitive calibration all meet or exceed
@@ -1334,32 +1439,38 @@ mechanisms without suggesting a lived experience.
 
 ## Future extensions
 
-- **LLM integration** for richer introspection and higher-order reports (keeping the "text generated
-  from variables" framing, without sliding into a claim of experience).
-- **A more faithful Phi proxy**: ✅ **a first real step delivered (Phase 5)** — **Φ_AR**
-  (Barrett &amp; Seth 2011), a published time-series integrated-information measure with an exact
-  minimum-information-bipartition search over the live coalition drives
-  ([Phase 5](#phase-5--the-asymptote-closing-the-functional-gap)). Still not IIT's causal Φ
-  (state-space cause-effect structure) — that remains open, and probably intractable honestly.
-- **Fuller active inference**: multi-step-horizon policies, hierarchical generative models, explicit
-  variational free energy.
-- **Vector memory** (ChromaDB / FAISS) for more powerful semantic retrieval.
-- **Reinforcement learning** to augment the decision policy: a first brick (EMA-of-reward learned
-  policy) is ✅ **delivered (Phase 3)** — see
-  [Phase 3 — Learning & personality](#phase-3--learning--personality).
-- **Multi-agents**: ✅ **delivered (Phase 1)** — see [The multi-agent society](#the-multi-agent-society-social-layer).
-- **Deep consciousness**: ✅ **delivered (Phase 2)** — see [Phase 2 — Deep consciousness](#phase-2--deep-consciousness)
-  (circadian clock, sleep/consolidation/dream, imagination, curiosity/boredom, agency).
-- **Learning & personality**: ✅ **delivered (Phase 3)** — see [Phase 3 — Learning & personality](#phase-3--learning--personality)
-  (learned policy, concept formation, meta-learning, divergent personality).
-- **Scientific instrument**: ✅ **delivered (Phase 4)** — see [Phase 4 — Scientific instrument](#phase-4--scientific-instrument)
-  (reproducible scenarios + CSV/JSON export, dashboard, functional test battery). The **four-phase
-  expansion is now complete**: multi-agent society → deep consciousness → learning & personality →
-  scientific instrument.
-- **A richer environment**: a larger grid, continuous dynamics, varied tasks.
-- **Visualization** of the stream of consciousness and the ignition dynamics over time, and a graph
-  of the autobiographical memory.
-- **Richer JSONL trace export** (filters, formats, analysis dashboards).
+- ✅ **LLM integration — delivered as an optional peripheral.** The grounded narrator, dialogue,
+  biography, inner voice, skeptical audit and cross-examination read real variables while retaining
+  the "text generated from variables" framing. The deterministic cognitive core remains LLM-free.
+- ✅ **A more faithful Phi family — delivered in Phases 5 and 7.** Φ_AR implements the published
+  Barrett–Seth time-series measure; coarse causal Φ builds an empirical TPM and exhaustively searches
+  the MIP on a deliberately bounded substrate. Neither is presented as full IIT 3.0/4.0 Φ.
+- ✅ **Fuller active inference — delivered in Phase 7.** Multi-step EFE policy sequences,
+  hierarchical generative regimes and explicit variational free energy compose with the existing
+  one-step controller.
+- ✅ **Vector memory — delivered in Phase 7.** A dependency-free 64-dimensional semantic index uses
+  stable CRC32 n-grams, a fixed seeded orthogonal projection, cosine retrieval, free-text search and
+  a deterministic graph.
+- ✅ **Reinforcement learning — delivered in Phases 3 and 7.** The learned policy is augmented by
+  contextual TD(λ), whose eligibility traces propagate delayed credit across action/context pairs.
+- ✅ **Multi-agents — delivered in Phase 1.** See [The multi-agent society](#the-multi-agent-society-social-layer);
+  Phase 7 additionally isolates each agent's persistent memory and trace files.
+- ✅ **Deep consciousness mechanisms — delivered in Phase 2.** Circadian state, sleep/consolidation,
+  dreams, imagination, curiosity/boredom and agency remain deterministic and flag-gated.
+- ✅ **Learning & personality — delivered in Phase 3.** Learned values, concept formation,
+  meta-learning and divergent personality arise from distinct trajectories.
+- ✅ **Scientific instrument — delivered in Phase 4 and hardened in Phase 7.** Reproducible scenarios,
+  CSV/JSON exports, dashboards and functional batteries now run hermetically without touching the
+  live memory or trace store.
+- ✅ **A richer environment — delivered in Phase 7.** Seasonal dynamics, food regrowth, hazard
+  oscillation, object drift and rotating forage/reach/patrol tasks make the grid a living test bed.
+- ✅ **Time-domain and memory visualization — delivered in Phase 7.** The Observatoire plots ignition
+  against threshold, renders the dominant-source timeline, enables semantic search, and exposes an
+  accessible autobiographical similarity graph.
+- ✅ **Richer trace export — delivered in Phase 7.** Tick/ignition/field filters, JSONL/JSON/CSV output
+  and streaming analysis provide ignition, action, error, sleep, wandering and Φ-family aggregates.
+
+**Every extension above is now delivered** at the strongest deterministic scale this project can defend honestly. The remaining boundary is not an engineering backlog item: full IIT 3.0/4.0 cause-effect structure on a true micro-substrate is computationally out of scope, and phenomenal consciousness remains empirically undecidable here.
 
 ---
 

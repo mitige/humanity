@@ -49,6 +49,13 @@ ROSTER: list[dict] = [
     {"theory": "Self-opacity (limits of access)", "mechanism": "higher-order readout of what escaped access/control", "module": "core/self_opacity.py", "flag": "self_opacity_enabled"},
     {"theory": "Individuation (narrative self)", "mechanism": "'become someone' drive + index", "module": "core/individuation.py", "flag": "individuation_enabled"},
     {"theory": "Homeostatic satiation", "mechanism": "diminishing marginal utility of energy", "module": "core/policy.py", "flag": "satiation_enabled"},
+    {"theory": "Language invention (Steels naming games)", "mechanism": "invented words for grounded meanings; conventions emerge through use", "module": "core/language.py", "flag": "language_drive_enabled"},
+    {"theory": "IIT causal Φ — coarse-grained, exact (Balduzzi & Tononi 2008 lineage)", "mechanism": "empirical TPM + exhaustive minimum-information-bipartition over binarized drives", "module": "core/phi_causal.py", "flag": "phi_causal_enabled"},
+    {"theory": "Predictive-processing hierarchy (Friston/Clark)", "mechanism": "slow context regime over the fast model + explicit variational free energy", "module": "core/hierarchy.py", "flag": "hierarchy_enabled"},
+    {"theory": "Active inference: multi-step policies", "mechanism": "bounded policy-tree search over discounted expected free energy", "module": "core/planning.py", "flag": "planning_enabled"},
+    {"theory": "TD credit assignment (eligibility traces)", "mechanism": "contextual TD(λ) action values behind the policy", "module": "core/td_learning.py", "flag": "td_learning_enabled"},
+    {"theory": "Default mode / mind-wandering (Smallwood & Schooler)", "mechanism": "associative memory walks compete for the workspace under low demand", "module": "core/mind_wandering.py", "flag": "mind_wandering_enabled"},
+    {"theory": "Semantic episodic retrieval", "mechanism": "deterministic vector embeddings; similarity/importance/recency-blended recall", "module": "core/vector_memory.py", "flag": "vector_memory_enabled"},
 ]
 
 

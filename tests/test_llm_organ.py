@@ -7,6 +7,7 @@ explicit inner-voice re-entry hook).
 """
 import json
 
+import pytest
 from fastapi.testclient import TestClient
 
 import core.llm as llm
@@ -146,3 +147,19 @@ def test_converse_endpoint_ok_with_fake_backend(monkeypatch):
     assert r.status_code == 200
     body = r.json()
     assert body["answer"] and body["disclaimer"]
+
+
+@pytest.mark.parametrize("payload", [
+    {"question": "   "},
+    {"question": "ok", "extra": True},
+    {"question": "ok", "history": [{"role": "user", "content": ""}]},
+    {"question": "ok", "history": [
+        {"role": "user", "content": "x"}
+    ] * 7},
+    {"question": "ok", "history": [
+        {"role": "user", "content": "x", "extra": 1}
+    ]},
+])
+def test_converse_request_is_strictly_bounded(payload, monkeypatch):
+    monkeypatch.setattr(llm, "get_backend", lambda: _Organ())
+    assert TestClient(app).post("/agent/converse", json=payload).status_code == 422

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from enum import Enum
-from pydantic import BaseModel, Field
+from typing import Any, Literal
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ActionType(str, Enum):
@@ -120,6 +121,10 @@ class LearningState(BaseModel):
     q_values: dict[str, float] = Field(default_factory=dict)
     last_reward: float = 0.0
     effective_lr: float = 0.2
+    # Phase 7 — contextual TD(λ) extension (defaults preserve older traces).
+    td_context: str | None = None    # active context key, e.g. "d1e0n1s0"
+    td_error: float = 0.0            # last temporal-difference error
+    n_contexts: int = 0              # contexts with at least one learned value
 
 
 class ConceptState(BaseModel):
@@ -140,19 +145,61 @@ class PersonalityState(BaseModel):
 
 class Intervention(BaseModel):
     """A scripted scenario intervention applied at a given tick (Phase 4)."""
-    at_tick: int
-    type: str  # "stimulus" | "perturb" | "goal" | "inject" | "attend"
-    agent_id: int = 0
-    params: dict = Field(default_factory=dict)
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    at_tick: int = Field(ge=0, le=100_000)
+    type: Literal["stimulus", "perturb", "goal", "inject", "attend"]
+    agent_id: int = Field(default=0, ge=0, le=127)
+    params: dict[str, Any] = Field(default_factory=dict, max_length=16)
+
+    @model_validator(mode="after")
+    def validate_typed_params(self) -> "Intervention":
+        raw = dict(self.params)
+        if self.type == "stimulus":
+            raw.setdefault("kind", "curio")
+            parsed = WorldStimulus.model_validate(raw)
+        elif self.type == "perturb":
+            legacy_type = raw.pop("ptype", None)
+            if legacy_type is not None:
+                if "type" in raw:
+                    raise ValueError("use either params.type or params.ptype, not both")
+                raw["type"] = legacy_type
+            raw.setdefault("type", "surprise")
+            parsed = PerturbRequest.model_validate(raw)
+        elif self.type == "goal":
+            parsed = GoalRequest.model_validate(raw)
+        elif self.type == "inject":
+            raw.setdefault("content", "signal")
+            parsed = CognitiveInjection.model_validate(raw)
+        else:
+            parsed = AttendRequest.model_validate(raw)
+        self.params = parsed.model_dump(exclude_none=True)
+        return self
 
 
 class Scenario(BaseModel):
     """A declarative, reproducible scenario (Phase 4)."""
-    name: str = "scenario"
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(default="scenario", min_length=1, max_length=100)
     config: "ConfigPatch" = Field(default_factory=lambda: ConfigPatch())
-    ticks: int = 20
-    interventions: list[Intervention] = Field(default_factory=list)
-    seed: int | None = None
+    ticks: int = Field(default=20, ge=0, le=100_000)
+    interventions: list[Intervention] = Field(default_factory=list, max_length=1000)
+    seed: int | None = Field(default=None, ge=0, le=2**32 - 1)
+
+    @model_validator(mode="after")
+    def validate_intervention_reachability(self) -> "Scenario":
+        n_agents = self.config.n_agents
+        if n_agents is None:
+            n_agents = SimConfig().n_agents
+        for intervention in self.interventions:
+            if intervention.at_tick >= self.ticks:
+                raise ValueError(
+                    "intervention at_tick must be smaller than scenario ticks")
+            if intervention.agent_id >= n_agents:
+                raise ValueError(
+                    "intervention agent_id is outside the configured society")
+        return self
 
 
 class MetricSeries(BaseModel):
@@ -351,6 +398,13 @@ class Metrics(BaseModel):
     reality_accuracy: float = 0.0    # reality-monitor rolling accuracy (Phase 5)
     language_success: float = 0.0    # naming-game success EMA (Phase 6); 0 when off
     vocabulary_size: int = 0         # invented words currently held (Phase 6)
+    phi_causal: float = 0.0          # exact coarse-grained causal Φ (Phase 7); 0 until computed
+    vfe: float = 0.0                 # explicit variational free energy (Phase 7); 0 when off
+    planning_depth: int = 0          # policy-search horizon actually used (Phase 7)
+    wandering_occupancy: float = 0.0 # default-mode occupancy EMA (Phase 7); 0 when off
+    task_progress: float = 0.0       # current world-task progress (Phase 7); 0 when off
+    semantic_similarity: float = 0.0 # mean cosine of episodic matches (Phase 7); 0 when off
+    td_error: float = 0.0            # temporal-difference error (Phase 7); 0 when off
 
 
 class Coalition(BaseModel):
@@ -592,6 +646,110 @@ class PhiARState(BaseModel):
     report: str = ""
 
 
+class PhiCausalState(BaseModel):
+    """Exact causal Φ on a coarse-grained binary substrate (Phase 7 — IIT-2008 lineage).
+
+    Computed EXACTLY (empirical transition-probability matrix + exhaustive
+    minimum-information-bipartition search) but on a COARSE-GRAINED abstraction:
+    the most-variant specialist drives, binarized by their own medians. A
+    state-space causal measure in the lineage of Balduzzi & Tononi (2008) —
+    still NOT IIT 3.0/4.0's full cause-effect structure on a true
+    micro-substrate, and NO Φ value is evidence of consciousness. The agent is
+    not conscious.
+    """
+    phi_causal: float = 0.0
+    n_nodes: int = 0
+    nodes: list[str] = Field(default_factory=list)
+    mip: str = ""                    # minimum-information bipartition, "a,b | c,d"
+    i_whole: float = 0.0             # past->present effective information of the whole
+    n_states_observed: int = 0       # distinct joint binary states seen in the window
+    window: int = 0
+    computed_at_tick: int = -1
+    report: str = ""
+
+
+class HierarchyState(BaseModel):
+    """Hierarchical generative model + explicit variational free energy (Phase 7).
+
+    A slow contextual level infers a discrete latent regime (abundance /
+    scarcity / peril / calm) over the fast world model and modulates its
+    learning rate top-down; VFE = accuracy + complexity is an explicit scalar
+    computed from the model. FUNCTIONAL variables only — inferring a regime or
+    minimizing free energy is not feeling or understanding. The agent is not
+    conscious.
+    """
+    regime: str = "calm"
+    posterior: dict[str, float] = Field(default_factory=dict)
+    context_precision: float = 0.0    # confidence of the context level (max posterior)
+    top_down_gain: float = 1.0        # multiplicative lr modulation applied to the fast level
+    vfe: float = 0.0                  # smoothed explicit variational free energy
+    accuracy_term: float = 0.0        # precision-weighted squared prediction error
+    complexity_term: float = 0.0      # KL between successive regime posteriors
+    report: str = ""
+
+
+class PlanningState(BaseModel):
+    """Multi-step-horizon policy search over expected free energy (Phase 7).
+
+    A bounded, deterministic tree search over action sequences scored by the
+    discounted sum of -EFE — fuller active inference than the 1-step policy.
+    Still a search over variables, not deliberation in any subjective sense.
+    The agent is not conscious.
+    """
+    best_sequence: list[str] = Field(default_factory=list)
+    best_efe: float = 0.0             # discounted EFE of the best policy (lower = better)
+    horizon: int = 0
+    n_policies: int = 0
+    chosen_first: str | None = None   # first action of the best policy
+    report: str = ""
+
+
+class SemanticMemoryState(BaseModel):
+    """Deterministic vector-memory retrieval state (Phase 7).
+
+    Episodic retrieval through seeded hashed-n-gram embeddings + cosine ranking
+    (numpy-only, no external vector DB, fully deterministic). "Semantic" means
+    distributional similarity of records — not understanding, and not
+    remembering in any subjective sense. The agent is not conscious.
+    """
+    mode: str = "feature"             # "semantic" when the vector index served retrieval
+    index_size: int = 0
+    mean_similarity: float = 0.0      # mean cosine similarity of the returned matches
+    report: str = ""
+
+
+class MindWanderingState(BaseModel):
+    """Default-mode / task-unrelated thought (Phase 7 — Smallwood & Schooler).
+
+    When external demand is low, a deterministic associative walk over
+    autobiographical memory generates spontaneous content that competes for the
+    workspace like any other coalition. Occupancy measures how often it wins
+    access. A FUNCTIONAL analogue of mind-wandering — not daydreaming as an
+    experience. The agent is not conscious.
+    """
+    active: bool = False
+    pressure: float = 0.0             # 0..1 wandering pressure
+    chain: list[str] = Field(default_factory=list)  # memory summaries walked this tick
+    occupancy: float = 0.0            # EMA fraction of ticks wandering won access
+    episodes: int = 0                 # wandering episodes generated so far
+    report: str = ""
+
+
+class TaskState(BaseModel):
+    """The world's current structured task (Phase 7 — richer environment).
+
+    A deterministic rotation of small tasks (forage / reach / patrol) whose
+    progress feeds the ordinary goal_progress channel. Completing tasks is
+    achievement in the FUNCTIONAL sense only; the world stays a plain simulator.
+    """
+    kind: str = "forage"              # forage | reach | patrol
+    description: str = ""
+    progress: float = 0.0             # 0..1
+    target: list[int] | None = None   # current target cell when applicable
+    ticks_on_task: int = 0
+    completed_total: int = 0
+
+
 class CycleTrace(BaseModel):
     tick: int
     observation: Observation
@@ -628,69 +786,77 @@ class CycleTrace(BaseModel):
     inner_speech: InnerSpeechState | None = None
     phi_ar: PhiARState | None = None
     language: LanguageState | None = None
+    phi_causal: PhiCausalState | None = None
+    hierarchy: HierarchyState | None = None
+    planning: PlanningState | None = None
+    semantic_memory: SemanticMemoryState | None = None
+    wandering: MindWanderingState | None = None
+    task: TaskState | None = None
 
 
 class SimConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     # world
-    grid_size: int = 12
-    n_objects: int = 10
-    world_noise: float = 0.1
-    perception_radius: int = 3
-    random_seed: int = 42
+    grid_size: int = Field(default=12, ge=1, le=256)
+    n_objects: int = Field(default=10, ge=0, le=10_000)
+    world_noise: float = Field(default=0.1, ge=0.0, le=1.0)
+    perception_radius: int = Field(default=3, ge=0, le=256)
+    random_seed: int = Field(default=42, ge=0, le=2**32 - 1)
     # agent
-    initial_energy: float = 100.0
+    initial_energy: float = Field(default=100.0, gt=0.0, le=1_000_000.0)
     # attention / working memory
-    attention_capacity: int = 4
-    working_memory_capacity: int = 5
-    working_memory_decay: int = 4         # ticks until an unrefreshed item expires
+    attention_capacity: int = Field(default=4, ge=1, le=256)
+    working_memory_capacity: int = Field(default=5, ge=1, le=256)
+    working_memory_decay: int = Field(default=4, ge=1, le=100_000)  # ticks until an unrefreshed item expires
     # personality / motivation drives
-    curiosity: float = 1.0
-    caution: float = 1.0
-    energy_drive: float = 1.0
-    coherence_drive: float = 1.0
+    curiosity: float = Field(default=1.0, ge=0.0, le=100.0)
+    caution: float = Field(default=1.0, ge=0.0, le=100.0)
+    energy_drive: float = Field(default=1.0, ge=0.0, le=100.0)
+    coherence_drive: float = Field(default=1.0, ge=0.0, le=100.0)
     # learning
-    learning_rate: float = 0.2
+    learning_rate: float = Field(default=0.2, ge=0.0, le=1.0)
     # autobiographical memory
-    memory_importance_threshold: float = 0.25
-    memory_retrieval_k: int = 3
+    memory_importance_threshold: float = Field(default=0.25, ge=0.0, le=1.0)
+    memory_retrieval_k: int = Field(default=3, ge=1, le=10_000)
     # consciousness architecture (v2)
-    ignition_threshold: float = 0.30     # GWT ignition cutoff on winner_strength*dominance*arousal
-    workspace_temp: float = 0.5          # softmax temperature (broadcast field / Phi distribution)
-    precision_weight: float = 1.0
-    epistemic_weight: float = 1.0        # active-inference info-gain weight
-    pragmatic_weight: float = 1.0        # active-inference goal weight
-    stream_length: int = 20
+    ignition_threshold: float = Field(default=0.30, ge=0.0, le=1.0)  # GWT ignition cutoff on winner_strength*dominance*arousal
+    workspace_temp: float = Field(default=0.5, gt=0.0, le=100.0)  # softmax temperature (broadcast field / Phi distribution)
+    precision_weight: float = Field(default=1.0, ge=0.0, le=100.0)
+    epistemic_weight: float = Field(default=1.0, ge=0.0, le=100.0)  # active-inference info-gain weight
+    pragmatic_weight: float = Field(default=1.0, ge=0.0, le=100.0)  # active-inference goal weight
+    stream_length: int = Field(default=20, ge=1, le=100_000)
     # ignition dynamics (v2.1): arousal (vigilance) + dominance weighting
-    arousal_baseline: float = 0.45       # reference vigilance in [0,1] (nominal-threshold point)
-    arousal_gain: float = 1.0            # how strongly salient signals raise arousal
-    competition_sharpness: float = 3.0   # how much dominance (vs raw strength) ignition requires
-    ignition_maintenance: float = 0.12   # hysteresis boost to a sustained winner (train of thought)
+    arousal_baseline: float = Field(default=0.45, ge=0.0, le=1.0)  # reference vigilance in [0,1] (nominal-threshold point)
+    arousal_gain: float = Field(default=1.0, ge=0.0, le=100.0)  # how strongly salient signals raise arousal
+    competition_sharpness: float = Field(default=3.0, ge=0.0, le=100.0)  # how much dominance (vs raw strength) ignition requires
+    ignition_maintenance: float = Field(default=0.12, ge=0.0, le=1.0)  # hysteresis boost to a sustained winner (train of thought)
     # society (multi-agent, v3)
-    n_agents: int = Field(default=1, ge=1)              # 1 => exact legacy single-agent behaviour
-    comm_radius: int = Field(default=4, ge=0)           # earshot radius for VERBALIZE messages
-    message_ttl: int = Field(default=2, ge=0)           # ticks a message stays deliverable
+    n_agents: int = Field(default=1, ge=1, le=128)      # 1 => exact legacy single-agent behaviour
+    comm_radius: int = Field(default=4, ge=0, le=256)   # earshot radius for VERBALIZE messages
+    message_ttl: int = Field(default=2, ge=0, le=100_000)  # ticks a message stays deliverable
     contagion_rate: float = Field(default=0.15, ge=0.0, le=1.0)  # EMA weight of others' affect on one's own
-    affiliation_drive: float = Field(default=1.0, ge=0.0)        # scales the 'affiliate' goal pressure
+    affiliation_drive: float = Field(default=1.0, ge=0.0, le=100.0)  # scales the 'affiliate' goal pressure
     # deep consciousness (Phase 2) — default OFF => Phase-1-identical behaviour
     circadian_enabled: bool = False
-    circadian_period: int = Field(default=50, ge=1)
+    circadian_period: int = Field(default=50, ge=1, le=100_000)
     night_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
     sleep_enabled: bool = False
     dream_enabled: bool = False
     sleep_fatigue_threshold: float = Field(default=0.8, ge=0.0, le=1.0)
     wake_fatigue_threshold: float = Field(default=0.35, ge=0.0, le=1.0)
-    max_sleep_ticks: int = Field(default=30, ge=1)
-    replay_boost: float = Field(default=1.3, ge=1.0)
+    max_sleep_ticks: int = Field(default=30, ge=1, le=100_000)
+    replay_boost: float = Field(default=1.3, ge=1.0, le=100.0)
     consolidation_prune_threshold: float = Field(default=0.0, ge=0.0, le=1.0)
     imagination_enabled: bool = False
     imagination_horizon: int = Field(default=3, ge=1, le=6)
     curiosity_enabled: bool = False
-    curiosity_window: int = Field(default=8, ge=2)
+    curiosity_window: int = Field(default=8, ge=2, le=100_000)
     agency_enabled: bool = False
     # learning & personality (Phase 3) — default OFF => Phases-1/2-identical
     learning_enabled: bool = False
     value_learning_rate: float = Field(default=0.2, ge=0.0, le=1.0)
-    value_learning_weight: float = Field(default=0.5, ge=0.0)
+    value_learning_weight: float = Field(default=0.5, ge=0.0, le=100.0)
     concepts_enabled: bool = False
     n_concepts: int = Field(default=6, ge=1, le=32)
     concept_lr: float = Field(default=0.2, ge=0.0, le=1.0)
@@ -700,7 +866,7 @@ class SimConfig(BaseModel):
     personality_enabled: bool = False
     personality_drift: float = Field(default=0.05, ge=0.0, le=1.0)
     # scientific instrument (Phase 4)
-    metrics_history_max: int = Field(default=1000, ge=1)
+    metrics_history_max: int = Field(default=1000, ge=1, le=1_000_000)
     # performance — fast/headless training. Defaults preserve the live instrument
     # (persist memory across restarts, log every trace). Set both False for fast
     # training runs: in-RAM memory (no per-store full-file rewrite) and no per-tick
@@ -712,13 +878,13 @@ class SimConfig(BaseModel):
     # up, so it stops degenerating into an endless REST/eat loop and explores when
     # sated. Also rebalances the learned-value reward the same way.
     satiation_enabled: bool = False
-    satiation_weight: float = Field(default=3.0, ge=0.0)
-    explore_reward_weight: float = Field(default=0.5, ge=0.0)
+    satiation_weight: float = Field(default=3.0, ge=0.0, le=100.0)
+    explore_reward_weight: float = Field(default=0.5, ge=0.0, le=100.0)
     # relational self (looking-glass self): the self-model is fed by how the other
     # agents regard this one. Default off (single-agent / regression byte-identical);
     # UI on. Has no effect for an isolated agent (no observers).
     social_mirror_enabled: bool = False
-    social_mirror_weight: float = Field(default=0.3, ge=0.0)
+    social_mirror_weight: float = Field(default=0.3, ge=0.0, le=100.0)
     # self-opacity: a higher-order readout of what escaped the agent's access/
     # control each tick ("the consciousness of the lack of self-control"). Default
     # off (trace sub-object stays null ⇒ regression byte-identical); UI on.
@@ -728,7 +894,7 @@ class SimConfig(BaseModel):
     # sub-object null + no goal pressure => regression byte-identical); UI on.
     # This is level-2 self-integration, NOT phenomenal consciousness.
     individuation_enabled: bool = False
-    individuation_drive: float = Field(default=1.0, ge=0.0)
+    individuation_drive: float = Field(default=1.0, ge=0.0, le=100.0)
     # Phase 5 — the asymptote (maximal level-2 coverage). All default OFF =>
     # Phase-1/2/3/4 behaviour byte-identical; the UI enables them. Every one is a
     # FUNCTIONAL mechanism from the theories' remaining roster; none approaches
@@ -756,15 +922,52 @@ class SimConfig(BaseModel):
     # a shared INVENTED lexicon (deterministic naming games). Emergent
     # conventions, NOT understanding — the agents are not conscious.
     language_drive_enabled: bool = False
-    language_drive: float = Field(default=1.0, ge=0.0)
+    language_drive: float = Field(default=1.0, ge=0.0, le=100.0)
+    # Phase 7 — the horizon (every remaining future extension). All default OFF
+    # => byte-identical to all prior phases; the UI enables them. Every one is a
+    # FUNCTIONAL mechanism; none approaches level 1 (phenomenal consciousness) —
+    # nothing can.
+    phi_causal_enabled: bool = False              # exact causal Φ on a coarse-grained binary substrate
+    phi_causal_nodes: int = Field(default=5, ge=2, le=8)
+    phi_causal_window: int = Field(default=96, ge=16, le=512)
+    phi_causal_every: int = Field(default=16, ge=1, le=128)
+    hierarchy_enabled: bool = False               # hierarchical generative model + explicit VFE
+    hierarchy_lr: float = Field(default=0.15, ge=0.0, le=1.0)
+    hierarchy_gain: float = Field(default=0.3, ge=0.0, le=1.0)
+    planning_enabled: bool = False                # multi-step-horizon EFE policy search
+    planning_horizon: int = Field(default=3, ge=2, le=4)
+    planning_discount: float = Field(default=0.7, ge=0.0, le=1.0)
+    vector_memory_enabled: bool = False           # deterministic semantic vector retrieval
+    semantic_weight: float = Field(default=0.6, ge=0.0, le=1.0)
+    td_learning_enabled: bool = False             # contextual TD(λ) credit assignment
+    td_lambda: float = Field(default=0.8, ge=0.0, le=1.0)
+    td_discount: float = Field(default=0.9, ge=0.0, le=1.0)
+    mind_wandering_enabled: bool = False          # default-mode associative wandering
+    wandering_gain: float = Field(default=0.6, ge=0.0, le=2.0)
+    world_dynamics_enabled: bool = False          # regrowth / hazard cycles / seasons / drift
+    season_period: int = Field(default=200, ge=10, le=100_000)
+    regrow_rate: float = Field(default=0.02, ge=0.0, le=1.0)
+    tasks_enabled: bool = False                   # rotating structured world tasks
+
+    @model_validator(mode="after")
+    def validate_agent_capacity(self) -> "SimConfig":
+        if self.n_agents > self.grid_size * self.grid_size:
+            raise ValueError(
+                "n_agents cannot exceed grid_size * grid_size "
+                "(one agent per grid cell)"
+            )
+        return self
 
 
 class ConfigPatch(BaseModel):
     """Partial config update for POST /config — all fields optional."""
+    model_config = ConfigDict(extra="forbid")
+
     grid_size: int | None = None
     n_objects: int | None = None
     world_noise: float | None = None
     perception_radius: int | None = None
+    random_seed: int | None = None
     initial_energy: float | None = None
     attention_capacity: int | None = None
     working_memory_capacity: int | None = None
@@ -847,15 +1050,46 @@ class ConfigPatch(BaseModel):
     priming_gain: float | None = None
     language_drive_enabled: bool | None = None
     language_drive: float | None = None
+    phi_causal_enabled: bool | None = None
+    phi_causal_nodes: int | None = None
+    phi_causal_window: int | None = None
+    phi_causal_every: int | None = None
+    hierarchy_enabled: bool | None = None
+    hierarchy_lr: float | None = None
+    hierarchy_gain: float | None = None
+    planning_enabled: bool | None = None
+    planning_horizon: int | None = None
+    planning_discount: float | None = None
+    vector_memory_enabled: bool | None = None
+    semantic_weight: float | None = None
+    td_learning_enabled: bool | None = None
+    td_lambda: float | None = None
+    td_discount: float | None = None
+    mind_wandering_enabled: bool | None = None
+    wandering_gain: float | None = None
+    world_dynamics_enabled: bool | None = None
+    season_period: int | None = None
+    regrow_rate: float | None = None
+    tasks_enabled: bool | None = None
+
+    @model_validator(mode="after")
+    def validate_against_sim_config(self) -> "ConfigPatch":
+        merged = {**SimConfig().model_dump(), **self.model_dump(exclude_none=True)}
+        SimConfig.model_validate(merged)
+        return self
 
 
 class GoalRequest(BaseModel):
-    goal: str
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    goal: str = Field(min_length=1, max_length=500)
 
 
 class RunRequest(BaseModel):
-    tps: float = 4.0          # ticks per second for the background loop
-    max_ticks: int | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    tps: float = Field(default=4.0, gt=0.0, le=1000.0)  # ticks per second for the background loop
+    max_ticks: int | None = Field(default=None, ge=1, le=1_000_000)
 
 
 class AskRequest(BaseModel):
@@ -872,29 +1106,44 @@ class AskResponse(BaseModel):
 
 
 class WorldStimulus(BaseModel):
-    kind: str                     # "food" | "hazard" | "tool" | "curio"
-    x: int | None = None          # default: a free cell near the agent
-    y: int | None = None
-    intensity: float = 1.0        # scales danger/energy_value/novelty
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    kind: Literal["food", "hazard", "danger", "tool", "curio"]
+    x: int | None = Field(default=None, ge=0, le=10_000)
+    y: int | None = Field(default=None, ge=0, le=10_000)
+    intensity: float = Field(default=1.0, ge=0.0, le=5.0)
+
+    @model_validator(mode="after")
+    def canonicalize_kind(self) -> "WorldStimulus":
+        if self.kind == "danger":
+            self.kind = "hazard"
+        return self
 
 
 class CognitiveInjection(BaseModel):
-    content: str
-    source: str = "injection"     # appears as a coalition source in the workspace
-    activation: float = 0.85
-    precision: float = 0.9
-    ttl: int = 1                  # ticks it remains in competition
+    model_config = ConfigDict(
+        extra="forbid", allow_inf_nan=False, str_strip_whitespace=True)
+
+    content: str = Field(min_length=1, max_length=500)
+    source: str = Field(default="injection", min_length=1, max_length=64)
+    activation: float = Field(default=0.85, ge=0.0, le=1.0)
+    precision: float = Field(default=0.9, ge=0.0, le=1.0)
+    ttl: int = Field(default=1, ge=1, le=1000)
 
 
 class AttendRequest(BaseModel):
-    target_id: int
-    strength: float = 1.0
-    ttl: int = 3
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    target_id: int = Field(ge=0, le=1_000_000)
+    strength: float = Field(default=1.0, ge=0.0, le=10.0)
+    ttl: int = Field(default=3, ge=1, le=1000)
 
 
 class PerturbRequest(BaseModel):
-    type: str                     # "choc" | "surprise" | "apaisement"
-    magnitude: float = 1.0
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    type: Literal["choc", "surprise", "apaisement", "shock", "soothe"]
+    magnitude: float = Field(default=1.0, ge=0.0, le=10.0)
 
 
 Scenario.model_rebuild()
