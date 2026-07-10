@@ -351,20 +351,43 @@ def test_horizon_observatory_is_wired_end_to_end():
     assert not violations, _format_violations(violations)
 
 
-def test_phase7_is_documented_and_future_extensions_are_closed():
+def test_phase7_is_documented_and_final_roadmap_is_completed():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     violations = []
 
     if re.search(r"^## Phase 7\b", readme, re.MULTILINE) is None:
         violations.append("missing level-2 README heading: Phase 7")
+    if re.search(r"^## Future extensions$", readme, re.MULTILINE):
+        violations.append("obsolete future-extensions heading remains")
+
+    roadmap_match = re.search(
+        r"(?P<section>^## Roadmap completed$(?:(?!^## ).)*)\Z",
+        readme,
+        re.MULTILINE | re.DOTALL,
+    )
+    if roadmap_match is None:
+        violations.append("missing completed roadmap as final level-2 section")
+        roadmap_section = ""
+    else:
+        roadmap_section = roadmap_match.group("section")
 
     for marker in (
-        "33 mechanisms",
-        "GET /agent/memory/search",
-        "GET /export/traces",
-        "Every extension above is now delivered",
+        "### Foundations delivered — Phases 1–6",
+        "### Phase 7 — The Horizon delivered",
+        "### Delivery quality completed",
+        "Coarse causal Φ",
+        "Predictive hierarchy and VFE",
+        "Multi-step EFE planning",
+        "Semantic vector memory",
+        "Contextual TD(λ)",
+        "Mind-wandering / default mode",
+        "Living world dynamics",
+        "Structured tasks",
+        "Horizon Observatoire and interventions",
+        "Atomic persistence and checkpoints",
+        "627/627 tests",
     ):
-        if marker not in readme:
-            violations.append(f"missing README endpoint/scorecard text: {marker}")
+        if marker not in roadmap_section:
+            violations.append(f"missing completed-roadmap evidence: {marker}")
 
     assert not violations, _format_violations(violations)
