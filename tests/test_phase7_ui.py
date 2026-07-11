@@ -104,10 +104,10 @@ def test_horizon_observatory_is_wired_end_to_end():
             f"missing HTML data-flag values: {sorted(missing_data_flags)}"
         )
 
-    if "styles.css?v=7.3" not in attributes.hrefs:
-        violations.append("styles.css cache-buster must be exactly ?v=7.3")
-    if "app.js?v=7.3" not in attributes.srcs:
-        violations.append("app.js cache-buster must be exactly ?v=7.3")
+    if "styles.css?v=8.0" not in attributes.hrefs:
+        violations.append("styles.css cache-buster must be exactly ?v=8.0")
+    if "app.js?v=8.0" not in attributes.srcs:
+        violations.append("app.js cache-buster must be exactly ?v=8.0")
     if not any(href.startswith("data:image/svg+xml") for href in attributes.hrefs):
         violations.append("UI must provide an inline favicon without a 404 request")
 
