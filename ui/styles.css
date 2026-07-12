@@ -75,7 +75,7 @@
     --inset: #E3DBC8;
     --ink: #26221A;
     --ink-2: #574F41;
-    --ink-3: #6A6252;
+    --ink-3: #625B4B;  /* 4.89:1 on inset — AA even for in-canvas axis labels */
     --ink-ghost: #B4AC9A;
     --electrum: #8A6510;
     --electrum-bright: #A7791F;

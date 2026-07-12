@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/ui_hook_check.mjs",
+            "timeout": 30,
+            "statusMessage": "Checking the Humanity UI contract…"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/check_ui_contract.mjs >/dev/null 2>&1 || echo \"{\\\"systemMessage\\\":\\\"⚠ Humanity UI contract check failed — run: node scripts/check_ui_contract.mjs\\\"}\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
