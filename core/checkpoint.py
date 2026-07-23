@@ -33,15 +33,24 @@ import numpy as np
 
 from core.agent import CognitiveAgent
 from core.constants import PHI_CAUSAL_MIN_SAMPLES
+from core.gender_experience import GenderExperienceEngine
+from core.gender_society import GenderSociety
 from core.metrics_recorder import MetricsRecorder
 from core.shared_world import AgentBody, SharedWorld
 from core.world_tasks import TaskManager
-from schemas.models import MemoryRecord, Message, SimConfig, WorldObject
+from schemas.models import (
+    GenderScenario,
+    MemoryRecord,
+    Message,
+    SimConfig,
+    WorldObject,
+)
 
 CKPT_DIR = Path("storage/checkpoints")
-_SCHEMA = 2
+_SCHEMA = 3
 _STATE_KEYS = {
     "schema", "config", "world", "agents", "recorder", "artifacts",
+    "gender_society", "gender_scenario_manifest",
 }
 _ARTIFACT_KEYS = {
     "memory_managed", "memory_path",
@@ -174,6 +183,8 @@ def save(manager, name: str) -> dict:
         "world": manager.world,
         "agents": manager.agents,
         "recorder": manager.recorder,
+        "gender_society": manager.gender_society,
+        "gender_scenario_manifest": manager.gender_scenario_manifest,
         "artifacts": _artifact_manifest(manager),
     }
     checkpoint_path = CKPT_DIR / f"{stem}.pkl"
@@ -434,6 +445,39 @@ def _validate_agent_internals(agent: CognitiveAgent, *, agent_id: int,
         label=f"{label}.world.task_manager",
         expected_grid_size=config.grid_size,
     )
+    engine = getattr(agent, "gender_experience", None)
+    if not isinstance(engine, GenderExperienceEngine):
+        raise InvalidCheckpointError(
+            f"{label} gender experience engine is invalid")
+    if engine.config is not config or engine.agent_id != agent_id:
+        raise InvalidCheckpointError(
+            f"{label} gender engine references are inconsistent")
+    profile = getattr(engine, "_profile", None)
+    life_course = getattr(engine, "_life_course_plan", None)
+    lifecycle = getattr(engine, "_lifecycle", None)
+    if profile is None:
+        if life_course is not None or lifecycle is not None \
+                or engine.current_state is not None:
+            raise InvalidCheckpointError(
+                f"{label} has partial gender configuration")
+    else:
+        try:
+            type(profile).model_validate(profile.model_dump())
+            type(life_course).model_validate(life_course.model_dump())
+            if engine._checksum(profile) != engine.profile_checksum:
+                raise ValueError("profile checksum mismatch")
+            if lifecycle is None:
+                raise ValueError("missing lifecycle")
+            if engine.current_state is not None:
+                type(engine.current_state).model_validate(
+                    engine.current_state.model_dump())
+            for event in (
+                engine.pending_events + engine.event_ledger
+            ):
+                type(event).model_validate(event.model_dump())
+        except Exception as exc:
+            raise InvalidCheckpointError(
+                f"{label} gender engine state is invalid: {exc}") from exc
 
 
 def _validate_artifacts(state: dict, expected_ids: set[int]) -> None:
@@ -521,6 +565,8 @@ def _read_validated_payload(path: Path) -> dict:
     world = state["world"]
     agents = state["agents"]
     recorder = state["recorder"]
+    gender_society = state["gender_society"]
+    gender_manifest = state["gender_scenario_manifest"]
     if not isinstance(config, SimConfig):
         raise InvalidCheckpointError("checkpoint config has the wrong type")
     try:
@@ -534,6 +580,25 @@ def _read_validated_payload(path: Path) -> dict:
         raise InvalidCheckpointError("checkpoint agents must be a dictionary")
     if not isinstance(recorder, MetricsRecorder):
         raise InvalidCheckpointError("checkpoint recorder has the wrong type")
+    if not isinstance(gender_society, GenderSociety):
+        raise InvalidCheckpointError(
+            "checkpoint gender society has the wrong type")
+    if gender_society.config is not config:
+        raise InvalidCheckpointError(
+            "checkpoint gender society/config relationship is inconsistent")
+    if gender_manifest is not None and not isinstance(
+            gender_manifest, GenderScenario):
+        raise InvalidCheckpointError(
+            "checkpoint gender scenario manifest has the wrong type")
+    try:
+        if gender_manifest is not None:
+            GenderScenario.model_validate(gender_manifest.model_dump())
+        gender_society.state()
+        for event in gender_society.pending_events:
+            type(event).model_validate(event.model_dump())
+    except Exception as exc:
+        raise InvalidCheckpointError(
+            f"checkpoint gender society is invalid: {exc}") from exc
     if type(world.tick) is not int or world.tick < 0:
         raise InvalidCheckpointError(
             "checkpoint world tick must be a non-negative integer")
@@ -574,6 +639,7 @@ def _read_validated_payload(path: Path) -> dict:
             agent.working_memory._config,
             agent.memory.config,
             agent.self_model.config,
+            agent.gender_experience.config,
         )
         if any(ref is not config for ref in config_refs):
             raise InvalidCheckpointError(
@@ -606,6 +672,8 @@ def _preflight_state(state: dict) -> dict:
     probe.world = state["world"]
     probe.agents = state["agents"]
     probe.recorder = state["recorder"]
+    probe.gender_society = state["gender_society"]
+    probe.gender_scenario_manifest = state["gender_scenario_manifest"]
     probe.running = False
     try:
         preview = SocietyManager.state(probe)
@@ -621,6 +689,9 @@ def _preflight_state(state: dict) -> dict:
         tick_probe.world = state["world"]
         tick_probe.agents = state["agents"]
         tick_probe.recorder = state["recorder"]
+        tick_probe.gender_society = state["gender_society"]
+        tick_probe.gender_scenario_manifest = state[
+            "gender_scenario_manifest"]
         tick_probe.running = False
         tick_probe._task = None
         tick_probe.last_run_request = None
@@ -814,6 +885,8 @@ def load(manager, name: str) -> dict:
         "world": manager.world,
         "agents": manager.agents,
         "recorder": manager.recorder,
+        "gender_society": manager.gender_society,
+        "gender_scenario_manifest": manager.gender_scenario_manifest,
         "running": manager.running,
         "task": manager._task,
         "last_run_request": manager.last_run_request,
@@ -826,11 +899,17 @@ def load(manager, name: str) -> dict:
         manager.world = state["world"]
         manager.agents = state["agents"]
         manager.recorder = state["recorder"]
+        manager.gender_society = state["gender_society"]
+        manager.gender_scenario_manifest = state[
+            "gender_scenario_manifest"]
     except Exception as exc:
         manager.config = prior["config"]
         manager.world = prior["world"]
         manager.agents = prior["agents"]
         manager.recorder = prior["recorder"]
+        manager.gender_society = prior["gender_society"]
+        manager.gender_scenario_manifest = prior[
+            "gender_scenario_manifest"]
         manager.running = prior["running"]
         manager._task = prior["task"]
         manager.last_run_request = prior["last_run_request"]

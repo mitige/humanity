@@ -5,17 +5,18 @@
 ### Every major scientific theory of consciousness, implemented as running code — and rigorously honest that it proves nothing about real experience.
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![tests](https://img.shields.io/badge/tests-627%20passing-2ea44f)](#running)
+[![tests](https://img.shields.io/badge/tests-692%20passing-2ea44f)](#running)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![no LLM](https://img.shields.io/badge/no%20LLM-no%20neural%20nets-8957e5)](#stack-rationale)
 [![GitHub stars](https://img.shields.io/github/stars/mitige/humanity?style=social)](https://github.com/mitige/humanity/stargazers)
 
 </div>
 
-![The Humanity instrument — full dashboard](docs/images/dashboard.png)
+![Humanity Overview — global access, live indicators, winning sources, world and society](docs/images/dashboard.png)
 
-<p align="center"><em>The live instrument — conscious moment, global workspace, the multi-agent society,
-learning &amp; personality, and the scientific laboratory, all observable in one dashboard.</em></p>
+<p align="center"><em>The current Overview at tick 96 — global access, live indicators, recent winning
+sources, the grid world and a four-agent society in one view. The focused captures below cover every
+principal instrument route.</em></p>
 
 > **What is this?** A from-scratch, **LLM-free, neural-network-free** cognitive agent whose loop is
 > assembled from the *actual mechanisms* the leading theories of consciousness propose as
@@ -32,8 +33,11 @@ learning &amp; personality, and the scientific laboratory, all observable in one
 > signatures** (masking, attentional blink, priming) reproduced as measurable probes; **Phase 6**,
 > where deterministic naming games produce an emergent lexicon; and **Phase 7, the horizon**:
 > coarse causal Φ, predictive hierarchy/VFE, multi-step planning, semantic vector memory, TD(λ),
-> default-mode wandering, a living world, structured tasks and auditable exports. Every step is
-> grounded in inspectable variables and observable live through a web UI + REST API.
+> default-mode wandering, a living world, structured tasks and auditable exports; then **Phase 8,
+> the situated gendered self**: an explicit, configurable and privacy-separated qualitative model
+> of gendered life trajectories, self-understanding, expression, dysphoria, euphoria, minority
+> stress, resilience and independent transition dimensions. Every step is grounded in inspectable
+> variables and observable live through a web UI + REST API.
 >
 > **What it is NOT: conscious.** The honesty contract is load-bearing — *reproducing the functional
 > mechanisms does not prove phenomenality (the hard problem).* Every introspective line is **text
@@ -46,7 +50,7 @@ learning &amp; personality, and the scientific laboratory, all observable in one
 git clone https://github.com/mitige/humanity && cd humanity
 pip install -r requirements.txt
 python run.py          # → open http://127.0.0.1:8000
-python -m pytest       # 627 deterministic tests
+python -m pytest       # 692 deterministic tests
 ```
 
 **Jump to:** [the cognitive loop](#cognitive-architecture-v2--the-workspace-centered-loop) ·
@@ -56,7 +60,8 @@ python -m pytest       # 627 deterministic tests
 [self-opacity](#self-opacity--the-awareness-of-what-escapes-control) ·
 [the scientific instrument](#phase-4--scientific-instrument) ·
 [the asymptote (Phase 5)](#phase-5--the-asymptote-closing-the-functional-gap) ·
-[**the horizon (Phase 7)**](#phase-7--the-horizon-every-remaining-extension-delivered)
+[the horizon (Phase 7)](#phase-7--the-horizon-every-remaining-extension-delivered) ·
+[**the situated gendered self (Phase 8)**](#phase-8--the-situated-gendered-self)
 
 ---
 
@@ -250,15 +255,13 @@ A **central dynamics fix** was applied to the global workspace (GWT), with two r
 The test suite stays green; public signatures are preserved and the new parameters are keyword
 arguments with default values.
 
-![Global workspace — specialist coalitions competing for global access](docs/images/global-workspace.png)
-*The global workspace: each bar is a specialist coalition (perception, memory, motivation, social,
-concept, imagination, metacognition…) bidding for global access. Here the winner's ignition score
-crosses the effective threshold (dashed line) → ignition and broadcast (conscious access).*
+![Workspace observatory — coalition competition, attention schema and higher-order state](docs/images/global-workspace.png)
+*The Workspace route at tick 96: specialist coalitions bid for access while the attention schema,
+higher-order state and ignition stream expose how a conscious-moment record is produced.*
 
-![Conscious moment — the bound global state after ignition](docs/images/conscious-moment.png)
-*The resulting conscious moment: the winning content reaches global access ("conscious"), bound
-together with the dominant affect, awareness level, valence and the integrated-information proxy (Φ).
-When the winner stays below the threshold, the same panel reads "present but subliminal".*
+![Conscious moment — bound state, live indicators and winning sources](docs/images/conscious-moment.png)
+*The Overview binds the winning content to affect, awareness, valence and the integrated-information
+proxy (Φ), then keeps that moment legible beside its recent sources and the live world/society state.*
 
 ### The bug that was fixed
 
@@ -373,6 +376,14 @@ documented UI redirect and CSV/JSONL download surfaces. `GET /state` adds the ca
 | `GET` | `/agent/memory/search?q=...&limit=8` | **(Phase 7)** Deterministic semantic search over stored episodes; returns ranked cosine similarities with the functional-simulation disclaimer. |
 | `GET` | `/agent/memory/graph?limit=60&edges=3` | **(Phase 7)** Deterministic similarity graph of autobiographical records for the Observatoire. |
 | `GET` | `/agent/introspection` | Regenerates and returns an `IntrospectionReport` (text from the variables). |
+| `GET` | `/gender/scenarios?seed=42` | **(Phase 8)** Lists the 11 complete, reproducible gender-life example manifests. Presets are examples, never hidden defaults. |
+| `POST` | `/gender/scenario` | **(Phase 8)** Applies exactly one preset or complete custom manifest through an explicit full reset. |
+| `GET` | `/agent/gender` | **(Phase 8)** Agent-readable gender-experience state, with no private configured profile. |
+| `GET` | `/agent/gender/debug` | **(Phase 8)** Explicit experiment/debug view of the private input, life course and current state. |
+| `POST` | `/agent/gender/event` or `/agent/gender/intent` | **(Phase 8)** Queues one validated event or explicit user-probe intent for the next tick. |
+| `GET` | `/society/gender` | **(Phase 8)** Public projections, observer-local recognition, social context and aggregate event counts. |
+| `GET` | `/export/gender-scenario?include_private=false` | **(Phase 8)** Public scenario export by default; private experiment inputs require explicit opt-in. |
+| `POST` | `/battery/gender-experience` | **(Phase 8)** Runs an eight-arm, same-seed counterfactual battery offline without mutating the live run. |
 | `POST` | `/agent/goal` | Adds a goal (`GoalRequest` body); returns the updated self-model. |
 | `POST` | `/config` | Applies a partial config update (`ConfigPatch`, including the new consciousness parameters); returns the applied config and the state. |
 | `GET` | `/metrics` | Returns the last cycle's `Metrics` (v1 + v2 fields). |
@@ -560,9 +571,9 @@ curl -X POST http://127.0.0.1:8000/agent/perturb \
 > **clickable grid**: clicking a cell triggers a world stimulus (`POST /world/stimulus`) at that
 > location. Every interaction stays accompanied by the disclaimer and the theoretical framing.
 
-![The grid world — agent, perception radius, and objects](docs/images/world.png)
-*The grid world: the agent (ringed) with its perception radius, surrounded by food, hazards, tools
-and curios. Clicking a cell injects a real stimulus there.*
+![World observatory — interactive grid, agent, perception radius and objects](docs/images/world.png)
+*The World route at tick 96: the ringed agent and its perception radius share the grid with food,
+hazards, tools and curios; the adjacent interaction console turns clicks and probes into real stimuli.*
 
 ---
 
@@ -574,9 +585,9 @@ changes is that they **perceive**, **communicate with**, **model** and **affecti
 another. The `SocietyManager` (`core/society.py`) owns the shared world and N agents, and runs a
 deterministic **collective tick** (each agent cycles once, in ascending id order).
 
-![The multi-agent society — agents foraging in a shared world](docs/images/society.png)
-*The multi-agent society: several agents (here 0, 1, 2…) sharing one world, each running its own full
-cognitive loop, perceiving and modeling the others.*
+![Society observatory — four agents foraging in a shared world](docs/images/society.png)
+*The responsive Society route at tick 96: four agents share one world while each runs a complete
+cognitive loop, perceives neighbors and maintains its own local models of the others.*
 
 | Social mechanism | Module | What it does (FUNCTIONAL) |
 |---|---|---|
@@ -655,9 +666,10 @@ it**: they wrap around the GWT/AST/HOT/active-inference/Phi-proxy cycle describe
 project, they stay **level 2**: the agents are **neither conscious, sentient, nor alive** — same
 honesty contract.
 
-![Deep consciousness — circadian clock, sleep, agency, curiosity, imagination](docs/images/deep-consciousness.png)
-*Phase 2 deep consciousness: the circadian clock (daylight), sleep state, sense of agency,
-boredom/curiosity, and the imagined plan from bounded mental rollouts.*
+![Mind observatory — self-opacity, rhythms, drives and the functional asymptote](docs/images/deep-consciousness.png)
+*The Mind route joins Phase-2 rhythms and drives to self-opacity and the Phase-5 functional
+asymptote: daylight, sleep, agency, curiosity, imagination and the model's declared limits remain
+visible together.*
 
 | # | Mechanism (per agent) | What it does (FUNCTIONAL) |
 |---|---|---|
@@ -742,9 +754,9 @@ no black box, just readable tables and scalars. Like everything else in the proj
 deterministic and grounded** in real internal variables — and the agents are **neither conscious,
 sentient, nor alive** (same honesty contract).
 
-![Learning & personality — learned action values, concepts, emergent traits](docs/images/learning-personality.png)
-*Phase 3 learning & personality: the learned `Q[action]` values, the dominant emergent concept, the
-self-tuned learning rate, and the divergent personality traits (openness, caution, novelty-seeking).*
+![Learning and language observatory — action values, concepts, traits and invented lexicon](docs/images/learning-personality.png)
+*The Learning & Language route combines Phase-3 action values, concepts, adaptive learning rates and
+divergent traits with the Phase-6 naming game and its inspectable invented lexicon.*
 
 | # | Mechanism (per agent) | What it does (FUNCTIONAL) |
 |---|---|---|
@@ -839,10 +851,9 @@ science** on this implementation. It is a **non-invasive** layer — it *orchest
 the existing agent/society **without modifying the cognitive cycle** — and is therefore deterministic
 at the seed and regression-free (the whole suite stays green).
 
-![The Laboratory — comparative time series, scenarios, test battery, fast training](docs/images/laboratory.png)
-*Phase 4 scientific instrument: divergent multi-agent time series (here the Phi proxy), CSV/JSON
-export, a reproducible-scenario runner, the functional test battery, and the fast-training control —
-each with the honesty disclaimer in plain sight.*
+![Laboratory observatory — live indicators, comparative time series and functional battery](docs/images/laboratory.png)
+*The Laboratory route at tick 96: live indicators, comparative multi-agent time series, reproducible
+scenario controls, exports and the functional battery remain gathered under the honesty disclaimer.*
 
 | Brick | Module | What it does (FUNCTIONAL) |
 |---|---|---|
@@ -1256,6 +1267,301 @@ invalid or unknown fields return 422 without mutation.
 
 ---
 
+## Phase 8 — The situated gendered self
+
+> **Defensible claim.** Humanity implements an inspectable qualitative functional model of
+> multiple gender-identity and transition trajectories, including minority stress and resilience.
+> It is **not** a diagnostic, clinical, predictive or empirically calibrated model of real people,
+> and its variables are not evidence of subjective experience.
+
+Phase 8 models a gendered life as a **factorized, configurable trajectory**, not as the mandatory
+pipeline `gender → dysphoria → hyperfeminization/hypermasculinization → trans identity`. That
+sequence can occur in a configured run, but none of its arrows is required. The same contracts also
+represent:
+
+- a trans identity with little or no dysphoria, including euphoria-led self-understanding;
+- dysphoria or gendered discomfort without automatically assigning a trans identity;
+- nonbinary, gender-fluid, agender, questioning, unlabeled and cisgender paths;
+- identity without social, administrative or medical transition;
+- social-only, partial, paused, revised, reversed or resumed transition;
+- late self-recognition, selective disclosure and context-dependent expression;
+- accentuated expression toward an affirmed gender, toward an assigned category as compensation,
+  in several directions, or not at all.
+
+The backend flag `gender_experience_enabled` defaults to `False`, and no profile — including a cis
+profile — is silently assigned at boot. A gender-life scenario must be deliberately selected.
+
+![Phase 8 gender experience observatory — scenario, life course and privacy-separated layers](docs/images/gender-experience.png)
+*One deliberately selected example at tick 10: the scenario console and configurable life timeline
+sit above three visibly separate layers — private experiment input, agent-readable self-understanding
+and observer-safe public presentation. The private layer appears only after an explicit debug reveal.*
+
+### The model is hybrid, not inferential
+
+The private felt profile and life plan are **configured experiment inputs**. Labels can be present
+initially, emerge from the simulated agent's own fit ledger and available vocabulary, remain plural
+or uncertain, or change along a configured fluid timeline. Identity is never inferred from
+dysphoria, expression, body coordinates, observer judgments or treatment choices.
+
+```text
+EXPERIMENT INPUT — explicit/debug only
+  private felt profile + life course + social context
+                    │
+                    ▼
+AGENT-READABLE STATE
+  self-understanding · congruence · dysphoria · euphoria · fulfillment
+  expression · minority stress · resilience · transition intentions
+                    │ deliberate disclosure only
+                    ▼
+OBSERVER-SAFE STATE
+  public name/pronouns/labels · public expression · local recognition
+
+Observers cannot traverse either arrow backwards to discover the private profile.
+Hostility can change stress and safety; it cannot mutate felt affinities.
+```
+
+The ordinary `CycleTrace.gender_experience`, `/agent/gender` and `/society/gender` surfaces exclude
+the private `GenderProfile`. Only the explicitly requested `/agent/gender/debug` view and
+`/export/gender-scenario?include_private=true` expose configured experiment inputs. This is a
+conceptual simulator boundary rather than an authentication mechanism: Humanity remains a local
+research instrument.
+
+### Independent concepts, not synonyms
+
+| Concept | Phase-8 meaning | It does **not** decide |
+|---|---|---|
+| **Felt profile / identity** | Open, possibly plural, fluid or unlabeled affinities configured for the experiment; the agent maintains a separate self-understanding and label-fit ledger. | Appearance, distress, anatomy, observer recognition or transition eligibility. |
+| **Gender incongruence** | Domain-specific mismatch among configured body, expression, social-recognition or administrative preferences and current state. | Whether a person is trans or whether mismatch must be distressing. |
+| **Dysphoria** | A bounded, smoothed response to salient mismatch according to an independently configured sensitivity. Sensitivity may be zero. | Identity, euphoria, or the necessity of transition. |
+| **Euphoria** | An acute positive response to affirmation or positive alignment change. | The absence of dysphoria; both can coexist or both can be low. |
+| **Fulfillment** | A slower signal for sustained congruence, calm, comfort and affirmation. | Permanent excitement or a clinical outcome. |
+| **Accentuated expression** | Expression above the agent's own rolling preferred baseline, with an explicit driver ledger. | A population norm, a diagnosis, a life stage or proof of identity. |
+| **Transition** | Five independent dimensions with their own desire, access, status, progress and satisfaction. | A requirement for, or validation of, any identity. |
+
+### Multidimensional state
+
+The engine updates these dimensions without collapsing them into a single “transness” score:
+
+| Dimension | Inspectable state |
+|---|---|
+| **Self-understanding** | Open labels, questioning, certainty, known vocabulary, fit evidence and disclosure scopes |
+| **Expression** | Presentation, name, pronouns, voice and social role, each separated into private, trusted and public contexts |
+| **Embodiment** | Abstract, user-defined body domains with current/preferred coordinates, salience, alignment and change rate |
+| **Congruence** | Body, expression, social-recognition and administrative congruence plus a salience-weighted total |
+| **Affect** | Dysphoria by domain, acute euphoria and sustained fulfillment |
+| **Minority stress** | Current/chronic external hostility, rejection expectation, concealment pressure, vigilance and internalized transphobia |
+| **Resilience** | Interpersonal support, community connection, positive representation, pride, self-acceptance and a derived resilience index |
+| **Transition** | Social, administrative, voice, hormonal and surgical dimensions, all optional and independent |
+| **Agency** | An explicit current intent, access/safety constraints, event provenance and a bounded life-event ledger |
+
+![Phase 8 multidimensional dynamics — congruence, affect, minority stress, resilience and expression](docs/images/gender-dynamics.png)
+*The same configured run exposes congruence by domain, dysphoria, euphoria, fulfillment, external and
+internalized transphobia, resilience, expression drivers and abstract embodiment side by side. No
+single score is allowed to stand in for identity.*
+
+Medical dimensions remain abstract: they adjust configured domain coordinates and recovery load.
+There are no protocols, doses, eligibility rules, anatomical imagery or treatment recommendations.
+
+### External and internalized transphobia
+
+External transphobia is represented by validated hostile events and institutional exposure:
+misgendering, invalidation, rejection, discrimination, non-graphic threat and care/access barriers.
+Hostile events use neutral server-owned templates and cannot carry custom dialogue, preventing the
+simulator from generating slurs or dramatized abuse.
+
+Internalized transphobia is a **slow, learned pressure from hostile social exposure**, never an
+identity trait. Its gain is moderated by norm rigidity and resilience; recovery is supported by
+interpersonal support, community connection, pride and self-acceptance. It may affect concealment,
+vigilance and confidence within strict caps, but it cannot modify the private felt profile or count
+as evidence against an identity.
+
+The social layer sees only public projections. Recognition and social responses are computed after
+all agents finish their tick and are consumed on the following tick, so agent iteration order
+cannot change the outcome. Setting `hostility_enabled: false` disables hostile generation while
+retaining recognition, support and affirmation.
+
+### Accentuated expression, including hyperfeminine/hypermasculine paths
+
+The UI uses **accentuated expression** as the neutral umbrella term.
+“Hyperfeminization” and “hypermasculinization” can describe particular common-language trajectories,
+but the model does not turn either into a universal trans stage. Accentuated expression is measured
+relative to the agent's own rolling baseline and records one or more transparent drivers:
+
+- exploration;
+- euphoria or joy;
+- recognition and social legibility;
+- compensation toward the assigned category;
+- pressure to prove an affirmed identity;
+- safety or concealment;
+- personal aesthetic preference.
+
+High femininity or masculinity alone does not produce an accentuation flag, and accentuation has no
+diagnostic or identity-classifying effect. Private, trusted-context and public expression may differ.
+
+### A configurable life course
+
+The **Mind → Gender experience** observatory exposes the complete plan before it is applied. A run
+may begin at any stage and may omit stages:
+
+`childhood · puberty · adolescence · adulthood · later_life`
+
+These are semantic simulator periods, not universal legal, developmental or medical ages. Every
+included stage configures:
+
+| Field | Role |
+|---|---|
+| `duration_ticks` | Positive, deterministic stage length |
+| `body_targets` / `body_change_rate` | Abstract domain changes, never a treatment protocol |
+| `autonomy` | Available personal decision space |
+| `resource_access` | General access to resources in that period |
+| `norm_exposure` | Exposure to the configured social norms |
+
+The scenario also configures `norm_rigidity`, `institutional_hostility`, `baseline_safety`,
+`care_access`, `community_visibility`, `positive_representation` and whether hostility is enabled.
+An adult-start or later-life path can provide an inspectable prior-history summary instead of
+pretending that the earlier life course did not exist.
+
+Applying any preset or custom manifest is an explicit **full reset**: world, autobiographical state,
+traces, pending gender events and recognition state are rebuilt together. The UI requires a reset
+confirmation. This prevents a newly configured childhood or private profile from being spliced into
+an incompatible old history.
+
+Built-in deterministic examples:
+
+| Presets | Presets | Presets |
+|---|---|---|
+| `transfeminine_early` | `transfeminine_late` | `transmasculine_early` |
+| `transmasculine_late` | `nonbinary` | `genderfluid` |
+| `agender` | `euphoria_led` | `social_transition_only` |
+| `partial_medical_transition` | `cis_control` | |
+
+Presets are starting examples, not archetypes. `GET /gender/scenarios?seed=42` returns every
+complete manifest; the life-course editor can include/omit stages and change all stage/context
+fields before submitting that manifest back as a custom scenario.
+
+```bash
+# Apply a reproducible example. This deliberately resets the whole run.
+curl -X POST http://127.0.0.1:8000/gender/scenario \
+  -H "Content-Type: application/json" \
+  -d '{"preset_id":"transfeminine_late","seed":42}'
+
+# Inspect the agent-readable state (never the private profile).
+curl http://127.0.0.1:8000/agent/gender
+
+# Run the matched offline battery without mutating the live run.
+curl -X POST http://127.0.0.1:8000/battery/gender-experience \
+  -H "Content-Type: application/json" \
+  -d '{"preset_id":"nonbinary","seed":42,"ticks":24}'
+```
+
+### Independent transition paths
+
+Social transition, administrative/legal recognition, voice work, hormonal transition and surgical
+transition each carry:
+
+- `desire`;
+- `status`: `not_desired`, `considering`, `desired`, `seeking`, `blocked`, `underway`,
+  `completed`, `paused` or `revising`;
+- `access`, `progress` and satisfaction in `[-1, 1]`;
+- modeled reversibility and target domains;
+- the last status-change tick and grounded reason.
+
+No dimension is mandatory. Desire may be driven by expected fulfillment without dysphoria.
+Safety and access constrain execution rather than determining whether an intent is valid. Pause,
+revision, reversal and resumption remain ordinary states, not evidence that an identity was false.
+
+### Configuration and API
+
+Simple coefficients are hot-applicable; profiles, life courses and social contexts are structural
+scenario inputs.
+
+| `SimConfig` / `ConfigPatch` field | Default | Meaning |
+|---|---:|---|
+| `gender_experience_enabled` | `False` | Update Phase 8 only when an explicit profile is installed |
+| `gender_affect_weight` | `0.20` | Scale the capped mood/confidence/coherence influence |
+| `gender_motivation_weight` | `1.0` | Scale explicit Phase-8 goal pressures |
+| `gender_internalization_rate` | `0.05` | Maximum slow gain from hostile exposure |
+| `gender_recovery_rate` | `0.03` | Slow reduction supported by resilience inputs |
+| `gender_event_memory_max` | `256` | Bound the private gender-event ledger |
+
+| Endpoint | Boundary |
+|---|---|
+| `GET /gender/scenarios` | Complete seeded examples; no hidden profile |
+| `POST /gender/scenario` | Exactly one preset or complete custom manifest; transactional full reset |
+| `GET /agent/gender` | Agent-readable state, private profile excluded |
+| `GET /agent/gender/debug` | Explicit private experiment input + life plan + current state |
+| `POST /agent/gender/event` | Validated, template-safe event queued for the next tick |
+| `POST /agent/gender/intent` | Explicit `user_probe` intent queued for the next tick |
+| `GET /society/agent/{id}/gender` | Agent-readable state for a configured society member |
+| `GET /society/agent/{id}/gender/debug` | Explicit private debug view for that member |
+| `GET /society/gender` | Public projections, local recognition and social aggregates |
+| `GET /export/gender-scenario` | Public export; add `include_private=true` only deliberately |
+| `POST /battery/gender-experience` | Eight matched arms, isolated from persistence and live traces |
+
+### Counterfactual battery
+
+The battery uses the same profile checksum and seed across four matched comparisons:
+
+1. supportive versus hostile social context;
+2. expression allowed versus coerced/concealed;
+3. euphoria-sensitive/low-dysphoria versus dysphoria-sensitive paths;
+4. isolated versus community-connected context.
+
+A supportive/hostile comparison therefore keeps the configured felt profile identical while the
+implemented stress, concealment, resilience and disclosure trajectories may diverge. The checksum
+must remain equal and identity-inference invariant violations must remain zero. This demonstrates
+the consequences of **the simulator's declared assumptions**; it is not evidence that the reported
+effect sizes or causal relations hold for real people.
+
+![Phase 8 instrument — independent transitions, event ledger and eight-arm counterfactual battery](docs/images/gender-instrument.png)
+*The lower observatory keeps five independent transition dimensions, validated events and intentions,
+and all eight matched battery arms inspectable in one instrument. Counterfactuals preserve the same
+private profile checksum and never mutate the live run.*
+
+### Observatory and measured validation
+
+The responsive observatory uses three visibly distinct information layers — **Experiment input**,
+**Self-understanding** and **Public presentation** — without pink/blue coding. Private input is
+fetched only after an explicit reveal action and is locked again on reload. The timeline has a
+semantic ordered-list counterpart; all metrics retain text labels; hostile detail is summarized;
+and the scenario editor, probes, transition grid and eight-arm battery remain operable at 390 px
+without horizontal data loss.
+
+At the Phase-8 implementation checkpoint:
+
+- **692 deterministic tests across 107 files pass**, including 71 focused gender-engine, trajectory,
+  privacy, society, API, persistence and UI tests;
+- a real FastAPI run reproduced the next Phase-8 state exactly after checkpoint save/load;
+- the public scenario export contained neither `assigned_category` nor `felt_affinities`, while the
+  explicit private export did;
+- the browser path was exercised at 1440 px and 390 px with no console errors, failed requests or
+  horizontal overflow.
+
+### Scientific framing and limits
+
+The design is informed by the [WHO ICD gender-incongruence guidance][phase8-who], the individualized
+pathways in [WPATH Standards of Care Version 8][phase8-wpath], the gender-minority-stress framework
+([Hendricks & Testa, 2012][phase8-minority-stress];
+[Testa et al., 2015][phase8-measure]), work on
+[gender euphoria][phase8-euphoria], and longitudinal evidence that
+[reported labels can change over time][phase8-fluidity]. These sources constrain the categories and
+ethical boundaries; they do **not** supply the simulator's coefficients.
+
+Phase 8 is not diagnostic, predictive, clinical, phenomenological, culturally exhaustive or a
+validated model of prevalence. It cannot reproduce a person's lived transidentity “in all its
+complexity”; it can only make a wider set of qualitative assumptions explicit, factorized,
+inspectable and testable. It models neither sexual orientation nor a biological etiology of gender,
+and it must not be used to evaluate a real person's identity or care.
+
+[phase8-who]: https://www.who.int/standards/classifications/frequently-asked-questions/gender-incongruence-and-transgender-health-in-the-icd
+[phase8-wpath]: https://doi.org/10.1080/26895269.2022.2100644
+[phase8-minority-stress]: https://doi.org/10.1037/a0029597
+[phase8-measure]: https://doi.org/10.1037/sgd0000081
+[phase8-euphoria]: https://doi.org/10.57814/ggfg-4j14
+[phase8-fluidity]: https://doi.org/10.1177/00333549231223922
+
+---
+
 ## Optional: an LLM narrator
 
 Everything above is **LLM-free** — that is the point. But you can *optionally* attach a large language
@@ -1432,6 +1738,10 @@ mechanisms without suggesting a lived experience.
   general AI.
 - **No guarantee of scientific scope.** The project *instantiates* ideas from theories of
   consciousness; it does not validate them and is not a controlled experiment.
+- **Gender experience is a configured qualitative model.** Phase 8 does not infer, diagnose or
+  predict a real person's identity, transition or response to social context. Its felt profiles,
+  life courses, stress dynamics and coefficients are transparent scenario assumptions rather than
+  clinical scales, prevalence estimates or a reproduction of lived transidentity.
 - **Anthropomorphism risk.** "Perceiving", "being aware of", "remembering", "wanting" are descriptive
   conveniences for functional mechanisms — not to be taken literally.
 
@@ -1441,7 +1751,8 @@ mechanisms without suggesting a lived experience.
 
 Every engineering objective previously listed as future work is now delivered. The detailed
 [Phase 7 chapter](#phase-7--the-horizon-every-remaining-extension-delivered) remains the technical
-reference; this final checklist is the completion ledger.
+reference, and the [Phase 8 chapter](#phase-8--the-situated-gendered-self) documents the situated
+gendered-self extension. This final checklist is the completion ledger.
 
 ### Foundations delivered — Phases 1–6
 
@@ -1478,6 +1789,29 @@ reference; this final checklist is the completion ledger.
   and auditable world events.
 - ✅ **Structured tasks.** Deterministic forage, reach, and patrol rotation with progress metrics.
 
+### Phase 8 — The situated gendered self delivered
+
+- ✅ **Hybrid self-understanding.** Private configured felt profiles coexist with agent-authored,
+  vocabulary-dependent labels; identity is never inferred from dysphoria, expression, embodiment,
+  observers, or transition choices.
+- ✅ **Configurable life course.** Childhood, puberty, adolescence, adulthood, and later life may be
+  included, omitted, resized, or used as the starting point, with explicit autonomy, access, norm
+  exposure, abstract body-change, and prior-history inputs.
+- ✅ **Independent experience dimensions.** Congruence, dysphoria, acute euphoria, sustained
+  fulfillment, private/trusted/public expression, and personal-baseline accentuation remain
+  factorized rather than forming a mandatory causal pipeline.
+- ✅ **Minority stress and resilience.** External and internalized transphobia, concealment,
+  vigilance, support, community, pride, self-acceptance, and recovery are inspectable without
+  allowing hostility to mutate the private felt profile.
+- ✅ **Multidimensional transition.** Social, administrative, voice, hormonal, and surgical
+  dimensions have independent desire, access, status, progress, satisfaction, pause, revision,
+  reversal, and resumption states; medical mechanisms remain abstract and non-clinical.
+- ✅ **Privacy-separated society.** Experiment input, agent-readable self-understanding, and public
+  presentation are distinct surfaces; social recognition is observer-local and one-tick deferred.
+- ✅ **Reproducible instrument.** Eleven complete presets, custom manifests, template-safe
+  events/intents, public/private exports, exact checkpoint continuation, and an eight-arm offline
+  counterfactual battery are available through the API and responsive observatory.
+
 ### Delivery quality completed
 
 - ✅ **Horizon Observatoire and interventions.** Live Horizon readouts, ignition/source timelines,
@@ -1489,7 +1823,7 @@ reference; this final checklist is the completion ledger.
 - ✅ **Responsive and strict public contracts.** Heavy jobs run outside the event loop behind a busy
   gate; cancellation, stale UI responses, bounded schemas, and concurrent live reads are covered.
 - ✅ **Accessible and reproducible delivery.** Keyboard/text equivalents, locked dependencies,
-  hermetic runtime storage, deterministic flags-off behavior, and **627/627 tests passing**.
+  hermetic runtime storage, deterministic flags-off behavior, and **692/692 tests passing**.
 
 **The engineering roadmap is complete at the strongest deterministic scale this project can defend
 honestly.** This does not establish phenomenal consciousness. Full IIT 3.0/4.0 cause-effect

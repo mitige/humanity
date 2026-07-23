@@ -39,6 +39,7 @@ class MotivationSystem:
         individuation_index: float | None = None,
         language_deficit: float | None = None,
         language_urge: float = 1.0,
+        gender_goal_pressures: dict[str, float] | None = None,
     ) -> list[GoalPressure]:
         """Return the current functional goal pressures (each >= 0).
 
@@ -172,6 +173,35 @@ class MotivationSystem:
                 description=(f"Invent a language: name the world and align on shared words "
                              f"(lexicon deficit {float(language_deficit):.2f}, urge {urge:.2f})."),
             ))
+
+        # Phase 8 (gated): parallel life-domain pressures derived by the
+        # factorised gender engine. They do not directly select a grid action.
+        if config.gender_experience_enabled and gender_goal_pressures:
+            descriptions = {
+                "seek_safety": "Seek safety in response to situated gender-related vigilance.",
+                "explore_gender": "Explore self-understanding without presuming an identity.",
+                "seek_affirmation": "Seek congruent recognition or interpersonal support.",
+                "pursue_transition_intent": (
+                    "Pursue the current explicit transition intent when access permits."
+                ),
+            }
+            for need in (
+                "seek_safety",
+                "explore_gender",
+                "seek_affirmation",
+                "pursue_transition_intent",
+            ):
+                value = max(
+                    0.0,
+                    min(1.0, float(gender_goal_pressures.get(need, 0.0))),
+                )
+                pressures.append(
+                    GoalPressure(
+                        need=need,
+                        pressure=value,
+                        description=descriptions[need],
+                    )
+                )
 
         return pressures
 

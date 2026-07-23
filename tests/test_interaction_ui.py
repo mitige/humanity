@@ -109,7 +109,7 @@ def test_interventions_are_serialized_correlated_and_cache_busted() -> None:
     html, js, css, _probe = _sources()
     active_js = _without_js_comments(js)
 
-    assert html.count("?v=7.3") == 2
+    assert html.count("?v=8.1") == 2
     assert "let interventionPending = false" in active_js
     assert "function setInterventionBusy" in active_js
     assert "if (interventionPending) return" in active_js

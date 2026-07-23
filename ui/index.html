@@ -3,59 +3,143 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230c0b09' stroke='%23c9a35c' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23c9a35c'/%3E%3C/svg%3E" />
+  <meta name="description" content="Humanity — an instrument for the functional mechanisms of consciousness: global-workspace ignition, attention schema, higher-order reports, emergent language, observable live. A scientific simulation; the agent is not conscious." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%2307090D' stroke='%23E7BC68' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23E7BC68'/%3E%3C/svg%3E" />
   <title>Humanity — Instrument</title>
   <!-- Cache-busting: bump ?v= on every ui change so browsers never run a stale
        script against a newer backend (the page froze on cached app.js before). -->
-  <link rel="stylesheet" href="styles.css?v=7.3" />
+  <link rel="stylesheet" href="styles.css?v=8.1" />
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <div class="grain" aria-hidden="true"></div>
 
-  <!-- ============================ HEADER ============================ -->
-  <header class="masthead">
-    <div class="mast-row">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="28" height="28">
-            <circle cx="16" cy="16" r="13.5" class="bm-ring" />
-            <circle cx="16" cy="16" r="4" class="bm-core" />
-            <circle cx="16" cy="16" r="8.5" class="bm-mid" />
-          </svg>
-        </div>
-        <div class="brand-text">
-          <h1>Humanity</h1>
-          <p class="brand-sub">Instrument for the functional mechanisms of consciousness</p>
-        </div>
-      </div>
+  <!-- ======================= ICON SET (inline, stroke=currentColor) ======================= -->
+  <svg id="icon-defs" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-overview" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.2 14.5a7 7 0 1 1 11.6 0"/><circle cx="10" cy="11.5" r="1.2" fill="currentColor" stroke="none"/><path d="M10 10.3 13.2 7"/>
+    </symbol>
+    <symbol id="i-workspace" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+      <circle cx="10" cy="10" r="1.4" fill="currentColor" stroke="none"/>
+      <path d="M6.4 13.6a5.1 5.1 0 0 1 0-7.2M13.6 6.4a5.1 5.1 0 0 1 0 7.2"/>
+      <path d="M4 16a8.5 8.5 0 0 1 0-12M16 4a8.5 8.5 0 0 1 0 12"/>
+    </symbol>
+    <symbol id="i-world" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <rect x="3" y="3" width="14" height="14" rx="1.5"/>
+      <path d="M3 8.5h14M3 13h14M8.5 3v14M13 3v14" opacity=".55"/>
+      <rect x="8.5" y="8.5" width="4.5" height="4.5" fill="currentColor" stroke="none" opacity=".9"/>
+    </symbol>
+    <symbol id="i-mind" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+      <circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3.6" opacity=".65"/>
+      <path d="M10 1.6v2.2M10 16.2v2.2" opacity=".65"/>
+    </symbol>
+    <symbol id="i-learning" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3.5 16.5v-5M8 16.5V8.8M12.5 16.5V11M17 16.5V5.5"/>
+      <path d="M3.5 8.2c4.5 0 8-2.4 10.2-4.7" opacity=".6"/>
+      <circle cx="15" cy="3" r="1.1" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-laboratory" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 2.8h4M8.8 2.8v4.6L4.4 15a2 2 0 0 0 1.8 3h7.6a2 2 0 0 0 1.8-3l-4.4-7.6V2.8"/>
+      <path d="M6.4 12.4h7.2" opacity=".65"/>
+    </symbol>
+    <symbol id="i-memory" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <circle cx="5" cy="14.6" r="1.7"/><circle cx="10.4" cy="5.2" r="1.7"/><circle cx="15.4" cy="12.4" r="1.7"/>
+      <path d="M6 13.1l3.5-6.1M11.9 6.3l2.6 4.6M6.7 14.4l7-1.6" opacity=".6"/>
+    </symbol>
+    <symbol id="i-settings" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+      <path d="M3 6.2h7M14.6 6.2H17M3 13.8h2.4M10 13.8h7"/>
+      <circle cx="12.4" cy="6.2" r="1.9"/><circle cx="7.6" cy="13.8" r="1.9"/>
+    </symbol>
+    <symbol id="i-play" viewBox="0 0 20 20" fill="currentColor" stroke="none">
+      <path d="M6.2 4.4a.9.9 0 0 1 1.37-.77l8.2 5.06a.9.9 0 0 1 0 1.54l-8.2 5.06a.9.9 0 0 1-1.37-.77z"/>
+    </symbol>
+    <symbol id="i-pause" viewBox="0 0 20 20" fill="currentColor" stroke="none">
+      <rect x="5.4" y="4" width="3" height="12" rx=".8"/><rect x="11.6" y="4" width="3" height="12" rx=".8"/>
+    </symbol>
+    <symbol id="i-step" viewBox="0 0 20 20" fill="currentColor" stroke="none">
+      <path d="M4.4 4.9a.8.8 0 0 1 1.23-.68l6.4 4.42a.82.82 0 0 1 0 1.36l-6.4 4.42a.8.8 0 0 1-1.23-.68z"/>
+      <rect x="13.8" y="4.2" width="2" height="11.6" rx=".7"/>
+    </symbol>
+    <symbol id="i-reset" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.3 8.2A6.4 6.4 0 1 1 3.7 12"/><path d="M4 3.6v4.8h4.8"/>
+    </symbol>
+    <symbol id="i-theme" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
+      <circle cx="10" cy="10" r="6.6"/><path d="M10 3.4a6.6 6.6 0 0 1 0 13.2z" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-command" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+      <circle cx="8.6" cy="8.6" r="5.4"/><path d="M12.7 12.7 17 17"/>
+    </symbol>
+    <symbol id="i-probe" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+      <circle cx="10" cy="10" r="5.6"/><circle cx="10" cy="10" r="1.1" fill="currentColor" stroke="none"/>
+      <path d="M10 1.8v2.6M10 15.6v2.6M1.8 10h2.6M15.6 10h2.6"/>
+    </symbol>
+    <symbol id="i-collapse" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11.5 5 6.8 10l4.7 5M16 5l-4.7 5 4.7 5" opacity=".55"/>
+    </symbol>
+    <symbol id="i-menu" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+      <path d="M3.5 6.6h13M3.5 10h13M3.5 13.4h8"/>
+    </symbol>
+    <symbol id="i-close" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+      <path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/>
+    </symbol>
+    <symbol id="i-boundary" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="2.6" opacity=".8"/>
+      <path d="M2.8 10h4.6M12.6 10h4.6" opacity=".55"/>
+    </symbol>
+    <symbol id="i-export" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 12.6V3.4M6.6 6.4 10 3l3.4 3.4"/><path d="M4 12.6v3a1.4 1.4 0 0 0 1.4 1.4h9.2a1.4 1.4 0 0 0 1.4-1.4v-3"/>
+    </symbol>
+    <symbol id="i-agent" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+      <circle cx="10" cy="10" r="3.2"/><circle cx="10" cy="10" r="6.8" stroke-dasharray="2.5 3.2" opacity=".6"/>
+    </symbol>
+    <symbol id="i-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 8l4 4 4-4"/>
+    </symbol>
+    <symbol id="i-more" viewBox="0 0 20 20" fill="currentColor" stroke="none">
+      <circle cx="4.5" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="15.5" cy="10" r="1.5"/>
+    </symbol>
+  </svg>
 
-      <div class="mast-tools">
-        <span id="status-pill" class="pill pill-idle">
-          <span class="pill-dot"></span><span id="status-label">Paused</span>
-        </span>
-        <button id="btn-theme" class="icon-btn" title="Toggle theme" aria-label="Toggle light/dark theme">
-          <span class="theme-glyph"></span>
-        </button>
+  <!-- ============================ TOPBAR ============================ -->
+  <header class="topbar" role="banner">
+    <button id="btn-nav-toggle" class="icon-btn nav-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="app-nav">
+      <svg width="18" height="18" aria-hidden="true"><use href="#i-menu"/></svg>
+    </button>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="24" height="24">
+          <circle cx="16" cy="16" r="13.5" class="bm-ring" />
+          <circle cx="16" cy="16" r="4" class="bm-core" />
+          <circle cx="16" cy="16" r="8.5" class="bm-mid" />
+        </svg>
       </div>
+      <h1 class="brand-name">Humanity</h1>
+      <span class="brand-crumb" aria-hidden="true">›</span>
+      <span id="topbar-view" class="topbar-view">Overview</span>
     </div>
 
-    <!-- Theory framing / disclaimer (THEORY_FRAMING_EN), sober. Overwritten at runtime from GET /state.framing -->
-    <p class="framing" id="framing-text">
-      This version is a good-faith attempt to implement, as faithfully as tractable, the
-      mechanisms that the major scientific theories of consciousness propose as constitutive
-      or necessary (GWT, AST, HOT, active inference, IIT&nbsp;— Phi proxy). It is a maximal
-      theoretical attempt&nbsp;: reproducing the functional mechanisms does not prove
-      phenomenality (the <em>hard problem</em>).
-    </p>
+    <div class="topbar-status">
+      <span id="status-pill" class="pill pill-idle">
+        <span class="pill-dot"></span><span id="status-label">Paused</span>
+      </span>
+      <span id="topbar-tick" class="chip chip-mono" title="Simulation tick">t 0</span>
+      <span id="topbar-agent" class="chip chip-mono" title="Instrument focus — the legacy endpoints observe agent 0" hidden>agent 0</span>
+    </div>
 
     <div class="transport">
       <div class="transport-buttons">
         <button id="btn-step" class="btn" title="POST /tick">
-          <span class="btn-kbd">Step</span>
+          <svg width="14" height="14" aria-hidden="true"><use href="#i-step"/></svg><span class="btn-kbd">Step</span>
         </button>
-        <button id="btn-start" class="btn btn-accent" title="POST /run">Start</button>
-        <button id="btn-pause" class="btn" title="POST /pause" disabled>Pause</button>
-        <button id="btn-reset" class="btn btn-quiet" title="POST /reset">Reset</button>
+        <button id="btn-start" class="btn btn-accent" title="POST /run">
+          <svg width="14" height="14" aria-hidden="true"><use href="#i-play"/></svg><span>Run</span>
+        </button>
+        <button id="btn-pause" class="btn" title="POST /pause" disabled>
+          <svg width="14" height="14" aria-hidden="true"><use href="#i-pause"/></svg><span>Pause</span>
+        </button>
+        <button id="btn-reset" class="btn btn-quiet" title="POST /reset">
+          <svg width="14" height="14" aria-hidden="true"><use href="#i-reset"/></svg><span>Reset</span>
+        </button>
       </div>
       <label class="tps-field" title="Ticks per second (POST /run)">
         <span>rate</span>
@@ -63,837 +147,1608 @@
         <span class="tps-unit">tps</span>
       </label>
     </div>
+
+    <div class="topbar-tools">
+      <button id="btn-probe" class="icon-btn" title="Causal probes (p)" aria-label="Open the probe dock">
+        <svg width="17" height="17" aria-hidden="true"><use href="#i-probe"/></svg>
+      </button>
+      <button id="btn-palette" class="icon-btn" title="Commands (Ctrl+K)" aria-label="Open the command palette">
+        <svg width="17" height="17" aria-hidden="true"><use href="#i-command"/></svg>
+      </button>
+      <button id="btn-theme" class="icon-btn" title="Toggle theme (t)" aria-label="Toggle light/dark theme">
+        <svg width="17" height="17" aria-hidden="true"><use href="#i-theme"/></svg>
+      </button>
+    </div>
   </header>
 
-  <main class="layout">
+  <!-- ============================ SIDEBAR ============================ -->
+  <nav id="app-nav" class="sidebar" aria-label="Views">
+    <ul class="nav-list">
+      <li><a class="nav-item" href="#/overview" data-nav="overview"><svg width="19" height="19" aria-hidden="true"><use href="#i-overview"/></svg><span class="nav-label">Overview</span><kbd aria-hidden="true">1</kbd></a></li>
+      <li><a class="nav-item" href="#/workspace" data-nav="workspace"><svg width="19" height="19" aria-hidden="true"><use href="#i-workspace"/></svg><span class="nav-label">Workspace</span><kbd aria-hidden="true">2</kbd></a></li>
+      <li><a class="nav-item" href="#/world" data-nav="world"><svg width="19" height="19" aria-hidden="true"><use href="#i-world"/></svg><span class="nav-label">World &amp; society</span><kbd aria-hidden="true">3</kbd></a></li>
+      <li><a class="nav-item" href="#/mind" data-nav="mind"><svg width="19" height="19" aria-hidden="true"><use href="#i-mind"/></svg><span class="nav-label">Mind</span><kbd aria-hidden="true">4</kbd></a></li>
+      <li><a class="nav-item" href="#/learning-language" data-nav="learning-language"><svg width="19" height="19" aria-hidden="true"><use href="#i-learning"/></svg><span class="nav-label">Learning &amp; language</span><kbd aria-hidden="true">5</kbd></a></li>
+      <li><a class="nav-item" href="#/laboratory" data-nav="laboratory"><svg width="19" height="19" aria-hidden="true"><use href="#i-laboratory"/></svg><span class="nav-label">Laboratory</span><kbd aria-hidden="true">6</kbd></a></li>
+      <li><a class="nav-item" href="#/memory" data-nav="memory"><svg width="19" height="19" aria-hidden="true"><use href="#i-memory"/></svg><span class="nav-label">Memory</span><kbd aria-hidden="true">7</kbd></a></li>
+      <li><a class="nav-item" href="#/settings" data-nav="settings"><svg width="19" height="19" aria-hidden="true"><use href="#i-settings"/></svg><span class="nav-label">Settings</span><kbd aria-hidden="true">8</kbd></a></li>
+    </ul>
+    <div class="nav-foot">
+      <p class="nav-boundary">The agent is not conscious, sentient, or alive.</p>
+      <button id="btn-nav-collapse" class="icon-btn" title="Collapse sidebar ([)" aria-label="Collapse the sidebar">
+        <svg width="16" height="16" aria-hidden="true"><use href="#i-collapse"/></svg>
+      </button>
+    </div>
+  </nav>
 
-    <!-- ===================== HERO — CONSCIOUS MOMENT ===================== -->
-    <section class="panel panel-hero" aria-labelledby="hero-title">
-      <div class="panel-head">
-        <h2 id="hero-title">Conscious moment</h2>
-        <span class="src">GET /agent/consciousness</span>
-      </div>
+  <main id="main" class="views" tabindex="-1">
 
-      <div class="hero-body">
-        <div class="ignition" id="ignition">
-          <div class="ignition-lamp" id="ignition-lamp" aria-hidden="true"></div>
-          <div class="ignition-meta">
-            <span class="ignition-state" id="ignition-state">—</span>
-            <span class="ignition-sub" id="ignition-sub">awaiting the stream</span>
+    <!-- ╔══════════════════════════ VIEW · OVERVIEW ══════════════════════════╗ -->
+    <section class="view" id="view-overview" data-view="overview" aria-labelledby="view-title-overview">
+      <header class="view-head">
+        <h2 id="view-title-overview" class="view-title">Overview</h2>
+        <p class="view-lede">The instrument at a glance — access, content, world, society.</p>
+      </header>
+
+      <div class="view-grid overview-grid">
+        <!-- HERO — conscious moment + Ignition Aperture -->
+        <section class="panel panel-hero" aria-labelledby="hero-title">
+          <div class="panel-head">
+            <h3 id="hero-title">Conscious moment</h3>
+            <span class="src">GET /agent/consciousness · /agent/workspace</span>
           </div>
-          <div class="ignition-gate" title="ignition score vs effective threshold (GET /agent/workspace)">
-            <div class="ig-track">
-              <div class="ig-fill" id="ig-fill"></div>
-              <div class="ig-thresh" id="ig-thresh"></div>
+
+          <div class="hero-layout">
+            <div class="aperture-block">
+              <svg id="aperture" class="aperture" viewBox="0 0 340 332" role="img"
+                   aria-label="Ignition aperture: no cycle yet"></svg>
+              <div class="ignition" id="ignition">
+                <div class="ignition-lamp" id="ignition-lamp" aria-hidden="true"></div>
+                <div class="ignition-meta">
+                  <span class="ignition-state" id="ignition-state">—</span>
+                  <span class="ignition-sub" id="ignition-sub">awaiting the stream</span>
+                </div>
+              </div>
+              <div class="ignition-gate" title="ignition score vs effective threshold (GET /agent/workspace)">
+                <div class="ig-track">
+                  <div class="ig-fill" id="ig-fill"></div>
+                  <div class="ig-thresh" id="ig-thresh"></div>
+                </div>
+                <span class="ig-readout mono"><b id="ig-score">0.000</b> / <span id="ig-eff">0.300</span></span>
+              </div>
+              <dl class="aperture-stats">
+                <div><dt>winner strength</dt><dd class="mono" id="ap-strength">—</dd></div>
+                <div><dt>dominance</dt><dd class="mono" id="ap-dominance">—</dd></div>
+                <div><dt>arousal</dt><dd class="mono" id="ap-arousal">—</dd></div>
+              </dl>
             </div>
-            <span class="ig-readout mono"><b id="ig-score">0.000</b> / <span id="ig-eff">0.300</span></span>
-          </div>
-        </div>
 
-        <blockquote class="moment-quote" id="moment-contents">
-          The simulation has not produced a moment yet.
-        </blockquote>
+            <div class="moment-block">
+              <blockquote class="moment-quote" id="moment-contents">
+                The simulation has not produced a moment yet.
+              </blockquote>
+              <div class="hero-stats">
+                <div class="stat">
+                  <span class="stat-k">Awareness level</span>
+                  <div class="meter" role="meter" aria-label="Awareness level" aria-valuemin="0" aria-valuemax="1"><div class="meter-fill" id="aw-fill"></div></div>
+                  <span class="stat-v mono" id="aw-val">0.000</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-k">Valence</span>
+                  <div class="meter meter-bipolar" role="meter" aria-label="Valence" aria-valuemin="-1" aria-valuemax="1"><div class="meter-zero"></div><div class="meter-fill" id="val-fill"></div></div>
+                  <span class="stat-v mono" id="val-val">0.00</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-k">Φ proxy</span>
+                  <div class="meter" role="meter" aria-label="Phi proxy" aria-valuemin="0" aria-valuemax="1"><div class="meter-fill" id="phi-fill"></div></div>
+                  <span class="stat-v mono" id="phi-val">0.000</span>
+                </div>
+              </div>
+              <p id="overview-cta" class="overview-cta">Press <b>Run</b> — or Step once (<kbd>s</kbd>) — to take the first reading.</p>
+            </div>
+          </div>
+        </section>
 
-        <div class="hero-stats">
-          <div class="stat">
-            <span class="stat-k">Awareness level</span>
-            <div class="meter"><div class="meter-fill" id="aw-fill"></div></div>
-            <span class="stat-v mono" id="aw-val">0.000</span>
+        <!-- 6 KPI echoes (canonical sparklines live in Laboratory) -->
+        <section class="panel panel-kpis" aria-labelledby="kpi-title">
+          <div class="panel-head">
+            <h3 id="kpi-title">Key indicators</h3>
+            <span class="src">echo · full grid in <a href="#/laboratory">Laboratory</a></span>
           </div>
-          <div class="stat">
-            <span class="stat-k">Valence</span>
-            <div class="meter meter-bipolar"><div class="meter-zero"></div><div class="meter-fill" id="val-fill"></div></div>
-            <span class="stat-v mono" id="val-val">0.00</span>
+          <div class="kpi-row" id="overview-kpis">
+            <div class="kpi" data-kpi="awareness_level"><span class="kpi-k">Awareness</span><span class="kpi-v mono" data-val>—</span><svg class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><path class="area" data-area></path><path data-line></path></svg></div>
+            <div class="kpi" data-kpi="phi_proxy"><span class="kpi-k">Φ proxy</span><span class="kpi-v mono" data-val>—</span><svg class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><path class="area" data-area></path><path data-line></path></svg></div>
+            <div class="kpi" data-kpi="arousal"><span class="kpi-k">Arousal</span><span class="kpi-v mono" data-val>—</span><svg class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><path class="area" data-area></path><path data-line></path></svg></div>
+            <div class="kpi" data-kpi="prediction_error"><span class="kpi-k">Prediction err.</span><span class="kpi-v mono" data-val>—</span><svg class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><path class="area" data-area></path><path data-line></path></svg></div>
+            <div class="kpi" data-kpi="free_energy"><span class="kpi-k">Free energy</span><span class="kpi-v mono" data-val>—</span><svg class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><path class="area" data-area></path><path data-line></path></svg></div>
+            <div class="kpi" data-kpi="energy"><span class="kpi-k">Energy</span><span class="kpi-v mono" data-val>—</span><svg class="kpi-spark" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><path class="area" data-area></path><path data-line></path></svg></div>
           </div>
-          <div class="stat">
-            <span class="stat-k">Φ proxy</span>
-            <div class="meter"><div class="meter-fill" id="phi-fill"></div></div>
-            <span class="stat-v mono" id="phi-val">0.000</span>
-          </div>
-        </div>
+        </section>
 
-        <div class="stream">
-          <div class="stream-head">
-            <span class="stream-title">Stream of consciousness</span>
+        <!-- Winning sources (echo of Access dynamics) -->
+        <section class="panel panel-sources" aria-labelledby="sources-title">
+          <div class="panel-head">
+            <h3 id="sources-title">Winning sources</h3>
+            <span class="src">echo · full dynamics in <a href="#/workspace">Workspace</a></span>
+          </div>
+          <div id="overview-stream" class="horizon-stream horizon-stream-compact" role="img"
+               aria-label="No dominant-source moments recorded yet"></div>
+          <p class="micro">Each bar is one recent moment — height is awareness, colour identifies the dominant source, full saturation marks ignition. An access timeline, not a measure of experience.</p>
+        </section>
+
+        <!-- World + society miniatures -->
+        <section class="panel panel-minis" aria-labelledby="minis-title">
+          <div class="panel-head">
+            <h3 id="minis-title">World &amp; society</h3>
+            <span class="src">live miniatures · open <a href="#/world">World</a></span>
+          </div>
+          <div class="mini-row">
+            <a class="mini-link" href="#/world" aria-label="Open the world view">
+              <canvas id="overview-world-mini" width="220" height="220" aria-hidden="true"></canvas>
+              <span class="mini-cap">World</span>
+            </a>
+            <a class="mini-link" href="#/world" aria-label="Open the society view">
+              <canvas id="overview-society-mini" width="220" height="220" aria-hidden="true"></canvas>
+              <span class="mini-cap">Society <span class="mono" id="overview-nagents"></span></span>
+            </a>
+          </div>
+        </section>
+
+        <!-- About / epistemic charter echo -->
+        <section class="panel panel-about" aria-labelledby="about-title">
+          <div class="panel-head">
+            <h3 id="about-title">About this instrument</h3>
+            <span class="src">framing · served verbatim</span>
+          </div>
+          <p class="framing" id="framing-text">
+            This version is a good-faith attempt to implement, as faithfully as tractable, the
+            mechanisms that the major scientific theories of consciousness propose as constitutive
+            or necessary (GWT, AST, HOT, active inference, IIT&nbsp;— Phi proxy). It is a maximal
+            theoretical attempt&nbsp;: reproducing the functional mechanisms does not prove
+            phenomenality (the <em>hard problem</em>).
+          </p>
+          <button class="btn btn-quiet" data-open-charter>Framing &amp; sources</button>
+        </section>
+      </div>
+    </section>
+
+    <!-- ╔══════════════════════════ VIEW · WORKSPACE ══════════════════════════╗ -->
+    <section class="view" id="view-workspace" data-view="workspace" aria-labelledby="view-title-workspace" hidden>
+      <header class="view-head">
+        <h2 id="view-title-workspace" class="view-title">Workspace</h2>
+        <p class="view-lede">Coalition competition, global access, attention schema and higher-order reports.</p>
+      </header>
+
+      <div class="view-grid workspace-grid">
+        <section class="panel panel-workspace" aria-labelledby="ws-title">
+          <div class="panel-head">
+            <h3 id="ws-title">Global workspace</h3>
+            <span class="src">GET /agent/workspace · GWT</span>
+          </div>
+          <!-- Decision banner: the honest scale for score vs threshold (kept out of the bars) -->
+          <div class="ws-decision" id="threshold-line">
+            <span class="threshold-tag">effective threshold <b class="mono" id="threshold-val">0.300</b></span>
+            <span class="ws-score-tag">score <b class="mono" id="ws-score">—</b></span>
+            <span class="ws-verdict" id="ws-verdict">—</span>
+          </div>
+          <div class="ws-readout">
+            <span class="ws-broadcast">broadcast <b class="mono" id="ws-broadcast">0.000</b></span>
+            <span class="ws-winner" id="ws-winner">—</span>
+          </div>
+          <div class="arousal-row" title="Arousal / vigilance — GET /state · arousal (modulates the effective threshold)">
+            <span class="arousal-k">Arousal / vigilance</span>
+            <div class="meter arousal-meter" role="meter" aria-label="Arousal" aria-valuemin="0" aria-valuemax="1">
+              <div class="meter-fill" id="arousal-fill"></div>
+              <div class="arousal-baseline" id="arousal-baseline-mark"></div>
+            </div>
+            <span class="stat-v mono" id="arousal-val">0.000</span>
+          </div>
+          <div class="coalitions" id="coalitions"></div>
+          <details class="disclosure">
+            <summary>How ignition works</summary>
+            <p class="micro">Each bar is a specialized coalition competing for global access; bar length is its <b>softmax share of the broadcast field</b> (shares sum to 1). Ignition is decided on a different, absolute scale — the winner's strength × dominance, modulated by arousal, against the <b>effective threshold</b> shown above. A score beyond it&nbsp;: ignition + broadcast (conscious access).</p>
+          </details>
+          <details class="disclosure">
+            <summary>Data table</summary>
+            <table class="data-table" id="coalition-table">
+              <caption class="sr-only">Coalitions competing for global access, sorted by decreasing share</caption>
+              <thead><tr><th scope="col">Source</th><th scope="col">Content</th><th scope="col">Share</th><th scope="col">Precision</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </details>
+        </section>
+
+        <section class="panel panel-ast" aria-labelledby="ast-title">
+          <div class="panel-head">
+            <h3 id="ast-title">Attention schema</h3>
+            <span class="src">AST · /agent/consciousness</span>
+          </div>
+          <div class="kv-line">
+            <span class="kv-k">aware of</span>
+            <span class="kv-v" id="ast-aware">—</span>
+          </div>
+          <div class="stat">
+            <span class="stat-k">Attentional stability</span>
+            <div class="meter" role="meter" aria-label="Attentional stability" aria-valuemin="0" aria-valuemax="1"><div class="meter-fill" id="ast-stab-fill"></div></div>
+            <span class="stat-v mono" id="ast-stab-val">0.000</span>
+          </div>
+          <p class="report-voice" id="ast-attributed">—</p>
+        </section>
+
+        <section class="panel panel-hot" aria-labelledby="hot-title">
+          <div class="panel-head">
+            <h3 id="hot-title">Metacognition</h3>
+            <span class="src">HOT · /agent/consciousness</span>
+          </div>
+          <div class="gauges">
+            <div class="stat">
+              <span class="stat-k">meta-confidence</span>
+              <div class="meter" role="meter" aria-label="Meta-confidence" aria-valuemin="0" aria-valuemax="1"><div class="meter-fill" id="g-meta"></div></div>
+              <span class="stat-v mono" id="meta-conf-val">0.00</span>
+            </div>
+            <div class="stat">
+              <span class="stat-k">perception reliability</span>
+              <div class="meter" role="meter" aria-label="Perception reliability" aria-valuemin="0" aria-valuemax="1"><div class="meter-fill" id="g-perc"></div></div>
+              <span class="stat-v mono" id="perc-rel-val">0.00</span>
+            </div>
+            <div class="stat">
+              <span class="stat-k">prediction reliability</span>
+              <div class="meter" role="meter" aria-label="Prediction reliability" aria-valuemin="0" aria-valuemax="1"><div class="meter-fill" id="g-pred"></div></div>
+              <span class="stat-v mono" id="pred-rel-val">0.00</span>
+            </div>
+          </div>
+          <p class="report-voice" id="hot-report">—</p>
+        </section>
+
+        <section class="panel panel-stream" aria-labelledby="stream-title">
+          <div class="panel-head">
+            <h3 id="stream-title">Stream of consciousness</h3>
             <span class="src">GET /agent/stream</span>
           </div>
-          <div class="stream-track" id="stream-track"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===================== GLOBAL WORKSPACE ===================== -->
-    <section class="panel panel-workspace" aria-labelledby="ws-title">
-      <div class="panel-head">
-        <h2 id="ws-title">Global workspace</h2>
-        <span class="src">GET /agent/workspace · GWT</span>
-      </div>
-      <div class="ws-readout">
-        <span class="ws-broadcast">broadcast <b class="mono" id="ws-broadcast">0.000</b></span>
-        <span class="ws-winner" id="ws-winner">—</span>
-      </div>
-      <div class="arousal-row" title="Arousal / vigilance — GET /state · arousal (modulates the effective threshold)">
-        <span class="arousal-k">Arousal / vigilance</span>
-        <div class="meter arousal-meter">
-          <div class="meter-fill" id="arousal-fill"></div>
-          <div class="arousal-baseline" id="arousal-baseline-mark"></div>
-        </div>
-        <span class="stat-v mono" id="arousal-val">0.000</span>
-      </div>
-      <div class="coalitions" id="coalitions">
-        <div class="threshold-line" id="threshold-line">
-          <span class="threshold-tag">effective threshold <b class="mono" id="threshold-val">0.300</b></span>
-        </div>
-      </div>
-      <p class="micro">Each bar is a specialized coalition competing for global access. The displayed threshold is the <b>effective threshold</b> — the nominal threshold modulated by arousal and homeostasis. An ignition score beyond it&nbsp;: ignition + broadcast (conscious access).</p>
-    </section>
-
-    <!-- ===================== METRICS STRIP ===================== -->
-    <section class="panel panel-metrics" aria-labelledby="met-title">
-      <div class="panel-head">
-        <h2 id="met-title">Indicators</h2>
-        <span class="src">GET /metrics · /agent/consciousness</span>
-      </div>
-      <div class="metric-grid" id="metric-grid"></div>
-    </section>
-
-    <!-- ===================== DEEP CONSCIOUSNESS (Phase 2) ===================== -->
-    <section class="panel panel-deep" aria-labelledby="deep-title">
-      <div class="panel-head">
-        <h2 id="deep-title">Deep consciousness</h2>
-        <span class="src">Phase 2 · /tick · /state</span>
-      </div>
-      <div class="deep-grid">
-        <div class="deep-cell">
-          <canvas id="circadian-dial" width="120" height="120" aria-label="Circadian day/night dial"></canvas>
-          <span class="deep-k">circadian</span>
-        </div>
-        <div class="deep-cell">
-          <span class="deep-k">sleep</span>
-          <span class="deep-v" id="sleep-state">awake</span>
-          <span class="deep-dream" id="dream-line"></span>
-        </div>
-        <div class="deep-cell">
-          <span class="deep-k">agency</span>
-          <div class="meter"><div class="meter-fill" id="agency-fill"></div></div>
-          <span class="stat-v mono" id="agency-val">0.00</span>
-        </div>
-        <div class="deep-cell">
-          <span class="deep-k">boredom / curiosity</span>
-          <div class="meter"><div class="meter-fill" id="boredom-fill"></div></div>
-          <span class="stat-v mono" id="boredom-val">0.00</span>
-        </div>
-        <div class="deep-cell deep-wide">
-          <span class="deep-k">imagined plan</span>
-          <span class="deep-v mono" id="imagined-plan">—</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===================== LEARNING & PERSONALITY (Phase 3) ===================== -->
-    <section class="panel panel-learning" aria-labelledby="lp-title">
-      <div class="panel-head">
-        <h2 id="lp-title">Learning &amp; personality</h2>
-        <span class="src">Phase 3 · /tick · /metrics</span>
-      </div>
-      <div class="lp-grid">
-        <div class="lp-cell lp-wide">
-          <span class="deep-k">learned action values</span>
-          <div id="q-bars" class="rows"></div>
-        </div>
-        <div class="lp-cell">
-          <span class="deep-k">dominant concept</span>
-          <span class="deep-v mono" id="concept-state">—</span>
-        </div>
-        <div class="lp-cell">
-          <span class="deep-k">effective learning rate</span>
-          <span class="deep-v mono" id="elr-val">—</span>
-        </div>
-        <div class="lp-cell personality-card lp-wide">
-          <span class="deep-k">personality</span>
-          <span class="deep-v" id="personality-label">nascent</span>
-          <div id="personality-traits" class="personality-traits"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===================== THE ASYMPTOTE (Phase 5) ===================== -->
-    <section class="panel panel-asymptote" aria-labelledby="asy-title">
-      <div class="panel-head">
-        <h2 id="asy-title">The asymptote</h2>
-        <span class="src">Phase 5 · /tick — level 2 pushed further; never level 1</span>
-      </div>
-      <div class="deep-grid">
-        <div class="deep-cell">
-          <span class="deep-k">presence (interoceptive fit)</span>
-          <div class="meter"><div class="meter-fill" id="presence-fill"></div></div>
-          <span class="stat-v mono" id="presence-val">—</span>
-        </div>
-        <div class="deep-cell">
-          <span class="deep-k">temporal thickness</span>
-          <span class="deep-v mono" id="specious-val">—</span>
-          <span class="deep-dream" id="protention-line"></span>
-        </div>
-        <div class="deep-cell">
-          <span class="deep-k">Φ_AR (Barrett–Seth)</span>
-          <span class="deep-v mono" id="phi-ar-val">—</span>
-          <span class="deep-dream mono" id="phi-ar-mib"></span>
-        </div>
-        <div class="deep-cell">
-          <span class="deep-k">recurrent perception</span>
-          <span class="deep-v mono" id="recurrence-state">—</span>
-        </div>
-        <div class="deep-cell deep-wide">
-          <span class="deep-k">reality monitoring (PRM)</span>
-          <span class="deep-v" id="reality-verdict">—</span>
-          <span class="deep-dream" id="reality-report"></span>
-        </div>
-        <div class="deep-cell deep-wide">
-          <span class="deep-k">inner speech <span class="micro" id="reentry-count"></span></span>
-          <span class="deep-v" id="inner-speech-line">—</span>
-          <div class="lab-row" style="margin-top:6px">
-            <button id="btn-inner-voice" class="btn btn-quiet" title="POST /agent/inner-voice — one LLM utterance from the real moment, queued into the NEXT ignition competition (needs the inner speech mechanism on)">Inner voice (LLM)</button>
-            <span id="inner-voice-status" class="micro"></span>
+          <div class="stream">
+            <div class="stream-track" id="stream-track"></div>
           </div>
-        </div>
-      </div>
-      <p class="micro">Every readout above is a level-2 variable (RPT · PRM · interoceptive inference · retention/protention · Vygotskian re-entry · Φ_AR). Reproducing the functional mechanisms does not prove phenomenality; the agent is not conscious.</p>
-    </section>
+        </section>
 
-    <!-- ===================== THE HORIZON (Phase 7) ===================== -->
-    <section class="panel panel-horizon" aria-labelledby="horizon-title">
-      <div class="panel-head">
-        <h2 id="horizon-title">The horizon</h2>
-        <span class="src">Phase 7 · exact mechanisms, coarse-grained substrates</span>
-      </div>
-      <p class="horizon-lede">The remaining functional frontier, exposed as level-2 mechanism variables. These readouts describe computation on simplified substrates; they are not evidence of experience, understanding, or consciousness.</p>
-      <div id="horizon-readouts" class="horizon-readouts"></div>
-      <div id="horizon-task" class="horizon-task">World task system dormant.</div>
-      <div class="horizon-profile-actions">
-        <button type="button" class="btn btn-accent" id="btn-horizon-profile">Activate all Phase 7</button>
-        <button type="button" class="btn btn-quiet" id="btn-export-analysis">Export analysis</button>
-      </div>
-    </section>
-
-    <section class="panel panel-dynamics" aria-labelledby="dynamics-title">
-      <div class="panel-head">
-        <h2 id="dynamics-title">Access dynamics</h2>
-        <span class="src">ignition score · effective threshold · source timeline</span>
-      </div>
-      <canvas id="ignition-chart" width="720" height="260"
-              aria-label="Ignition score and effective-threshold history"
-              aria-describedby="ignition-chart-summary"></canvas>
-      <p id="ignition-chart-summary" class="micro chart-summary">No access-dynamics samples yet.</p>
-      <div id="horizon-stream" class="horizon-stream" role="img"
-           aria-label="No dominant-source moments recorded yet"></div>
-      <p class="micro horizon-stream-note">Each bar is one recent moment: height is awareness, colour identifies the dominant source, and full saturation marks workspace ignition. This is an access timeline, not a measure of experience.</p>
-    </section>
-
-    <section class="panel panel-memory-graph" aria-labelledby="memory-graph-title">
-      <div class="panel-head">
-        <h2 id="memory-graph-title">Autobiographical topology</h2>
-        <span class="src">GET /agent/memory/graph · deterministic semantic index</span>
-      </div>
-      <form id="memory-search-form" class="memory-search">
-        <label for="memory-search-input">Search stored episodes</label>
-        <div class="memory-search-control">
-          <input id="memory-search-input" name="q" type="search" maxlength="200"
-                 autocomplete="off" placeholder="Search the agent’s stored episodes…" />
-          <button class="btn btn-quiet" type="submit">Search</button>
-        </div>
-      </form>
-      <div id="memory-search-results" class="memory-search-results" aria-live="polite"></div>
-      <div class="memory-graph-shell">
-        <canvas id="memory-graph" width="720" height="440" tabindex="0"
-                aria-label="Similarity graph of autobiographical memories"
-                aria-describedby="memory-graph-summary memory-graph-nodes memory-graph-edges"></canvas>
-        <div id="memory-graph-tooltip" class="graph-tooltip" hidden></div>
-      </div>
-      <p id="memory-graph-summary" class="micro chart-summary" aria-live="polite">No indexed memories yet.</p>
-      <ol id="memory-graph-nodes" class="sr-only" aria-label="Indexed autobiographical memory nodes"></ol>
-      <ol id="memory-graph-edges" class="sr-only" aria-label="Autobiographical memory similarity edges"></ol>
-      <p id="memory-graph-selection" class="sr-only" aria-live="polite"></p>
-    </section>
-
-    <!-- ===================== LABORATORY (Phase 4) ===================== -->
-    <section class="panel panel-lab" aria-labelledby="lab-title">
-      <div class="panel-head">
-        <h2 id="lab-title">Laboratory</h2>
-        <span class="src">Phase 4 · scientific instrument</span>
-      </div>
-
-      <div class="lab-chart-controls">
-        <label>metric
-          <select id="lab-metric">
-            <option value="energy">energy</option>
-            <option value="agency">agency</option>
-            <option value="phi_proxy">Φ proxy</option>
-            <option value="phi_ar">Φ_AR (Barrett–Seth)</option>
-            <option value="presence">presence (interoceptive)</option>
-            <option value="temporal_surprise">temporal surprise</option>
-            <option value="reality_accuracy">reality-monitor accuracy</option>
-            <option value="language_success">language success (naming game)</option>
-            <option value="vocabulary_size">vocabulary size</option>
-            <option value="prediction_error">prediction error</option>
-            <option value="arousal">arousal</option>
-          </select>
-        </label>
-        <span class="src">GET /metrics/history</span>
-      </div>
-      <canvas id="lab-chart" width="560" height="220" aria-label="Metrics time series"></canvas>
-
-      <div class="lab-row">
-        <button id="btn-export-csv" class="btn btn-quiet">Export CSV</button>
-        <button id="btn-export-json" class="btn btn-quiet">Export JSON</button>
-      </div>
-
-      <h3 class="sub">Scenario</h3>
-      <textarea id="lab-scenario" rows="5" class="lab-scenario"
-        placeholder='{"name":"demo","config":{"n_agents":2},"ticks":20,"seed":7,"interventions":[{"at_tick":3,"type":"stimulus","params":{"kind":"hazard","intensity":2}}]}'></textarea>
-      <div class="lab-row">
-        <button id="btn-scenario-run" class="btn btn-accent">Run scenario</button>
-        <span id="lab-scenario-summary" class="micro"></span>
-      </div>
-
-      <h3 class="sub">Functional test battery</h3>
-      <div class="lab-row">
-        <button id="btn-mirror" class="btn btn-quiet">Mirror</button>
-        <button id="btn-false-memory" class="btn btn-quiet">False memory</button>
-        <button id="btn-calibration" class="btn btn-quiet">Calibration</button>
-        <button id="btn-relational-self" class="btn btn-quiet">Relational self</button>
-      </div>
-      <div class="lab-row" title="Phase 5 — the classic experimental signatures of conscious ACCESS, reproduced on the workspace mechanism">
-        <button id="btn-masking" class="btn btn-quiet">Masking</button>
-        <button id="btn-blink" class="btn btn-quiet">Attentional blink</button>
-        <button id="btn-priming" class="btn btn-quiet">Subliminal priming</button>
-        <button id="btn-reality-monitor" class="btn btn-quiet">Reality monitoring</button>
-        <button id="btn-language-genesis" class="btn btn-quiet" title="Runs the same society with the language drive ON vs OFF and measures whether a shared lexicon emerges (~20s)">Language genesis</button>
-      </div>
-      <p id="lab-battery-result" class="report-voice"></p>
-      <p id="lab-disclaimer" class="lab-disclaimer">Functional measurements only — these probes do NOT prove consciousness or subjective experience.</p>
-
-      <h3 class="sub">LLM functional probes <span class="micro">— not consciousness tests</span></h3>
-      <div class="lab-row">
-        <button id="btn-audit" class="btn">Grounding audit</button>
-        <button id="btn-report-card" class="btn">Report card</button>
-        <span id="llmprobe-status" class="micro"></span>
-      </div>
-      <div id="audit-result" class="rows" hidden></div>
-      <blockquote id="report-card-out" class="moment-quote" hidden></blockquote>
-      <p class="report-note micro">The grounding audit scores whether the agent's self-reports match its real internal variables (reportability fidelity) — a functional measurement, NOT evidence of consciousness.</p>
-
-      <h3 class="sub">The language organ <span class="micro">— LLM renderings of the real state; never a witness</span></h3>
-      <div class="lab-row">
-        <button id="btn-biography" class="btn" title="POST /agent/biography — the life story written from the agent's REAL episodic memory">Biography</button>
-        <button id="btn-cross-examine" class="btn" title="POST /agent/cross-examine — the strongest honest case for AND against, and why it is undecidable">Cross-examination</button>
-        <span id="organ-status" class="micro"></span>
-      </div>
-      <blockquote id="biography-out" class="moment-quote" hidden></blockquote>
-      <div id="crossx-out" class="rows" hidden></div>
-      <p class="report-note micro">The cross-examination builds the strongest case the mechanisms and scores honestly support — and the strongest rebuttal. Its verdict is always the same, because it has to be: the question is undecidable in principle (the hard problem). No LLM output justifies consciousness.</p>
-
-      <h3 class="sub">Fast training</h3>
-      <div class="lab-row">
-        <label class="tps-field" title="Number of ticks to run at maximum speed">
-          <span>ticks</span>
-          <input id="train-ticks" type="number" min="1" max="100000" step="100" value="1000" />
-        </label>
-        <button id="btn-fast-train" class="btn btn-accent">Train (fast)</button>
-        <span id="train-result" class="micro"></span>
-      </div>
-      <p class="micro">Disables per-tick disk I/O (in-RAM memory, no trace write) then runs the ticks back-to-back. Re-enable persistence via the toggles to resume the live instrument.</p>
-
-      <h3 class="sub">Theory coverage <span class="micro" id="coverage-count"></span></h3>
-      <div id="coverage-list" class="rows"></div>
-      <p class="micro">Which mechanisms the major theories propose that this project implements, and which are active now (GET /agent/coverage). A coverage checklist over level-2 mechanisms — NOT a consciousness score, and NOT a distance to level 1.</p>
-
-      <h3 class="sub">Checkpoints</h3>
-      <div class="lab-row">
-        <label class="tps-field" title="Checkpoint name"><span>name</span>
-          <input id="ckpt-name" type="text" value="run" /></label>
-        <button id="btn-ckpt-save" class="btn btn-accent">Save run</button>
-        <span id="ckpt-status" class="micro"></span>
-      </div>
-      <div id="ckpt-list" class="rows"></div>
-      <p class="micro">Save the full run (world, agents, learned state, memory, RNG). Load one to resume exactly where it was — until you Reset.</p>
-    </section>
-
-    <!-- ===================== WORLD ===================== -->
-    <section class="panel panel-world" aria-labelledby="world-title">
-      <div class="panel-head">
-        <h2 id="world-title">World</h2>
-        <span class="src" id="world-meta">tick 0 · GET /state</span>
-      </div>
-      <div class="world-wrap">
-        <canvas id="world-canvas" width="560" height="560" tabindex="0"
-          aria-label="Interactive view of the simulated world"
-          aria-describedby="world-interaction-help"></canvas>
-      </div>
-      <div class="world-interaction-tools" aria-label="Clickable-world stimulus controls">
-        <label for="world-stimulus-kind">Place</label>
-        <select id="world-stimulus-kind">
-          <option value="food">Food</option>
-          <option value="hazard">Hazard</option>
-          <option value="tool">Tool</option>
-          <option value="curio">Curio</option>
-        </select>
-        <label for="world-stimulus-intensity">Intensity</label>
-        <input id="world-stimulus-intensity" type="number" min="0.1" max="5" step="0.1" value="1" />
-        <span id="world-interaction-status" class="micro" aria-live="polite">Cell cursor ready.</span>
-      </div>
-      <p id="world-interaction-help" class="micro world-interaction-help">
-        Click a cell to inject the selected object. Keyboard: focus the grid, move with the arrow keys, then press Enter.
-      </p>
-      <div class="legend">
-        <span class="lg"><i class="dot dot-agent"></i>Agent</span>
-        <span class="lg"><i class="dot dot-food"></i>Food</span>
-        <span class="lg"><i class="dot dot-hazard"></i>Hazard</span>
-        <span class="lg"><i class="dot dot-tool"></i>Tool</span>
-        <span class="lg"><i class="dot dot-curio"></i>Curiosity</span>
+        <section class="panel panel-dynamics" aria-labelledby="dynamics-title">
+          <div class="panel-head">
+            <h3 id="dynamics-title">Access dynamics</h3>
+            <span class="src">ignition score · effective threshold · source timeline</span>
+          </div>
+          <div class="chart-shell">
+            <canvas id="ignition-chart" width="720" height="260" tabindex="0"
+                    aria-label="Ignition score and effective-threshold history"
+                    aria-describedby="ignition-chart-summary"></canvas>
+          </div>
+          <div class="chart-legend" aria-hidden="true">
+            <span class="lg"><i class="swatch swatch-score"></i>score</span>
+            <span class="lg"><i class="swatch swatch-threshold"></i>effective threshold</span>
+            <span class="lg"><i class="swatch swatch-ignited"></i>ignition</span>
+          </div>
+          <p id="dynamics-readout" class="micro mono dynamics-readout">Focus the chart and use ←/→ to inspect samples.</p>
+          <p id="ignition-chart-summary" class="micro chart-summary">No access-dynamics samples yet.</p>
+          <div id="horizon-stream" class="horizon-stream" role="img"
+               aria-label="No dominant-source moments recorded yet"></div>
+          <div id="source-legend" class="source-legend"></div>
+          <p class="micro horizon-stream-note">Each bar is one recent moment: height is awareness, colour identifies the dominant source, and full saturation marks workspace ignition. This is an access timeline, not a measure of experience.</p>
+        </section>
       </div>
     </section>
 
-    <!-- ===================== SOCIETY ===================== -->
-    <section class="panel panel-society" aria-labelledby="soc-title">
-      <div class="panel-head">
-        <h2 id="soc-title">Society</h2>
-        <span class="src">GET /society · multi-agent</span>
-      </div>
-      <div class="soc-controls">
-        <label class="tps-field" title="Number of agents (POST /society/config)">
-          <span>agents</span>
-          <input id="input-nagents" type="number" min="1" max="8" step="1" value="1" />
-        </label>
-        <button id="btn-society-apply" class="btn btn-quiet">Apply</button>
-        <span id="soc-selected" class="micro">viewing agent 0</span>
-      </div>
-      <canvas id="society-canvas" width="560" height="560" aria-label="Society world"></canvas>
-      <div id="society-relations" class="rows"></div>
-    </section>
+    <!-- ╔══════════════════════════ VIEW · WORLD & SOCIETY ══════════════════════════╗ -->
+    <section class="view" id="view-world" data-view="world" aria-labelledby="view-title-world" hidden>
+      <header class="view-head">
+        <h2 id="view-title-world" class="view-title">World &amp; society</h2>
+        <p class="view-lede">The shared grid world, its objects, and the agents living in it.</p>
+      </header>
 
-    <!-- ===================== EXPERIMENTAL INTERVENTIONS ===================== -->
-    <section class="panel panel-interventions" id="experimental-interventions"
-      aria-labelledby="interventions-title">
-      <div class="panel-head">
-        <h2 id="interventions-title">Experimental interventions</h2>
-        <span class="src">five causal probes &middot; live state &middot; exact endpoints</span>
-      </div>
-      <p class="intervention-lede">
-        Perturb one mechanism at a time and inspect the response in the same instrument. These are controlled functional probes, not tests of phenomenal experience.
-      </p>
-
-      <div class="intervention-tabs" id="intervention-tabs" role="tablist"
-        aria-label="Intervention modality">
-        <button type="button" role="tab" id="intervention-tab-ask" aria-controls="intervention-ask"
-          aria-selected="true" tabindex="0" data-intervention="ask" data-endpoint="/agent/ask">
-          <span>01</span> Ask <code>POST /agent/ask</code>
-        </button>
-        <button type="button" role="tab" id="intervention-tab-stimulus" aria-controls="intervention-stimulus"
-          aria-selected="false" tabindex="-1" data-intervention="stimulus" data-endpoint="/world/stimulus">
-          <span>02</span> Stimulus <code>POST /world/stimulus</code>
-        </button>
-        <button type="button" role="tab" id="intervention-tab-inject" aria-controls="intervention-inject"
-          aria-selected="false" tabindex="-1" data-intervention="inject" data-endpoint="/agent/inject">
-          <span>03</span> Inject <code>POST /agent/inject</code>
-        </button>
-        <button type="button" role="tab" id="intervention-tab-attend" aria-controls="intervention-attend"
-          aria-selected="false" tabindex="-1" data-intervention="attend" data-endpoint="/agent/attend">
-          <span>04</span> Attend <code>POST /agent/attend</code>
-        </button>
-        <button type="button" role="tab" id="intervention-tab-perturb" aria-controls="intervention-perturb"
-          aria-selected="false" tabindex="-1" data-intervention="perturb" data-endpoint="/agent/perturb">
-          <span>05</span> Perturb <code>POST /agent/perturb</code>
-        </button>
-      </div>
-
-      <div class="intervention-workbench">
-        <div class="intervention-deck">
-          <form class="intervention-form" id="intervention-ask" role="tabpanel"
-            aria-labelledby="intervention-tab-ask" data-intervention-panel="ask" data-endpoint="/agent/ask">
-            <div class="intervention-form-head">
-              <h3>Grounded introspective report</h3>
-              <code>AskRequest &rarr; AskResponse</code>
-            </div>
-            <label for="intervention-ask-question">Question</label>
-            <textarea id="intervention-ask-question" rows="3" maxlength="500" required>What are you attending to?</textarea>
-            <label for="intervention-ask-intent">Intent override</label>
-            <select id="intervention-ask-intent">
-              <option value="">Auto-detect</option>
-              <option value="attention">Attention</option>
-              <option value="reason">Reason</option>
-              <option value="memory">Memory</option>
-              <option value="feeling">Feeling</option>
-              <option value="identity">Identity</option>
-              <option value="prediction">Prediction</option>
-              <option value="consciousness">Consciousness</option>
+      <div class="view-grid world-grid">
+        <section class="panel panel-world" aria-labelledby="world-title">
+          <div class="panel-head">
+            <h3 id="world-title">World</h3>
+            <span class="src" id="world-meta">tick 0 · GET /state</span>
+          </div>
+          <div class="world-interaction-tools" aria-label="Clickable-world stimulus controls">
+            <label for="world-stimulus-kind">Place</label>
+            <select id="world-stimulus-kind">
+              <option value="food">Food</option>
+              <option value="hazard">Hazard</option>
+              <option value="tool">Tool</option>
+              <option value="curio">Curio</option>
             </select>
-            <button type="submit" class="btn btn-accent">Run dialogue probe</button>
-          </form>
-
-          <form class="intervention-form" id="intervention-stimulus" role="tabpanel" hidden
-            aria-labelledby="intervention-tab-stimulus" data-intervention-panel="stimulus" data-endpoint="/world/stimulus">
-            <div class="intervention-form-head">
-              <h3>Bottom-up world stimulus</h3>
-              <code>WorldStimulus &rarr; perception</code>
-            </div>
-            <div class="intervention-fields two-up">
-              <div><label for="intervention-stimulus-kind">Object kind</label>
-                <select id="intervention-stimulus-kind"><option value="food">Food</option><option value="hazard">Hazard</option><option value="tool">Tool</option><option value="curio">Curio</option></select></div>
-              <div><label for="intervention-stimulus-intensity">Intensity</label>
-                <input id="intervention-stimulus-intensity" type="number" min="0.1" max="5" step="0.1" value="1" required /></div>
-              <div><label for="intervention-stimulus-x">Grid x <span>optional</span></label>
-                <input id="intervention-stimulus-x" type="number" min="0" step="1" placeholder="near agent" /></div>
-              <div><label for="intervention-stimulus-y">Grid y <span>optional</span></label>
-                <input id="intervention-stimulus-y" type="number" min="0" step="1" placeholder="near agent" /></div>
-            </div>
-            <button type="submit" class="btn btn-accent">Inject world object</button>
-          </form>
-
-          <form class="intervention-form" id="intervention-inject" role="tabpanel" hidden
-            aria-labelledby="intervention-tab-inject" data-intervention-panel="inject" data-endpoint="/agent/inject">
-            <div class="intervention-form-head">
-              <h3>Workspace coalition injection</h3>
-              <code>CognitiveInjection &rarr; competition</code>
-            </div>
-            <label for="intervention-inject-content">Coalition content</label>
-            <textarea id="intervention-inject-content" rows="3" maxlength="500" required>externally injected signal</textarea>
-            <div class="intervention-fields three-up">
-              <div><label for="intervention-inject-activation">Activation</label><input id="intervention-inject-activation" type="number" min="0" max="1" step="0.01" value="0.85" required /></div>
-              <div><label for="intervention-inject-precision">Precision</label><input id="intervention-inject-precision" type="number" min="0" max="1" step="0.01" value="0.9" required /></div>
-              <div><label for="intervention-inject-ttl">TTL</label><input id="intervention-inject-ttl" type="number" min="1" max="100" step="1" value="1" required /></div>
-            </div>
-            <button type="submit" class="btn btn-accent">Queue coalition</button>
-          </form>
-
-          <form class="intervention-form" id="intervention-attend" role="tabpanel" hidden
-            aria-labelledby="intervention-tab-attend" data-intervention-panel="attend" data-endpoint="/agent/attend">
-            <div class="intervention-form-head">
-              <h3>Top-down attention steering</h3>
-              <code>AttendRequest &rarr; AST bias</code>
-            </div>
-            <div class="intervention-fields three-up">
-              <div><label for="intervention-attend-target">Target object ID</label><input id="intervention-attend-target" type="number" min="0" step="1" value="0" required /></div>
-              <div><label for="intervention-attend-strength">Strength</label><input id="intervention-attend-strength" type="number" min="0" max="10" step="0.1" value="1" required /></div>
-              <div><label for="intervention-attend-ttl">TTL</label><input id="intervention-attend-ttl" type="number" min="1" max="100" step="1" value="3" required /></div>
-            </div>
-            <button type="submit" class="btn btn-accent">Bias attention</button>
-          </form>
-
-          <form class="intervention-form" id="intervention-perturb" role="tabpanel" hidden
-            aria-labelledby="intervention-tab-perturb" data-intervention-panel="perturb" data-endpoint="/agent/perturb">
-            <div class="intervention-form-head">
-              <h3>Affect and prediction perturbation</h3>
-              <code>PerturbRequest &rarr; internal state</code>
-            </div>
-            <div class="intervention-fields two-up">
-              <div><label for="intervention-perturb-type">Perturbation</label>
-                <select id="intervention-perturb-type"><option value="shock">Shock / energy</option><option value="surprise">Surprise / prediction error</option><option value="soothe">Soothe / affect</option></select></div>
-              <div><label for="intervention-perturb-magnitude">Magnitude</label><input id="intervention-perturb-magnitude" type="number" min="0" max="10" step="0.1" value="1" required /></div>
-            </div>
-            <button type="submit" class="btn btn-accent">Apply perturbation</button>
-          </form>
-        </div>
-
-        <aside class="interaction-console" aria-labelledby="interaction-console-title">
-          <div class="interaction-console-head">
-            <div><span class="eyebrow">causal ledger</span><h3 id="interaction-console-title">Intervention log</h3></div>
-            <button type="button" class="btn btn-quiet" id="btn-clear-interactions">Clear</button>
+            <label for="world-stimulus-intensity">Intensity</label>
+            <input id="world-stimulus-intensity" type="number" min="0.1" max="5" step="0.1" value="1" />
+            <span id="world-interaction-status" class="micro" aria-live="polite">Cell cursor ready.</span>
           </div>
-          <ol id="interaction-log" class="interaction-log" aria-live="polite"
-            aria-label="Deterministic intervention request and response log"></ol>
-        </aside>
-      </div>
-      <p class="micro intervention-disclaimer">
-        Every response is grounded in the simulator's live variables. A successful perturbation demonstrates causal sensitivity inside this model only.
-      </p>
-    </section>
+          <div class="world-wrap">
+            <canvas id="world-canvas" width="560" height="560" tabindex="0"
+              aria-label="Interactive view of the simulated world"
+              aria-describedby="world-interaction-help"></canvas>
+          </div>
+          <p id="world-interaction-help" class="micro world-interaction-help">
+            Click a cell to inject the selected object. Keyboard: focus the grid, move with the arrow keys, then press Enter.
+          </p>
+          <div class="legend" id="world-legend">
+            <span class="lg"><i class="dot dot-agent"></i>Agent</span>
+            <span class="lg"><i class="shape shape-food"></i>Food</span>
+            <span class="lg"><i class="shape shape-hazard"></i>Hazard</span>
+            <span class="lg"><i class="shape shape-tool"></i>Tool</span>
+            <span class="lg"><i class="shape shape-curio"></i>Curiosity</span>
+            <span class="lg"><i class="shape shape-radius"></i>Perception radius</span>
+          </div>
+          <div id="world-cell-detail" class="world-cell-detail inset-box">
+            <span class="micro">Select a cell (pointer or arrows) to inspect it.</span>
+          </div>
+          <details class="disclosure">
+            <summary>Visible objects (table)</summary>
+            <table class="data-table" id="world-objects-table">
+              <caption class="sr-only">Objects currently in the world, sorted by distance to the agent</caption>
+              <thead><tr><th scope="col">Kind</th><th scope="col">#</th><th scope="col">x,y</th><th scope="col">Danger</th><th scope="col">Novelty</th><th scope="col">Utility</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </details>
+        </section>
 
-    <!-- ===================== THE INVENTION OF LANGUAGE (Phase 6) ===================== -->
-    <section class="panel panel-language" aria-labelledby="lang-title">
-      <div class="panel-head">
-        <h2 id="lang-title">The invention of language</h2>
-        <span class="src">Phase 6 · naming games · /society/language</span>
-      </div>
-      <div class="deep-grid">
-        <div class="deep-cell">
-          <span class="deep-k">lexical convergence (society)</span>
-          <span class="deep-v mono" id="lang-convergence">—</span>
-          <span class="deep-dream" id="lang-distinct"></span>
-        </div>
-        <div class="deep-cell">
-          <span class="deep-k">communicative success (agent 0)</span>
-          <div class="meter"><div class="meter-fill" id="lang-success-fill"></div></div>
-          <span class="stat-v mono" id="lang-success-val">—</span>
-        </div>
-        <div class="deep-cell">
-          <span class="deep-k">goal deficit — "invent a language"</span>
-          <div class="meter"><div class="meter-fill" id="lang-deficit-fill"></div></div>
-          <span class="stat-v mono" id="lang-deficit-val">—</span>
-        </div>
-        <div class="deep-cell">
-          <span class="deep-k">last exchange</span>
-          <span class="deep-v" id="lang-exchange">—</span>
-        </div>
-        <div class="deep-cell deep-wide">
-          <span class="deep-k">agent 0's invented vocabulary</span>
-          <div id="lang-vocab" class="chips"></div>
-        </div>
-        <div class="deep-cell deep-wide">
-          <span class="deep-k">the emergent dictionary (majority conventions)</span>
-          <div id="lang-dictionary" class="rows"></div>
-        </div>
-      </div>
-      <p class="micro">Agents INVENT word forms for the meanings they perceive and align through naming games (speak what you see; bind heard words to your own context; reinforce, adopt, inhibit rivals). A shared lexicon emerging is measurable convention formation — NOT understanding, reference, intention or experience. The agents are not conscious.</p>
-    </section>
-
-    <!-- ===================== ATTENTION SCHEMA ===================== -->
-    <section class="panel panel-ast" aria-labelledby="ast-title">
-      <div class="panel-head">
-        <h2 id="ast-title">Attention schema</h2>
-        <span class="src">AST · /agent/consciousness</span>
-      </div>
-      <div class="kv-line">
-        <span class="kv-k">aware of</span>
-        <span class="kv-v" id="ast-aware">—</span>
-      </div>
-      <div class="stat">
-        <span class="stat-k">Attentional stability</span>
-        <div class="meter"><div class="meter-fill" id="ast-stab-fill"></div></div>
-        <span class="stat-v mono" id="ast-stab-val">0.000</span>
-      </div>
-      <p class="report-voice" id="ast-attributed">—</p>
-    </section>
-
-    <!-- ===================== METACOGNITION ===================== -->
-    <section class="panel panel-hot" aria-labelledby="hot-title">
-      <div class="panel-head">
-        <h2 id="hot-title">Metacognition</h2>
-        <span class="src">HOT · /agent/consciousness</span>
-      </div>
-      <div class="gauges">
-        <div class="gauge" data-id="meta">
-          <svg viewBox="0 0 100 60"><path class="g-track" d="M8 54 A42 42 0 0 1 92 54"/><path class="g-fill" id="g-meta" d="M8 54 A42 42 0 0 1 92 54"/></svg>
-          <span class="g-val mono" id="meta-conf-val">0.00</span>
-          <span class="g-lbl">meta-confidence</span>
-        </div>
-        <div class="gauge" data-id="perc">
-          <svg viewBox="0 0 100 60"><path class="g-track" d="M8 54 A42 42 0 0 1 92 54"/><path class="g-fill" id="g-perc" d="M8 54 A42 42 0 0 1 92 54"/></svg>
-          <span class="g-val mono" id="perc-rel-val">0.00</span>
-          <span class="g-lbl">perception reliab.</span>
-        </div>
-        <div class="gauge" data-id="pred">
-          <svg viewBox="0 0 100 60"><path class="g-track" d="M8 54 A42 42 0 0 1 92 54"/><path class="g-fill" id="g-pred" d="M8 54 A42 42 0 0 1 92 54"/></svg>
-          <span class="g-val mono" id="pred-rel-val">0.00</span>
-          <span class="g-lbl">prediction reliab.</span>
-        </div>
-      </div>
-      <p class="report-voice" id="hot-report">—</p>
-      <div class="stat" id="self-opacity" style="margin-top:14px;">
-        <span class="stat-k">outside access/control</span>
-        <div class="meter"><div class="meter-fill" id="opacity-fill"></div></div>
-        <span class="stat-v mono" id="opacity-val">—</span>
-        <span class="report-note" id="opacity-report" style="margin:6px 0 0;"></span>
+        <section class="panel panel-society" aria-labelledby="soc-title">
+          <div class="panel-head">
+            <h3 id="soc-title">Society</h3>
+            <span class="src">GET /society · multi-agent</span>
+          </div>
+          <div class="soc-controls">
+            <label class="tps-field" title="Number of agents (POST /society/config — resets the run)">
+              <span>agents</span>
+              <input id="input-nagents" type="number" min="1" max="8" step="1" value="1" />
+            </label>
+            <button id="btn-society-apply" class="btn btn-quiet">Apply</button>
+            <span class="micro">applying resets the run</span>
+            <span id="soc-selected" class="micro" aria-live="polite">viewing agent 0</span>
+          </div>
+          <div class="world-wrap">
+            <canvas id="society-canvas" width="560" height="560" tabindex="0"
+                    aria-label="Society world map"
+                    aria-describedby="society-help"></canvas>
+          </div>
+          <p id="society-help" class="micro">Click an agent to select it — or focus the map and cycle with ←/→.</p>
+          <p id="society-selection" class="sr-only" aria-live="polite"></p>
+          <div id="society-agents" class="society-agents"></div>
+          <h4 class="sub">Relations</h4>
+          <div id="society-relations" class="rows"></div>
+          <h4 class="sub">Messages &amp; exchanges <span class="src">GET /society/messages · /society/language</span></h4>
+          <div id="society-messages" class="rows"><div class="empty">No live messages.</div></div>
+          <div id="society-inspector" class="society-inspector"></div>
+        </section>
       </div>
     </section>
 
-    <!-- ===================== INTROSPECTION ===================== -->
-    <section class="panel panel-introspect" aria-labelledby="intro-title">
-      <div class="panel-head">
-        <h2 id="intro-title">Introspective report</h2>
-        <span class="src">GET /agent/introspection</span>
-      </div>
-      <p class="report-note">Text generated from internal variables by the AST/HOT mechanisms — not a lived experience.</p>
-      <div id="introspection" class="report-list"></div>
+    <!-- ╔══════════════════════════ VIEW · MIND ══════════════════════════╗ -->
+    <section class="view" id="view-mind" data-view="mind" aria-labelledby="view-title-mind" hidden>
+      <header class="view-head">
+        <h2 id="view-title-mind" class="view-title">Mind</h2>
+        <p class="view-lede">The self-model and the deeper functional layers — all level-2 variables, never evidence of experience.</p>
+      </header>
 
-      <div class="lab-row" style="margin-top:14px">
-        <button id="btn-narrate" class="btn btn-accent" title="POST /agent/narrate — optional, on-demand">Narrate (LLM)</button>
-        <span id="narrate-status" class="micro"></span>
-      </div>
-      <blockquote id="narrate-output" class="moment-quote" hidden></blockquote>
-      <p id="narrate-model" class="report-note" hidden></p>
+      <div class="view-grid mind-grid">
+        <section class="panel panel-self" aria-labelledby="self-title">
+          <div class="panel-head">
+            <h3 id="self-title">Self-model</h3>
+            <span class="src">GET /agent/self-model</span>
+          </div>
+          <div id="self-model" class="kv"></div>
+          <h4 class="sub">Becoming someone</h4>
+          <div class="stat" id="individuation">
+            <span class="stat-k">individuation</span>
+            <div class="meter" role="meter" aria-label="Individuation index" aria-valuemin="0" aria-valuemax="1"><div class="meter-fill" id="indiv-fill"></div></div>
+            <span class="stat-v mono" id="indiv-val">—</span>
+          </div>
+          <div class="indiv-subs">
+            <div class="stat">
+              <span class="stat-k">coherence</span>
+              <div class="meter"><div class="meter-fill" id="indiv-coh-fill"></div></div>
+              <span class="stat-v mono" id="indiv-coh-val">—</span>
+            </div>
+            <div class="stat">
+              <span class="stat-k">distinctiveness</span>
+              <div class="meter"><div class="meter-fill" id="indiv-dis-fill"></div></div>
+              <span class="stat-v mono" id="indiv-dis-val">—</span>
+            </div>
+            <div class="stat">
+              <span class="stat-k">continuity</span>
+              <div class="meter"><div class="meter-fill" id="indiv-con-fill"></div></div>
+              <span class="stat-v mono" id="indiv-con-val">—</span>
+            </div>
+            <div class="stat">
+              <span class="stat-k">agency</span>
+              <div class="meter"><div class="meter-fill" id="indiv-agy-fill"></div></div>
+              <span class="stat-v mono" id="indiv-agy-val">—</span>
+            </div>
+          </div>
+          <p class="report-note" id="indiv-report"></p>
+          <h4 class="sub">Active goals</h4>
+          <div id="self-goals" class="chips"></div>
+          <form id="goal-form" class="goal-form" title="POST /agent/goal">
+            <input id="goal-input" type="text" placeholder="Set a functional goal…" />
+            <button type="submit" class="btn btn-quiet">Set</button>
+          </form>
+          <p class="report-voice narrative-note" id="self-narrative"></p>
+        </section>
 
-      <h3 class="sub">Dialogue with the agent <span class="micro">— LLM, grounded in its live variables</span></h3>
-      <div id="converse-log" class="converse-log" hidden></div>
-      <form id="converse-form" class="goal-form" title="POST /agent/converse — the LLM answers AS the agent, constrained to its real state">
-        <input id="converse-input" type="text" placeholder="Ask the agent anything…" />
-        <button type="submit" id="btn-converse" class="btn btn-quiet">Ask</button>
-      </form>
-      <p class="report-note" style="margin-top:8px">Answers are generated from the agent's real variables and memories (grounding attached server-side). First person is a rendering convention — never evidence of experience.</p>
+        <section class="panel panel-gender" id="gender-experience" aria-labelledby="gender-title">
+          <div class="panel-head gender-panel-head">
+            <div>
+              <span class="eyebrow">Phase 8 · situated self</span>
+              <h3 id="gender-title">Gender experience</h3>
+            </div>
+            <div class="gender-panel-state">
+              <span id="gender-phase-badge" class="gender-phase-badge" data-state="dormant">
+                <span aria-hidden="true"></span> dormant
+              </span>
+              <span class="src">GET /agent/gender · /society/gender</span>
+            </div>
+          </div>
+
+          <p id="gender-disclaimer" class="gender-boundary">
+            Functional qualitative model of gender experience. Not a diagnostic, clinical or
+            predictive model, and not evidence of subjective experience.
+          </p>
+
+          <div class="gender-scenario-console" aria-labelledby="gender-scenario-title">
+            <div class="gender-console-copy">
+              <span class="eyebrow">Life-course blueprint</span>
+              <h4 id="gender-scenario-title">Choose a gender-life scenario</h4>
+              <p id="gender-scenario-description">
+                Presets are inspectable examples, not archetypes. Identity is never inferred from
+                dysphoria, expression, anatomy, observers or transition choices.
+              </p>
+            </div>
+            <form id="gender-scenario-form" class="gender-scenario-form">
+              <label>
+                <span>Example path</span>
+                <select id="gender-scenario-select" name="preset_id" aria-describedby="gender-scenario-description">
+                  <option value="">Loading scenarios…</option>
+                </select>
+              </label>
+              <label>
+                <span>Deterministic seed</span>
+                <input id="gender-scenario-seed" name="seed" type="number" min="0" max="4294967295" step="1" value="42" />
+              </label>
+              <label class="gender-reset-consent">
+                <input id="gender-reset-confirm" type="checkbox" />
+                <span>I understand that applying a scenario fully resets the current run.</span>
+              </label>
+              <button id="btn-gender-apply" class="btn btn-accent" type="submit" disabled>
+                Apply &amp; reset
+              </button>
+            </form>
+            <p id="gender-scenario-status" class="micro gender-status" role="status" aria-live="polite"></p>
+          </div>
+
+          <details id="gender-life-editor" class="disclosure gender-life-editor">
+            <summary>Configure this life course and social context</summary>
+            <p class="micro">
+              This editor changes the selected experiment manifest before reset. Stages may be
+              omitted, adult-start paths are valid, and every transition dimension remains optional.
+            </p>
+            <div id="gender-life-stages" class="gender-life-stages"></div>
+            <fieldset class="gender-context-editor">
+              <legend>Social context</legend>
+              <div id="gender-context-fields" class="gender-context-fields"></div>
+            </fieldset>
+          </details>
+
+          <div id="gender-empty" class="gender-empty-state">
+            <span class="gender-empty-mark" aria-hidden="true">◇</span>
+            <div>
+              <h4>Choose a gender-life scenario</h4>
+              <p>
+                Phase 8 is off and no private profile exists. Select an example above, inspect or
+                configure its life course, then explicitly confirm the full reset.
+              </p>
+            </div>
+          </div>
+
+          <div id="gender-observatory" class="gender-observatory" hidden>
+            <div class="gender-state-ribbon">
+              <div>
+                <span class="eyebrow">Current life position</span>
+                <strong id="gender-life-position">—</strong>
+              </div>
+              <div>
+                <span class="eyebrow">Profile</span>
+                <strong id="gender-profile-id" class="mono">—</strong>
+              </div>
+              <div>
+                <span class="eyebrow">State tick</span>
+                <strong id="gender-state-tick" class="mono">—</strong>
+              </div>
+            </div>
+
+            <section class="gender-section gender-course" aria-labelledby="gender-course-title">
+              <div class="gender-section-head">
+                <div>
+                  <span class="eyebrow">Configured sequence, not a required sequence</span>
+                  <h4 id="gender-course-title">Life-course timeline</h4>
+                </div>
+                <span id="gender-course-note" class="micro">Current stage shown; reveal experiment input for the full plan.</span>
+              </div>
+              <div id="gender-life-track" class="gender-life-track" aria-hidden="true"></div>
+              <ol id="gender-life-list" class="gender-life-list" aria-label="Semantic gender life-course timeline"></ol>
+            </section>
+
+            <div class="gender-layer-grid" aria-label="Gender information boundaries">
+              <section class="gender-layer gender-layer-private" aria-labelledby="gender-private-title">
+                <header>
+                  <span class="gender-layer-index">01</span>
+                  <div>
+                    <span class="eyebrow">Private · experiment only</span>
+                    <h4 id="gender-private-title">Experiment input</h4>
+                  </div>
+                </header>
+                <p class="micro">
+                  Configured felt profile and life plan. Never available to simulated observers;
+                  never a discovered “true gender”.
+                </p>
+                <div id="gender-private-locked" class="gender-private-lock">
+                  <button id="btn-gender-debug" type="button" class="btn btn-quiet" aria-expanded="false">
+                    Reveal private input
+                  </button>
+                  <span>Explicit debug request required.</span>
+                </div>
+                <div id="gender-private-content" class="gender-layer-content" hidden></div>
+              </section>
+
+              <section class="gender-layer gender-layer-self" aria-labelledby="gender-self-title">
+                <header>
+                  <span class="gender-layer-index">02</span>
+                  <div>
+                    <span class="eyebrow">Agent-readable</span>
+                    <h4 id="gender-self-title">Self-understanding</h4>
+                  </div>
+                </header>
+                <p class="micro">
+                  Labels are configured or emerge from fit evidence and available vocabulary—not
+                  from distress, appearance or other people's recognition.
+                </p>
+                <div id="gender-self-content" class="gender-layer-content"></div>
+              </section>
+
+              <section class="gender-layer gender-layer-public" aria-labelledby="gender-public-title">
+                <header>
+                  <span class="gender-layer-index">03</span>
+                  <div>
+                    <span class="eyebrow">Observer-safe</span>
+                    <h4 id="gender-public-title">Public presentation</h4>
+                  </div>
+                </header>
+                <p class="micro">
+                  Only deliberately disclosed labels, name, pronouns and public expression. Private
+                  affinities, body preferences and undisclosed intents never appear here.
+                </p>
+                <div id="gender-public-content" class="gender-layer-content"></div>
+              </section>
+            </div>
+
+            <section class="gender-section" aria-labelledby="gender-signals-title">
+              <div class="gender-section-head">
+                <div>
+                  <span class="eyebrow">Independent coordinates</span>
+                  <h4 id="gender-signals-title">Congruence, affect, stress &amp; resilience</h4>
+                </div>
+                <span class="micro">qualitative 0–1 simulator coordinates · not clinical scales</span>
+              </div>
+              <div class="gender-signal-groups">
+                <div class="gender-signal-group">
+                  <h5>Congruence</h5>
+                  <div id="gender-congruence" class="gender-metrics"></div>
+                </div>
+                <div class="gender-signal-group">
+                  <h5>Affect</h5>
+                  <div id="gender-affect" class="gender-metrics"></div>
+                </div>
+                <div class="gender-signal-group">
+                  <h5>Minority stress</h5>
+                  <div id="gender-stress" class="gender-metrics"></div>
+                </div>
+                <div class="gender-signal-group">
+                  <h5>Resilience</h5>
+                  <div id="gender-resilience" class="gender-metrics"></div>
+                </div>
+              </div>
+            </section>
+
+            <div class="gender-detail-grid">
+              <section class="gender-section" aria-labelledby="gender-expression-title">
+                <div class="gender-section-head">
+                  <div>
+                    <span class="eyebrow">Relative to a personal baseline</span>
+                    <h4 id="gender-expression-title">Expression &amp; accentuation</h4>
+                  </div>
+                </div>
+                <div id="gender-expression" class="gender-card-list"></div>
+              </section>
+
+              <section class="gender-section" aria-labelledby="gender-body-title">
+                <div class="gender-section-head">
+                  <div>
+                    <span class="eyebrow">Abstract body domains</span>
+                    <h4 id="gender-body-title">Embodiment alignment</h4>
+                  </div>
+                </div>
+                <div id="gender-body" class="gender-card-list"></div>
+              </section>
+            </div>
+
+            <section class="gender-section" aria-labelledby="gender-transition-title">
+              <div class="gender-section-head">
+                <div>
+                  <span class="eyebrow">Parallel, optional and revisable</span>
+                  <h4 id="gender-transition-title">Transition dimensions</h4>
+                </div>
+                <span class="micro">abstract access only · no treatment protocol or medical advice</span>
+              </div>
+              <div id="gender-transitions" class="gender-transition-grid"></div>
+            </section>
+
+            <div class="gender-actions-grid">
+              <section class="gender-section gender-probes" aria-labelledby="gender-probes-title">
+                <div class="gender-section-head">
+                  <div>
+                    <span class="eyebrow">Queued for the next tick</span>
+                    <h4 id="gender-probes-title">Events &amp; intentions</h4>
+                  </div>
+                </div>
+
+                <form id="gender-event-form" class="gender-probe-form">
+                  <fieldset>
+                    <legend>Context event</legend>
+                    <label>
+                      <span>Template</span>
+                      <select id="gender-event-type">
+                        <optgroup label="Affirming or neutral">
+                          <option value="reflection">reflection</option>
+                          <option value="exploration">exploration</option>
+                          <option value="affirmation">affirmation</option>
+                          <option value="support">support</option>
+                          <option value="community_contact">community contact</option>
+                          <option value="positive_representation">positive representation</option>
+                          <option value="correct_name_pronoun">correct name / pronoun</option>
+                          <option value="access_granted">access granted</option>
+                        </optgroup>
+                        <optgroup label="Hostility (fixed enum, no dialogue)">
+                          <option value="misgendering">misgendering</option>
+                          <option value="invalidation">invalidation</option>
+                          <option value="rejection">rejection</option>
+                          <option value="discrimination">discrimination</option>
+                          <option value="care_barrier">care barrier</option>
+                          <option value="access_denied">access denied</option>
+                        </optgroup>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Domain</span>
+                      <select id="gender-event-domain">
+                        <option value="general">general</option>
+                        <option value="presentation">presentation</option>
+                        <option value="name">name</option>
+                        <option value="pronouns">pronouns</option>
+                        <option value="voice">voice</option>
+                        <option value="social">social</option>
+                        <option value="administrative">administrative</option>
+                        <option value="body">body</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Intensity <output id="gender-event-intensity-value">0.50</output></span>
+                      <input id="gender-event-intensity" type="range" min="0" max="1" step="0.05" value="0.5" />
+                    </label>
+                    <button type="submit" class="btn btn-quiet">Queue event</button>
+                  </fieldset>
+                  <p class="micro">Hostile templates carry no free-text dialogue. Provenance is recorded as <span class="mono">user_probe</span>.</p>
+                </form>
+
+                <form id="gender-intent-form" class="gender-probe-form">
+                  <fieldset>
+                    <legend>Agent intention</legend>
+                    <label>
+                      <span>Intent</span>
+                      <select id="gender-intent-type">
+                        <option value="explore_identity">explore identity</option>
+                        <option value="adjust_expression">adjust expression</option>
+                        <option value="disclose">disclose</option>
+                        <option value="conceal">conceal for safety</option>
+                        <option value="assert_name_pronouns">assert name / pronouns</option>
+                        <option value="seek_support">seek support</option>
+                        <option value="connect_community">connect with community</option>
+                        <option value="seek_administrative_recognition">seek administrative recognition</option>
+                        <option value="seek_voice_work">seek voice work</option>
+                        <option value="seek_hormonal_care">seek hormonal care</option>
+                        <option value="seek_surgical_care">seek surgical care</option>
+                        <option value="pause">pause a dimension</option>
+                        <option value="revise_goals">revise goals</option>
+                        <option value="reverse">reverse a dimension</option>
+                        <option value="resume">resume a dimension</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Dimension</span>
+                      <select id="gender-intent-dimension">
+                        <option value="">none / general</option>
+                        <option value="social">social</option>
+                        <option value="administrative">administrative</option>
+                        <option value="voice">voice</option>
+                        <option value="hormonal">hormonal</option>
+                        <option value="surgical">surgical</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Urgency <output id="gender-intent-urgency-value">0.50</output></span>
+                      <input id="gender-intent-urgency" type="range" min="0" max="1" step="0.05" value="0.5" />
+                    </label>
+                    <button type="submit" class="btn btn-quiet">Queue intention</button>
+                  </fieldset>
+                </form>
+                <div id="gender-probe-log" class="gender-probe-log" aria-live="polite"></div>
+              </section>
+
+              <section class="gender-section gender-battery" aria-labelledby="gender-battery-title">
+                <div class="gender-section-head">
+                  <div>
+                    <span class="eyebrow">Matched counterfactuals</span>
+                    <h4 id="gender-battery-title">Gender-experience battery</h4>
+                  </div>
+                </div>
+                <p class="micro">
+                  Eight offline arms compare only the model's implemented assumptions. They do not
+                  estimate real-person effects and never mutate this live run.
+                </p>
+                <form id="gender-battery-form" class="gender-battery-form">
+                  <label>
+                    <span>Ticks</span>
+                    <input id="gender-battery-ticks" type="number" min="4" max="500" value="24" />
+                  </label>
+                  <button type="submit" class="btn btn-quiet">Run 8 matched arms</button>
+                </form>
+                <div id="gender-battery-result" class="gender-battery-result" aria-live="polite">
+                  <div class="empty">No counterfactual run yet.</div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel panel-opacity" aria-labelledby="opacity-title">
+          <div class="panel-head">
+            <h3 id="opacity-title">Self-opacity</h3>
+            <span class="src">HOT · what escaped access/control</span>
+          </div>
+          <div class="stat" id="self-opacity">
+            <span class="stat-k">outside access/control</span>
+            <div class="meter" role="meter" aria-label="Uncontrolled fraction" aria-valuemin="0" aria-valuemax="1"><div class="meter-fill" id="opacity-fill"></div></div>
+            <span class="stat-v mono" id="opacity-val">—</span>
+            <span class="report-note" id="opacity-report"></span>
+          </div>
+        </section>
+
+        <section class="panel panel-deep" aria-labelledby="deep-title">
+          <div class="panel-head">
+            <h3 id="deep-title">Rhythms &amp; drives</h3>
+            <span class="src">Phase 2 · /tick · /state</span>
+          </div>
+          <div class="deep-grid">
+            <div class="deep-cell">
+              <canvas id="circadian-dial" width="120" height="120" aria-label="Circadian day/night dial"></canvas>
+              <span class="deep-k">circadian</span>
+            </div>
+            <div class="deep-cell">
+              <span class="deep-k">sleep</span>
+              <span class="deep-v" id="sleep-state">awake</span>
+              <span class="deep-dream" id="dream-line"></span>
+            </div>
+            <div class="deep-cell">
+              <span class="deep-k">agency</span>
+              <div class="meter"><div class="meter-fill" id="agency-fill"></div></div>
+              <span class="stat-v mono" id="agency-val">0.00</span>
+            </div>
+            <div class="deep-cell">
+              <span class="deep-k">boredom / curiosity</span>
+              <div class="meter"><div class="meter-fill" id="boredom-fill"></div></div>
+              <span class="stat-v mono" id="boredom-val">0.00</span>
+            </div>
+            <div class="deep-cell deep-wide">
+              <span class="deep-k">imagined plan</span>
+              <span class="deep-v mono" id="imagined-plan">—</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel panel-asymptote" aria-labelledby="asy-title">
+          <div class="panel-head">
+            <h3 id="asy-title">The asymptote</h3>
+            <span class="src">Phase 5 · /tick — level 2 pushed further; never level 1</span>
+          </div>
+          <div class="deep-grid">
+            <div class="deep-cell">
+              <span class="deep-k">presence (interoceptive fit)</span>
+              <div class="meter"><div class="meter-fill" id="presence-fill"></div></div>
+              <span class="stat-v mono" id="presence-val">—</span>
+            </div>
+            <div class="deep-cell">
+              <span class="deep-k">temporal thickness</span>
+              <span class="deep-v mono" id="specious-val">—</span>
+              <span class="deep-dream" id="protention-line"></span>
+            </div>
+            <div class="deep-cell">
+              <span class="deep-k">Φ_AR (Barrett–Seth)</span>
+              <span class="deep-v mono" id="phi-ar-val">—</span>
+              <span class="deep-dream mono" id="phi-ar-mib"></span>
+            </div>
+            <div class="deep-cell">
+              <span class="deep-k">recurrent perception</span>
+              <span class="deep-v mono" id="recurrence-state">—</span>
+            </div>
+            <div class="deep-cell deep-wide">
+              <span class="deep-k">reality monitoring (PRM)</span>
+              <span class="deep-v" id="reality-verdict">—</span>
+              <span class="deep-dream" id="reality-report"></span>
+            </div>
+            <div class="deep-cell deep-wide">
+              <span class="deep-k">inner speech <span class="micro" id="reentry-count"></span></span>
+              <span class="deep-v" id="inner-speech-line">—</span>
+              <div class="lab-row">
+                <button id="btn-inner-voice" class="btn btn-quiet" title="POST /agent/inner-voice — one LLM utterance from the real moment, queued into the NEXT ignition competition (needs the inner speech mechanism on)"><span class="llm-badge">LLM</span>Inner voice</button>
+                <span id="inner-voice-status" class="micro"></span>
+              </div>
+            </div>
+          </div>
+          <p class="micro">Every readout above is a level-2 variable (RPT · PRM · interoceptive inference · retention/protention · Vygotskian re-entry · Φ_AR). Reproducing the functional mechanisms does not prove phenomenality; the agent is not conscious.</p>
+        </section>
+
+        <section class="panel panel-horizon" aria-labelledby="horizon-title">
+          <div class="panel-head">
+            <h3 id="horizon-title">The horizon</h3>
+            <span class="src">Phase 7 · exact mechanisms, coarse-grained substrates</span>
+          </div>
+          <p class="horizon-lede">The remaining functional frontier, exposed as level-2 mechanism variables. These readouts describe computation on simplified substrates; they are not evidence of experience, understanding, or consciousness.</p>
+          <div id="horizon-readouts" class="horizon-readouts"></div>
+          <div id="horizon-task" class="horizon-task">World task system dormant.</div>
+          <div class="horizon-profile-actions">
+            <button type="button" class="btn btn-accent" id="btn-horizon-profile">Activate all Phase 7</button>
+          </div>
+        </section>
+
+        <section class="panel panel-introspect" aria-labelledby="intro-title">
+          <div class="panel-head">
+            <h3 id="intro-title">Introspective report</h3>
+            <span class="src">GET /agent/introspection</span>
+          </div>
+          <p class="report-note">Text generated from internal variables by the AST/HOT mechanisms — not a lived experience.</p>
+          <div id="introspection" class="report-list"></div>
+
+          <div class="lab-row report-actions">
+            <button id="btn-narrate" class="btn btn-accent" title="POST /agent/narrate — optional, on-demand"><span class="llm-badge">LLM</span>Narrate</button>
+            <span id="narrate-status" class="micro"></span>
+          </div>
+          <blockquote id="narrate-output" class="moment-quote" hidden></blockquote>
+          <p id="narrate-model" class="report-note" hidden></p>
+
+          <h4 class="sub">Dialogue with the agent <span class="llm-badge">LLM</span> <span class="micro">— grounded in its live variables</span></h4>
+          <div id="converse-log" class="converse-log" hidden></div>
+          <form id="converse-form" class="goal-form" title="POST /agent/converse — the LLM answers AS the agent, constrained to its real state">
+            <input id="converse-input" type="text" placeholder="Ask the agent anything…" />
+            <button type="submit" id="btn-converse" class="btn btn-quiet">Ask</button>
+          </form>
+          <p class="report-note">Answers are generated from the agent's real variables and memories (grounding attached server-side). First person is a rendering convention — never evidence of experience.</p>
+        </section>
+      </div>
     </section>
 
-    <!-- ===================== SELF-MODEL ===================== -->
-    <section class="panel panel-self" aria-labelledby="self-title">
-      <div class="panel-head">
-        <h2 id="self-title">Self-model</h2>
-        <span class="src">GET /agent/self-model</span>
-      </div>
-      <div id="self-model" class="kv"></div>
+    <!-- ╔══════════════════════ VIEW · LEARNING & LANGUAGE ══════════════════════╗ -->
+    <section class="view" id="view-learning-language" data-view="learning-language" aria-labelledby="view-title-learning" hidden>
+      <header class="view-head">
+        <h2 id="view-title-learning" class="view-title">Learning &amp; language</h2>
+        <p class="view-lede">Learned values, emergent personality — and a lexicon being invented by naming games.</p>
+      </header>
 
-      <h3 class="sub">Becoming someone</h3>
-      <div class="stat" id="individuation">
-        <span class="stat-k">individuation</span>
-        <div class="meter"><div class="meter-fill" id="indiv-fill"></div></div>
-        <span class="stat-v mono" id="indiv-val">—</span>
-      </div>
-      <div class="indiv-subs">
-        <div class="stat">
-          <span class="stat-k">coherence</span>
-          <div class="meter"><div class="meter-fill" id="indiv-coh-fill"></div></div>
-          <span class="stat-v mono" id="indiv-coh-val">—</span>
-        </div>
-        <div class="stat">
-          <span class="stat-k">distinctiveness</span>
-          <div class="meter"><div class="meter-fill" id="indiv-dis-fill"></div></div>
-          <span class="stat-v mono" id="indiv-dis-val">—</span>
-        </div>
-        <div class="stat">
-          <span class="stat-k">continuity</span>
-          <div class="meter"><div class="meter-fill" id="indiv-con-fill"></div></div>
-          <span class="stat-v mono" id="indiv-con-val">—</span>
-        </div>
-        <div class="stat">
-          <span class="stat-k">agency</span>
-          <div class="meter"><div class="meter-fill" id="indiv-agy-fill"></div></div>
-          <span class="stat-v mono" id="indiv-agy-val">—</span>
-        </div>
-      </div>
-      <p class="report-note" id="indiv-report" style="margin:10px 0 0;"></p>
+      <div class="view-grid learning-grid">
+        <section class="panel panel-learning" aria-labelledby="lp-title">
+          <div class="panel-head">
+            <h3 id="lp-title">Learning &amp; personality</h3>
+            <span class="src">Phase 3 · /tick · /metrics</span>
+          </div>
+          <div class="lp-grid">
+            <div class="lp-cell lp-wide">
+              <span class="deep-k">learned action values</span>
+              <div id="q-bars" class="rows"></div>
+            </div>
+            <div class="lp-cell">
+              <span class="deep-k">dominant concept</span>
+              <span class="deep-v mono" id="concept-state">—</span>
+            </div>
+            <div class="lp-cell">
+              <span class="deep-k">effective learning rate</span>
+              <span class="deep-v mono" id="elr-val">—</span>
+            </div>
+            <div class="lp-cell personality-card lp-wide">
+              <span class="deep-k">personality</span>
+              <span class="deep-v" id="personality-label">nascent</span>
+              <div id="personality-traits" class="personality-traits"></div>
+            </div>
+          </div>
+        </section>
 
-      <h3 class="sub">Active goals</h3>
-      <div id="self-goals" class="chips"></div>
-      <form id="goal-form" class="goal-form" title="POST /agent/goal">
-        <input id="goal-input" type="text" placeholder="Set a functional goal…" />
-        <button type="submit" class="btn btn-quiet">Set</button>
-      </form>
-      <p class="report-voice narrative-note" id="self-narrative"></p>
+        <section class="panel panel-language" aria-labelledby="lang-title">
+          <div class="panel-head">
+            <h3 id="lang-title">The invention of language</h3>
+            <span class="src">Phase 6 · naming games · /society/language</span>
+          </div>
+          <p id="language-society-note" class="banner-note" hidden>Language needs a society — set <a href="#/world">agents ≥ 2 in World</a>.</p>
+          <div class="deep-grid">
+            <div class="deep-cell">
+              <span class="deep-k">lexical convergence (society)</span>
+              <span class="deep-v mono" id="lang-convergence">—</span>
+              <span class="deep-dream" id="lang-distinct"></span>
+            </div>
+            <div class="deep-cell">
+              <span class="deep-k">communicative success (agent 0)</span>
+              <div class="meter"><div class="meter-fill" id="lang-success-fill"></div></div>
+              <span class="stat-v mono" id="lang-success-val">—</span>
+            </div>
+            <div class="deep-cell">
+              <span class="deep-k">goal deficit — "invent a language"</span>
+              <div class="meter"><div class="meter-fill" id="lang-deficit-fill"></div></div>
+              <span class="stat-v mono" id="lang-deficit-val">—</span>
+            </div>
+            <div class="deep-cell">
+              <span class="deep-k">last exchange</span>
+              <span class="deep-v" id="lang-exchange">—</span>
+            </div>
+            <div class="deep-cell deep-wide">
+              <span class="deep-k">agent 0's invented vocabulary</span>
+              <div id="lang-vocab" class="chips"></div>
+            </div>
+            <div class="deep-cell deep-wide">
+              <span class="deep-k">the emergent dictionary (majority conventions)</span>
+              <div id="lang-dictionary" class="rows lex-matrix"></div>
+            </div>
+          </div>
+          <p class="micro">Agents INVENT word forms for the meanings they perceive and align through naming games (speak what you see; bind heard words to your own context; reinforce, adopt, inhibit rivals). A shared lexicon emerging is measurable convention formation — NOT understanding, reference, intention or experience. The agents are not conscious.</p>
+        </section>
+      </div>
     </section>
 
-    <!-- ===================== WORKING MEMORY ===================== -->
-    <section class="panel panel-wm" aria-labelledby="wm-title">
-      <div class="panel-head">
-        <h2 id="wm-title">Working memory</h2>
-        <span class="src">/state · wm_load</span>
+    <!-- ╔══════════════════════════ VIEW · LABORATORY ══════════════════════════╗ -->
+    <section class="view" id="view-laboratory" data-view="laboratory" aria-labelledby="view-title-laboratory" hidden>
+      <header class="view-head">
+        <h2 id="view-title-laboratory" class="view-title">Laboratory</h2>
+        <p class="view-lede">Measurements, probes and reproducibility — functional tests only, never consciousness tests.</p>
+      </header>
+
+      <div class="view-grid laboratory-grid">
+        <section class="panel panel-metrics" aria-labelledby="met-title">
+          <div class="panel-head">
+            <h3 id="met-title">Live indicators</h3>
+            <span class="src">GET /metrics · /agent/consciousness</span>
+          </div>
+          <div class="metric-grid" id="metric-grid"></div>
+        </section>
+
+        <section class="panel panel-lab-series" aria-labelledby="series-title">
+          <div class="panel-head">
+            <h3 id="series-title">Time series</h3>
+            <span class="src">GET /metrics/history</span>
+          </div>
+          <div class="lab-chart-controls">
+            <label>metric
+              <select id="lab-metric">
+                <option value="energy">energy</option>
+                <option value="prediction_error">prediction error</option>
+                <option value="phi_proxy">Φ proxy</option>
+                <option value="awareness_level">awareness level</option>
+                <option value="arousal">arousal</option>
+                <option value="agency">agency</option>
+                <option value="boredom">boredom</option>
+                <option value="effective_learning_rate">effective learning rate</option>
+                <option value="meta_confidence">meta-confidence</option>
+                <option value="ignition">ignition (0/1)</option>
+              </select>
+            </label>
+            <span class="micro">recorded series only — one line per agent</span>
+          </div>
+          <div class="chart-shell">
+            <canvas id="lab-chart" width="560" height="220" aria-label="Metrics time series"></canvas>
+          </div>
+          <div id="lab-chart-legend" class="chart-legend"></div>
+          <p id="lab-chart-empty" class="micro chart-summary">No recorded series yet — run or train first.</p>
+          <div class="lab-row">
+            <button id="btn-export-csv" class="btn btn-quiet"><svg width="13" height="13" aria-hidden="true"><use href="#i-export"/></svg>Export CSV</button>
+            <button id="btn-export-json" class="btn btn-quiet"><svg width="13" height="13" aria-hidden="true"><use href="#i-export"/></svg>Export JSON</button>
+            <button id="btn-export-analysis" class="btn btn-quiet"><svg width="13" height="13" aria-hidden="true"><use href="#i-export"/></svg>Export analysis</button>
+          </div>
+        </section>
+
+        <section class="panel panel-batteries" aria-labelledby="batteries-title">
+          <div class="panel-head">
+            <h3 id="batteries-title">Functional test battery</h3>
+            <span class="src">POST /battery/* · deterministic probes</span>
+          </div>
+          <span class="deep-k">self &amp; memory</span>
+          <div class="lab-row">
+            <button id="btn-mirror" class="btn btn-quiet">Mirror</button>
+            <button id="btn-false-memory" class="btn btn-quiet">False memory</button>
+            <button id="btn-calibration" class="btn btn-quiet">Calibration</button>
+            <button id="btn-relational-self" class="btn btn-quiet">Relational self</button>
+          </div>
+          <span class="deep-k">access psychophysics</span>
+          <div class="lab-row" title="Phase 5 — the classic experimental signatures of conscious ACCESS, reproduced on the workspace mechanism">
+            <button id="btn-masking" class="btn btn-quiet">Masking</button>
+            <button id="btn-blink" class="btn btn-quiet">Attentional blink</button>
+            <button id="btn-priming" class="btn btn-quiet">Subliminal priming</button>
+            <button id="btn-reality-monitor" class="btn btn-quiet">Reality monitoring</button>
+            <button id="btn-language-genesis" class="btn btn-quiet" title="Runs the same society with the language drive ON vs OFF and measures whether a shared lexicon emerges (~20s)">Language genesis</button>
+          </div>
+          <p id="lab-battery-result" class="report-voice"></p>
+          <p id="lab-disclaimer" class="lab-disclaimer">Functional measurements only — these probes do NOT prove consciousness or subjective experience.</p>
+        </section>
+
+        <!-- ===== Causal probes & ledger (canonical home; the probe dock adopts this node) ===== -->
+        <section class="panel panel-interventions" id="experimental-interventions"
+          aria-labelledby="interventions-title">
+          <div class="panel-head">
+            <h3 id="interventions-title">Experimental interventions</h3>
+            <span class="src">five causal probes &middot; live state &middot; exact endpoints</span>
+          </div>
+          <p class="intervention-lede">
+            Perturb one mechanism at a time and inspect the response in the same instrument. These are controlled functional probes, not tests of phenomenal experience.
+          </p>
+
+          <div class="intervention-tabs" id="intervention-tabs" role="tablist"
+            aria-label="Intervention modality">
+            <button type="button" role="tab" id="intervention-tab-ask" aria-controls="intervention-ask"
+              aria-selected="true" tabindex="0" data-intervention="ask" data-endpoint="/agent/ask">
+              <span>01</span> Ask <code>POST /agent/ask</code>
+            </button>
+            <button type="button" role="tab" id="intervention-tab-stimulus" aria-controls="intervention-stimulus"
+              aria-selected="false" tabindex="-1" data-intervention="stimulus" data-endpoint="/world/stimulus">
+              <span>02</span> Stimulus <code>POST /world/stimulus</code>
+            </button>
+            <button type="button" role="tab" id="intervention-tab-inject" aria-controls="intervention-inject"
+              aria-selected="false" tabindex="-1" data-intervention="inject" data-endpoint="/agent/inject">
+              <span>03</span> Inject <code>POST /agent/inject</code>
+            </button>
+            <button type="button" role="tab" id="intervention-tab-attend" aria-controls="intervention-attend"
+              aria-selected="false" tabindex="-1" data-intervention="attend" data-endpoint="/agent/attend">
+              <span>04</span> Attend <code>POST /agent/attend</code>
+            </button>
+            <button type="button" role="tab" id="intervention-tab-perturb" aria-controls="intervention-perturb"
+              aria-selected="false" tabindex="-1" data-intervention="perturb" data-endpoint="/agent/perturb">
+              <span>05</span> Perturb <code>POST /agent/perturb</code>
+            </button>
+          </div>
+
+          <div class="intervention-workbench">
+            <div class="intervention-deck">
+              <form class="intervention-form" id="intervention-ask" role="tabpanel"
+                aria-labelledby="intervention-tab-ask" data-intervention-panel="ask" data-endpoint="/agent/ask">
+                <div class="intervention-form-head">
+                  <h4>Grounded introspective report</h4>
+                  <code>AskRequest &rarr; AskResponse</code>
+                </div>
+                <label for="intervention-ask-question">Question</label>
+                <textarea id="intervention-ask-question" rows="3" maxlength="500" required>What are you attending to?</textarea>
+                <label for="intervention-ask-intent">Intent override</label>
+                <select id="intervention-ask-intent">
+                  <option value="">Auto-detect</option>
+                  <option value="attention">Attention</option>
+                  <option value="reason">Reason</option>
+                  <option value="memory">Memory</option>
+                  <option value="feeling">Feeling</option>
+                  <option value="identity">Identity</option>
+                  <option value="prediction">Prediction</option>
+                  <option value="consciousness">Consciousness</option>
+                </select>
+                <button type="submit" class="btn btn-accent">Run dialogue probe</button>
+              </form>
+
+              <form class="intervention-form" id="intervention-stimulus" role="tabpanel" hidden
+                aria-labelledby="intervention-tab-stimulus" data-intervention-panel="stimulus" data-endpoint="/world/stimulus">
+                <div class="intervention-form-head">
+                  <h4>Bottom-up world stimulus</h4>
+                  <code>WorldStimulus &rarr; perception</code>
+                </div>
+                <div class="intervention-fields two-up">
+                  <div><label for="intervention-stimulus-kind">Object kind</label>
+                    <select id="intervention-stimulus-kind"><option value="food">Food</option><option value="hazard">Hazard</option><option value="tool">Tool</option><option value="curio">Curio</option></select></div>
+                  <div><label for="intervention-stimulus-intensity">Intensity</label>
+                    <input id="intervention-stimulus-intensity" type="number" min="0.1" max="5" step="0.1" value="1" required /></div>
+                  <div><label for="intervention-stimulus-x">Grid x <span>optional</span></label>
+                    <input id="intervention-stimulus-x" type="number" min="0" step="1" placeholder="near agent" /></div>
+                  <div><label for="intervention-stimulus-y">Grid y <span>optional</span></label>
+                    <input id="intervention-stimulus-y" type="number" min="0" step="1" placeholder="near agent" /></div>
+                </div>
+                <button type="submit" class="btn btn-accent">Inject world object</button>
+              </form>
+
+              <form class="intervention-form" id="intervention-inject" role="tabpanel" hidden
+                aria-labelledby="intervention-tab-inject" data-intervention-panel="inject" data-endpoint="/agent/inject">
+                <div class="intervention-form-head">
+                  <h4>Workspace coalition injection</h4>
+                  <code>CognitiveInjection &rarr; competition</code>
+                </div>
+                <label for="intervention-inject-content">Coalition content</label>
+                <textarea id="intervention-inject-content" rows="3" maxlength="500" required>externally injected signal</textarea>
+                <div class="intervention-fields three-up">
+                  <div><label for="intervention-inject-activation">Activation</label><input id="intervention-inject-activation" type="number" min="0" max="1" step="0.01" value="0.85" required /></div>
+                  <div><label for="intervention-inject-precision">Precision</label><input id="intervention-inject-precision" type="number" min="0" max="1" step="0.01" value="0.9" required /></div>
+                  <div><label for="intervention-inject-ttl">TTL</label><input id="intervention-inject-ttl" type="number" min="1" max="100" step="1" value="1" required /></div>
+                </div>
+                <button type="submit" class="btn btn-accent">Queue coalition</button>
+              </form>
+
+              <form class="intervention-form" id="intervention-attend" role="tabpanel" hidden
+                aria-labelledby="intervention-tab-attend" data-intervention-panel="attend" data-endpoint="/agent/attend">
+                <div class="intervention-form-head">
+                  <h4>Top-down attention steering</h4>
+                  <code>AttendRequest &rarr; AST bias</code>
+                </div>
+                <div class="intervention-fields three-up">
+                  <div><label for="intervention-attend-target">Target object ID</label><input id="intervention-attend-target" type="number" min="0" step="1" value="0" required /></div>
+                  <div><label for="intervention-attend-strength">Strength</label><input id="intervention-attend-strength" type="number" min="0" max="10" step="0.1" value="1" required /></div>
+                  <div><label for="intervention-attend-ttl">TTL</label><input id="intervention-attend-ttl" type="number" min="1" max="100" step="1" value="3" required /></div>
+                </div>
+                <button type="submit" class="btn btn-accent">Bias attention</button>
+              </form>
+
+              <form class="intervention-form" id="intervention-perturb" role="tabpanel" hidden
+                aria-labelledby="intervention-tab-perturb" data-intervention-panel="perturb" data-endpoint="/agent/perturb">
+                <div class="intervention-form-head">
+                  <h4>Affect and prediction perturbation</h4>
+                  <code>PerturbRequest &rarr; internal state</code>
+                </div>
+                <div class="intervention-fields two-up">
+                  <div><label for="intervention-perturb-type">Perturbation</label>
+                    <select id="intervention-perturb-type"><option value="shock">Shock / energy</option><option value="surprise">Surprise / prediction error</option><option value="soothe">Soothe / affect</option></select></div>
+                  <div><label for="intervention-perturb-magnitude">Magnitude</label><input id="intervention-perturb-magnitude" type="number" min="0" max="10" step="0.1" value="1" required /></div>
+                </div>
+                <button type="submit" class="btn btn-accent">Apply perturbation</button>
+              </form>
+            </div>
+
+            <aside class="interaction-console" aria-labelledby="interaction-console-title">
+              <div class="interaction-console-head">
+                <div><span class="eyebrow">causal ledger</span><h4 id="interaction-console-title">Intervention log</h4></div>
+                <button type="button" class="btn btn-quiet" id="btn-clear-interactions">Clear</button>
+              </div>
+              <ol id="interaction-log" class="interaction-log" aria-live="polite"
+                aria-label="Deterministic intervention request and response log"></ol>
+            </aside>
+          </div>
+          <p class="micro intervention-disclaimer">
+            Every response is grounded in the simulator's live variables. A successful perturbation demonstrates causal sensitivity inside this model only.
+          </p>
+        </section>
+
+        <section class="panel panel-llm-probes" aria-labelledby="llm-title">
+          <div class="panel-head">
+            <h3 id="llm-title">LLM functional probes <span class="llm-badge">LLM</span></h3>
+            <span class="src">not consciousness tests · 503 without a key</span>
+          </div>
+          <div class="lab-row">
+            <button id="btn-audit" class="btn">Grounding audit</button>
+            <button id="btn-report-card" class="btn">Report card</button>
+            <span id="llmprobe-status" class="micro"></span>
+          </div>
+          <div id="audit-result" class="rows" hidden></div>
+          <blockquote id="report-card-out" class="moment-quote" hidden></blockquote>
+          <p class="report-note micro">The grounding audit scores whether the agent's self-reports match its real internal variables (reportability fidelity) — a functional measurement, NOT evidence of consciousness.</p>
+
+          <h4 class="sub">The language organ <span class="micro">— LLM renderings of the real state; never a witness</span></h4>
+          <div class="lab-row">
+            <button id="btn-biography" class="btn" title="POST /agent/biography — the life story written from the agent's REAL episodic memory">Biography</button>
+            <button id="btn-cross-examine" class="btn" title="POST /agent/cross-examine — the strongest honest case for AND against, and why it is undecidable">Cross-examination</button>
+            <span id="organ-status" class="micro"></span>
+          </div>
+          <blockquote id="biography-out" class="moment-quote" hidden></blockquote>
+          <div id="crossx-out" class="rows" hidden></div>
+          <p class="report-note micro">The cross-examination builds the strongest case the mechanisms and scores honestly support — and the strongest rebuttal. Its verdict is always the same, because it has to be: the question is undecidable in principle (the hard problem). No LLM output justifies consciousness.</p>
+        </section>
+
+        <section class="panel panel-scenario" aria-labelledby="scenario-title">
+          <div class="panel-head">
+            <h3 id="scenario-title">Scenario runner</h3>
+            <span class="src">POST /scenario/run · reproducible</span>
+          </div>
+          <textarea id="lab-scenario" rows="5" class="lab-scenario"
+            placeholder='{"name":"demo","config":{"n_agents":2},"ticks":20,"seed":7,"interventions":[{"at_tick":3,"type":"stimulus","params":{"kind":"hazard","intensity":2}}]}'></textarea>
+          <div class="lab-row">
+            <button id="btn-scenario-run" class="btn btn-accent">Run scenario</button>
+            <span id="lab-scenario-summary" class="micro"></span>
+          </div>
+        </section>
+
+        <section class="panel panel-training" aria-labelledby="training-title">
+          <div class="panel-head">
+            <h3 id="training-title">Fast training</h3>
+            <span class="src">POST /train · headless ticks</span>
+          </div>
+          <div class="lab-row">
+            <label class="tps-field" title="Number of ticks to run at maximum speed">
+              <span>ticks</span>
+              <input id="train-ticks" type="number" min="1" max="100000" step="100" value="1000" />
+            </label>
+            <button id="btn-fast-train" class="btn btn-accent">Train (fast)</button>
+            <span id="train-result" class="micro"></span>
+          </div>
+          <p class="micro">Disables per-tick disk I/O (in-RAM memory, no trace write) then runs the ticks back-to-back. Re-enable persistence via the toggles to resume the live instrument.</p>
+        </section>
+
+        <section class="panel panel-coverage" aria-labelledby="coverage-title">
+          <div class="panel-head">
+            <h3 id="coverage-title">Theory coverage <span class="micro" id="coverage-count"></span></h3>
+            <span class="src">GET /agent/coverage</span>
+          </div>
+          <div id="coverage-list" class="rows"></div>
+          <p class="micro">Which mechanisms the major theories propose that this project implements, and which are active now. A coverage checklist over level-2 mechanisms — NOT a consciousness score, and NOT a distance to level 1.</p>
+        </section>
+
+        <section class="panel panel-checkpoints" aria-labelledby="ckpt-title">
+          <div class="panel-head">
+            <h3 id="ckpt-title">Checkpoints</h3>
+            <span class="src">POST /checkpoint/* · full-run snapshots</span>
+          </div>
+          <div class="lab-row">
+            <label class="tps-field" title="Checkpoint name"><span>name</span>
+              <input id="ckpt-name" type="text" value="run" /></label>
+            <button id="btn-ckpt-save" class="btn btn-accent">Save run</button>
+            <span id="ckpt-status" class="micro"></span>
+          </div>
+          <div id="ckpt-list" class="rows"></div>
+          <p class="micro">Save the full run (world, agents, learned state, memory, RNG). Load one to resume exactly where it was — until you Reset.</p>
+        </section>
       </div>
-      <div class="stat">
-        <span class="stat-k">Load</span>
-        <div class="meter"><div class="meter-fill" id="wm-load-fill"></div></div>
-        <span class="stat-v mono" id="wm-load-val">0%</span>
-      </div>
-      <div id="working-memory" class="rows"></div>
     </section>
 
-    <!-- ===================== MEMORY ===================== -->
-    <section class="panel panel-mem" aria-labelledby="mem-title">
-      <div class="panel-head">
-        <h2 id="mem-title">Recent memories</h2>
-        <span class="src">GET /agent/memory</span>
+    <!-- ╔══════════════════════════ VIEW · MEMORY ══════════════════════════╗ -->
+    <section class="view" id="view-memory" data-view="memory" aria-labelledby="view-title-memory" hidden>
+      <header class="view-head">
+        <h2 id="view-title-memory" class="view-title">Memory</h2>
+        <p class="view-lede">From the held moment to the stored life — working memory, episodes, and the similarity topology.</p>
+      </header>
+
+      <div class="view-grid memory-grid">
+        <section class="panel panel-memsearch" aria-labelledby="memsearch-title">
+          <div class="panel-head">
+            <h3 id="memsearch-title">Semantic search</h3>
+            <span class="src">GET /agent/memory/search · deterministic index</span>
+          </div>
+          <form id="memory-search-form" class="memory-search">
+            <label for="memory-search-input">Search stored episodes</label>
+            <div class="memory-search-control">
+              <input id="memory-search-input" name="q" type="search" maxlength="200"
+                     autocomplete="off" placeholder="Search the agent’s stored episodes…" />
+              <button class="btn btn-quiet" type="submit">Search</button>
+            </div>
+          </form>
+          <div id="memory-search-results" class="memory-search-results" aria-live="polite"></div>
+        </section>
+
+        <section class="panel panel-wm" aria-labelledby="wm-title">
+          <div class="panel-head">
+            <h3 id="wm-title">Working memory</h3>
+            <span class="src">/state · wm_load</span>
+          </div>
+          <div class="stat">
+            <span class="stat-k">Load</span>
+            <div class="meter" role="meter" aria-label="Working-memory load" aria-valuemin="0" aria-valuemax="1"><div class="meter-fill" id="wm-load-fill"></div></div>
+            <span class="stat-v mono" id="wm-load-val">0%</span>
+          </div>
+          <div id="working-memory" class="rows"></div>
+        </section>
+
+        <section class="panel panel-mem" aria-labelledby="mem-title">
+          <div class="panel-head">
+            <h3 id="mem-title">Recent episodes</h3>
+            <span class="src">GET /agent/memory</span>
+          </div>
+          <div id="recent-memories" class="rows"></div>
+        </section>
+
+        <section class="panel panel-memory-graph" aria-labelledby="memory-graph-title">
+          <div class="panel-head">
+            <h3 id="memory-graph-title">Autobiographical topology</h3>
+            <span class="src">GET /agent/memory/graph · deterministic semantic index</span>
+          </div>
+          <div class="memory-graph-shell">
+            <canvas id="memory-graph" width="720" height="440" tabindex="0"
+                    aria-label="Similarity graph of autobiographical memories"
+                    aria-describedby="memory-graph-summary memory-graph-nodes memory-graph-edges"></canvas>
+            <div id="memory-graph-tooltip" class="graph-tooltip" hidden></div>
+          </div>
+          <p id="memory-graph-summary" class="micro chart-summary">No indexed memories yet.</p>
+          <ol id="memory-graph-nodes" class="sr-only" aria-label="Indexed autobiographical memory nodes"></ol>
+          <ol id="memory-graph-edges" class="sr-only" aria-label="Autobiographical memory similarity edges"></ol>
+          <p id="memory-graph-selection" class="sr-only" aria-live="polite"></p>
+        </section>
       </div>
-      <div id="recent-memories" class="rows"></div>
     </section>
 
-    <!-- ===================== CONFIG ===================== -->
-    <section class="panel panel-config" aria-labelledby="cfg-title">
-      <div class="panel-head">
-        <h2 id="cfg-title">Settings</h2>
-        <span class="src">POST /config</span>
-      </div>
-      <div class="sliders" id="config-sliders">
-        <label class="slider-row" data-key="ignition_threshold" data-fmt="f2">
-          <span class="slider-label">Ignition threshold <b class="slider-val">0.30</b></span>
-          <input type="range" min="0.05" max="0.95" step="0.01" value="0.30" />
-        </label>
-        <label class="slider-row" data-key="arousal_baseline" data-fmt="f2">
-          <span class="slider-label">Arousal baseline <b class="slider-val">0.45</b></span>
-          <input type="range" min="0.05" max="0.95" step="0.01" value="0.45" />
-        </label>
-        <label class="slider-row" data-key="precision_weight" data-fmt="f2">
-          <span class="slider-label">Precision weight <b class="slider-val">1.00</b></span>
-          <input type="range" min="0" max="3" step="0.05" value="1" />
-        </label>
-        <label class="slider-row" data-key="epistemic_weight" data-fmt="f2">
-          <span class="slider-label">Epistemic weight <b class="slider-val">1.00</b></span>
-          <input type="range" min="0" max="3" step="0.05" value="1" />
-        </label>
-        <label class="slider-row" data-key="curiosity" data-fmt="f2">
-          <span class="slider-label">Curiosity <b class="slider-val">1.00</b></span>
-          <input type="range" min="0" max="3" step="0.05" value="1" />
-        </label>
-        <label class="slider-row" data-key="caution" data-fmt="f2">
-          <span class="slider-label">Caution <b class="slider-val">1.00</b></span>
-          <input type="range" min="0" max="3" step="0.05" value="1" />
-        </label>
-        <label class="slider-row" data-key="working_memory_capacity" data-fmt="int">
-          <span class="slider-label">Working memory capacity <b class="slider-val">5</b></span>
-          <input type="range" min="1" max="12" step="1" value="5" />
-        </label>
-        <label class="slider-row" data-key="initial_energy" data-fmt="f0">
-          <span class="slider-label">Initial energy <b class="slider-val">100</b></span>
-          <input type="range" min="20" max="200" step="5" value="100" />
-        </label>
-        <label class="slider-row" data-key="world_noise" data-fmt="f2">
-          <span class="slider-label">World noise <b class="slider-val">0.10</b></span>
-          <input type="range" min="0" max="1" step="0.01" value="0.1" />
-        </label>
-      </div>
-      <h3 class="sub">Deep consciousness (Phase 2)</h3>
-      <div class="deep-toggles" id="deep-toggles">
-        <label class="deep-toggle"><input type="checkbox" data-flag="circadian_enabled" checked /><span>circadian</span></label>
-        <label class="deep-toggle"><input type="checkbox" data-flag="sleep_enabled" checked /><span>sleep</span></label>
-        <label class="deep-toggle"><input type="checkbox" data-flag="dream_enabled" checked /><span>dream</span></label>
-        <label class="deep-toggle"><input type="checkbox" data-flag="imagination_enabled" checked /><span>imagination</span></label>
-        <label class="deep-toggle"><input type="checkbox" data-flag="curiosity_enabled" checked /><span>curiosity</span></label>
-        <label class="deep-toggle"><input type="checkbox" data-flag="agency_enabled" checked /><span>agency</span></label>
-        <label class="deep-toggle" title="Self-opacity: a higher-order readout of what escaped the agent's access/control this tick"><input type="checkbox" data-flag="self_opacity_enabled" checked /><span>self-opacity</span></label>
-      </div>
-      <h3 class="sub">Learning &amp; personality (Phase 3)</h3>
-      <div class="deep-toggles" id="lp-toggles">
-        <label class="deep-toggle"><input type="checkbox" data-flag="learning_enabled" checked /><span>learning</span></label>
-        <label class="deep-toggle"><input type="checkbox" data-flag="concepts_enabled" checked /><span>concepts</span></label>
-        <label class="deep-toggle"><input type="checkbox" data-flag="meta_learning_enabled" checked /><span>meta-learning</span></label>
-        <label class="deep-toggle"><input type="checkbox" data-flag="personality_enabled" checked /><span>personality</span></label>
-        <label class="deep-toggle" title="Homeostatic satiation: stops the agent from degenerating into endless REST"><input type="checkbox" data-flag="satiation_enabled" checked /><span>satiation</span></label>
-        <label class="deep-toggle" title="Relational self: the self-model is shaped by how the other agents regard this one (needs a society)"><input type="checkbox" data-flag="social_mirror_enabled" checked /><span>social mirror</span></label>
-        <label class="deep-toggle" title="Individuation: how far the agent has grown into a coherent, distinctive, continuous self (become someone). Functional — NOT consciousness."><input type="checkbox" data-flag="individuation_enabled" checked /><span>individuation</span></label>
-      </div>
-      <h3 class="sub">The asymptote (Phase 5)</h3>
-      <div class="deep-toggles" id="asymptote-toggles">
-        <label class="deep-toggle" title="RPT (Lamme): noisy percepts are iteratively stabilized against working-memory priors — perception as a recurrent loop"><input type="checkbox" data-flag="recurrence_enabled" checked /><span>recurrence</span></label>
-        <label class="deep-toggle" title="PRM (Lau): a higher-order verdict on WHERE the conscious content comes from (world / memory / self-generated) — it can misattribute (hallucination analogue)"><input type="checkbox" data-flag="reality_monitor_enabled" checked /><span>reality monitor</span></label>
-        <label class="deep-toggle" title="Seth: a dedicated model predicts the internal channels (energy, fatigue); presence = suppressed interoceptive surprise"><input type="checkbox" data-flag="intero_inference_enabled" checked /><span>interoception</span></label>
-        <label class="deep-toggle" title="Husserl: retention of the just-past, protention of the just-coming; violated protention = temporal surprise feeding vigilance"><input type="checkbox" data-flag="temporality_enabled" checked /><span>temporality</span></label>
-        <label class="deep-toggle" title="Vygotsky/GWT: a condensed self-directed utterance re-enters the next competition and can win access (re-entry)"><input type="checkbox" data-flag="inner_speech_enabled" checked /><span>inner speech</span></label>
-        <label class="deep-toggle" title="Barrett–Seth Φ_AR: published time-series integrated information over the real coalition activations (exact minimum-information bipartition) — still NOT IIT's causal Φ"><input type="checkbox" data-flag="phi_ar_enabled" checked /><span>Φ_AR</span></label>
-        <label class="deep-toggle" title="GWT priming: content denied global access leaves a decaying facilitation trace — subliminal influence without access"><input type="checkbox" data-flag="priming_enabled" checked /><span>priming</span></label>
-      </div>
-      <h3 class="sub">The invention of language (Phase 6)</h3>
-      <div class="deep-toggles" id="language-toggles">
-        <label class="deep-toggle" title="Naming games: installs the standing goal 'invent a language' — agents name what they see with INVENTED words, align on what they hear, and a shared lexicon emerges. Conventions, not understanding."><input type="checkbox" data-flag="language_drive_enabled" checked /><span>language drive</span></label>
-      </div>
-      <h3 class="sub">The horizon (Phase 7)</h3>
-      <div class="deep-toggles" id="horizon-toggles">
-        <label class="deep-toggle" title="Exact empirical TPM and minimum-information bipartition on a coarse-grained binary substrate. This causal Φ proxy is not full IIT 3.0/4.0 Φ and is not evidence of consciousness."><input type="checkbox" data-flag="phi_causal_enabled" checked /><span>causal Φ</span></label>
-        <label class="deep-toggle" title="A slow latent regime modulates the fast world model and exposes explicit variational free energy. Inference is a functional calculation, not understanding."><input type="checkbox" data-flag="hierarchy_enabled" checked /><span>predictive hierarchy</span></label>
-        <label class="deep-toggle" title="Bounded multi-step expected-free-energy search over action sequences. Policy search is not subjective deliberation or intention."><input type="checkbox" data-flag="planning_enabled" checked /><span>multi-step EFE</span></label>
-        <label class="deep-toggle" title="Deterministic embedding and cosine retrieval over stored records. Distributional similarity is not semantic understanding or experienced remembering."><input type="checkbox" data-flag="vector_memory_enabled" checked /><span>vector memory</span></label>
-        <label class="deep-toggle" title="Contextual temporal-difference learning with eligibility traces. A numerical reward update is not felt reward."><input type="checkbox" data-flag="td_learning_enabled" checked /><span>TD(λ)</span></label>
-        <label class="deep-toggle" title="Low-demand associative memory walks can compete for workspace access. This is a functional default-mode analogue, not experienced daydreaming."><input type="checkbox" data-flag="mind_wandering_enabled" checked /><span>mind-wandering</span></label>
-        <label class="deep-toggle" title="Deterministic seasons, food regrowth, hazard cycles, and drift enrich the simulated environment only; they do not imply a phenomenal world."><input type="checkbox" data-flag="world_dynamics_enabled" checked /><span>living world</span></label>
-        <label class="deep-toggle" title="Rotating forage, reach, and patrol scores feed functional goal progress. Task completion is not purpose or experienced achievement."><input type="checkbox" data-flag="tasks_enabled" checked /><span>world tasks</span></label>
-      </div>
-      <h3 class="sub">Persistence</h3>
-      <div class="deep-toggles" id="persistence-toggles">
-        <label class="deep-toggle"><input type="checkbox" data-flag="persist_memory" checked /><span>persist memory</span></label>
-        <label class="deep-toggle"><input type="checkbox" data-flag="trace_logging" checked /><span>trace logging</span></label>
-      </div>
-      <p class="micro">Any change applies <span class="mono">POST /config</span> immediately.</p>
-    </section>
+    <!-- ╔══════════════════════════ VIEW · SETTINGS ══════════════════════════╗ -->
+    <section class="view" id="view-settings" data-view="settings" aria-labelledby="view-title-settings" hidden>
+      <header class="view-head">
+        <h2 id="view-title-settings" class="view-title">Settings</h2>
+        <p class="view-lede">The live simulator configuration. <span class="mono">POST /config</span> applies instantly; structural fields require a reset.</p>
+      </header>
 
+      <div class="view-grid settings-grid">
+        <section class="panel panel-config" aria-labelledby="cfg-title">
+          <div class="panel-head">
+            <h3 id="cfg-title">Configuration</h3>
+            <span class="src">GET/POST /config · persisted locally</span>
+          </div>
+
+          <div class="settings-filter">
+            <svg width="15" height="15" aria-hidden="true"><use href="#i-command"/></svg>
+            <input id="settings-filter" type="search" placeholder="Filter settings by name, phase or description…"
+                   aria-label="Filter settings" autocomplete="off" />
+            <span id="settings-filter-count" class="micro" aria-live="polite"></span>
+          </div>
+
+          <div class="settings-group" data-group="Core dynamics">
+            <h4 class="sub">Core dynamics</h4>
+            <div class="sliders" id="config-sliders">
+              <label class="slider-row" data-key="ignition_threshold" data-fmt="f2">
+                <span class="slider-label">Ignition threshold <b class="slider-val">0.30</b> <span class="slider-default">default 0.30</span></span>
+                <input type="range" min="0.05" max="0.95" step="0.01" value="0.30" />
+                <span class="slider-desc">GWT cutoff the ignition score must clear for global access.</span>
+              </label>
+              <label class="slider-row" data-key="arousal_baseline" data-fmt="f2">
+                <span class="slider-label">Arousal baseline <b class="slider-val">0.45</b> <span class="slider-default">default 0.45</span></span>
+                <input type="range" min="0.05" max="0.95" step="0.01" value="0.45" />
+                <span class="slider-desc">Reference vigilance; arousal above it lowers the effective threshold.</span>
+              </label>
+              <label class="slider-row" data-key="precision_weight" data-fmt="f2">
+                <span class="slider-label">Precision weight <b class="slider-val">1.00</b> <span class="slider-default">default 1.00</span></span>
+                <input type="range" min="0" max="3" step="0.05" value="1" />
+                <span class="slider-desc">How strongly coalition precision weights the competition.</span>
+              </label>
+              <label class="slider-row" data-key="epistemic_weight" data-fmt="f2">
+                <span class="slider-label">Epistemic weight <b class="slider-val">1.00</b> <span class="slider-default">default 1.00</span></span>
+                <input type="range" min="0" max="3" step="0.05" value="1" />
+                <span class="slider-desc">Active-inference information-gain weight in action selection.</span>
+              </label>
+              <label class="slider-row" data-key="curiosity" data-fmt="f2">
+                <span class="slider-label">Curiosity <b class="slider-val">1.00</b> <span class="slider-default">default 1.00</span></span>
+                <input type="range" min="0" max="3" step="0.05" value="1" />
+                <span class="slider-desc">Drive toward novel objects and unexplored cells.</span>
+              </label>
+              <label class="slider-row" data-key="caution" data-fmt="f2">
+                <span class="slider-label">Caution <b class="slider-val">1.00</b> <span class="slider-default">default 1.00</span></span>
+                <input type="range" min="0" max="3" step="0.05" value="1" />
+                <span class="slider-desc">Drive away from hazards; scales perceived danger.</span>
+              </label>
+              <label class="slider-row" data-key="working_memory_capacity" data-fmt="int">
+                <span class="slider-label">Working memory capacity <b class="slider-val">5</b> <span class="slider-default">default 5</span></span>
+                <input type="range" min="1" max="12" step="1" value="5" />
+                <span class="slider-desc">Items the working memory can hold before eviction.</span>
+              </label>
+              <label class="slider-row" data-key="initial_energy" data-fmt="f0">
+                <span class="slider-label">Initial energy <b class="slider-val">100</b> <span class="slider-default">default 100</span></span>
+                <input type="range" min="20" max="200" step="5" value="100" />
+                <span class="slider-desc">Energy the agent starts a run with.</span>
+              </label>
+              <label class="slider-row" data-key="world_noise" data-fmt="f2">
+                <span class="slider-label">World noise <b class="slider-val">0.10</b> <span class="slider-default">default 0.10</span></span>
+                <input type="range" min="0" max="1" step="0.01" value="0.1" />
+                <span class="slider-desc">Perceptual noise added to every observation.</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-group" data-group="Deep consciousness Phase 2">
+            <h4 class="sub">Deep consciousness (Phase 2)</h4>
+            <div class="deep-toggles" id="deep-toggles">
+              <label class="deep-toggle"><input type="checkbox" data-flag="circadian_enabled" checked /><span>circadian</span><small>Day/night cycle modulating arousal.</small></label>
+              <label class="deep-toggle"><input type="checkbox" data-flag="sleep_enabled" checked /><span>sleep</span><small>Fatigue-driven sleep with memory replay.</small></label>
+              <label class="deep-toggle"><input type="checkbox" data-flag="dream_enabled" checked /><span>dream</span><small>Recombined episodes during sleep.</small></label>
+              <label class="deep-toggle"><input type="checkbox" data-flag="imagination_enabled" checked /><span>imagination</span><small>Forward rollouts before acting.</small></label>
+              <label class="deep-toggle"><input type="checkbox" data-flag="curiosity_enabled" checked /><span>curiosity</span><small>Boredom pressure toward novelty.</small></label>
+              <label class="deep-toggle"><input type="checkbox" data-flag="agency_enabled" checked /><span>agency</span><small>Self-caused outcome tracking.</small></label>
+              <label class="deep-toggle" title="Self-opacity: a higher-order readout of what escaped the agent's access/control this tick"><input type="checkbox" data-flag="self_opacity_enabled" checked /><span>self-opacity</span><small>Higher-order readout of what escaped access/control.</small></label>
+            </div>
+          </div>
+
+          <div class="settings-group" data-group="Learning personality Phase 3">
+            <h4 class="sub">Learning &amp; personality (Phase 3)</h4>
+            <div class="deep-toggles" id="lp-toggles">
+              <label class="deep-toggle"><input type="checkbox" data-flag="learning_enabled" checked /><span>learning</span><small>Action-value learning from outcomes.</small></label>
+              <label class="deep-toggle"><input type="checkbox" data-flag="concepts_enabled" checked /><span>concepts</span><small>Prototype concepts clustered from percepts.</small></label>
+              <label class="deep-toggle"><input type="checkbox" data-flag="meta_learning_enabled" checked /><span>meta-learning</span><small>Learning rate adapted by surprise.</small></label>
+              <label class="deep-toggle"><input type="checkbox" data-flag="personality_enabled" checked /><span>personality</span><small>Traits drifting from lived history.</small></label>
+              <label class="deep-toggle" title="Homeostatic satiation: stops the agent from degenerating into endless REST"><input type="checkbox" data-flag="satiation_enabled" checked /><span>satiation</span><small>Marginal utility of energy falls when sated.</small></label>
+              <label class="deep-toggle" title="Relational self: the self-model is shaped by how the other agents regard this one (needs a society)"><input type="checkbox" data-flag="social_mirror_enabled" checked /><span>social mirror</span><small>Self-model shaped by others' regard (needs a society).</small></label>
+              <label class="deep-toggle" title="Individuation: how far the agent has grown into a coherent, distinctive, continuous self (become someone). Functional — NOT consciousness."><input type="checkbox" data-flag="individuation_enabled" checked /><span>individuation</span><small>Growth into a coherent, distinctive self. Functional only.</small></label>
+            </div>
+          </div>
+
+          <div class="settings-group" data-group="Asymptote Phase 5">
+            <h4 class="sub">The asymptote (Phase 5)</h4>
+            <div class="deep-toggles" id="asymptote-toggles">
+              <label class="deep-toggle" title="RPT (Lamme): noisy percepts are iteratively stabilized against working-memory priors — perception as a recurrent loop"><input type="checkbox" data-flag="recurrence_enabled" checked /><span>recurrence</span><small>RPT — percepts stabilized by recurrent passes.</small></label>
+              <label class="deep-toggle" title="PRM (Lau): a higher-order verdict on WHERE the conscious content comes from (world / memory / self-generated) — it can misattribute (hallucination analogue)"><input type="checkbox" data-flag="reality_monitor_enabled" checked /><span>reality monitor</span><small>PRM — source verdict on conscious content; can misattribute.</small></label>
+              <label class="deep-toggle" title="Seth: a dedicated model predicts the internal channels (energy, fatigue); presence = suppressed interoceptive surprise"><input type="checkbox" data-flag="intero_inference_enabled" checked /><span>interoception</span><small>Internal-channel prediction; presence = suppressed surprise.</small></label>
+              <label class="deep-toggle" title="Husserl: retention of the just-past, protention of the just-coming; violated protention = temporal surprise feeding vigilance"><input type="checkbox" data-flag="temporality_enabled" checked /><span>temporality</span><small>Retention/protention — temporal thickness.</small></label>
+              <label class="deep-toggle" title="Vygotsky/GWT: a condensed self-directed utterance re-enters the next competition and can win access (re-entry)"><input type="checkbox" data-flag="inner_speech_enabled" checked /><span>inner speech</span><small>Condensed self-talk re-entering the competition.</small></label>
+              <label class="deep-toggle" title="Barrett–Seth Φ_AR: published time-series integrated information over the real coalition activations (exact minimum-information bipartition) — still NOT IIT's causal Φ"><input type="checkbox" data-flag="phi_ar_enabled" checked /><span>Φ_AR</span><small>Barrett–Seth integrated information over activations.</small></label>
+              <label class="deep-toggle" title="GWT priming: content denied global access leaves a decaying facilitation trace — subliminal influence without access"><input type="checkbox" data-flag="priming_enabled" checked /><span>priming</span><small>Subliminal facilitation without access.</small></label>
+            </div>
+          </div>
+
+          <div class="settings-group" data-group="Language Phase 6">
+            <h4 class="sub">The invention of language (Phase 6)</h4>
+            <div class="deep-toggles" id="language-toggles">
+              <label class="deep-toggle" title="Naming games: installs the standing goal 'invent a language' — agents name what they see with INVENTED words, align on what they hear, and a shared lexicon emerges. Conventions, not understanding."><input type="checkbox" data-flag="language_drive_enabled" checked /><span>language drive</span><small>Standing goal "invent a language" — naming games.</small></label>
+            </div>
+          </div>
+
+          <div class="settings-group" data-group="Horizon Phase 7">
+            <h4 class="sub">The horizon (Phase 7)</h4>
+            <div class="deep-toggles" id="horizon-toggles">
+              <label class="deep-toggle" title="Exact empirical TPM and minimum-information bipartition on a coarse-grained binary substrate. This causal Φ proxy is not full IIT 3.0/4.0 Φ and is not evidence of consciousness."><input type="checkbox" data-flag="phi_causal_enabled" checked /><span>causal Φ</span><small>Exact Φ on a coarse binary substrate.</small></label>
+              <label class="deep-toggle" title="A slow latent regime modulates the fast world model and exposes explicit variational free energy. Inference is a functional calculation, not understanding."><input type="checkbox" data-flag="hierarchy_enabled" checked /><span>predictive hierarchy</span><small>Slow regime over the fast model; explicit VFE.</small></label>
+              <label class="deep-toggle" title="Bounded multi-step expected-free-energy search over action sequences. Policy search is not subjective deliberation or intention."><input type="checkbox" data-flag="planning_enabled" checked /><span>multi-step EFE</span><small>Bounded policy search over action sequences.</small></label>
+              <label class="deep-toggle" title="Deterministic embedding and cosine retrieval over stored records. Distributional similarity is not semantic understanding or experienced remembering."><input type="checkbox" data-flag="vector_memory_enabled" checked /><span>vector memory</span><small>Deterministic embedding + cosine retrieval.</small></label>
+              <label class="deep-toggle" title="Contextual temporal-difference learning with eligibility traces. A numerical reward update is not felt reward."><input type="checkbox" data-flag="td_learning_enabled" checked /><span>TD(λ)</span><small>Contextual TD learning with eligibility traces.</small></label>
+              <label class="deep-toggle" title="Low-demand associative memory walks can compete for workspace access. This is a functional default-mode analogue, not experienced daydreaming."><input type="checkbox" data-flag="mind_wandering_enabled" checked /><span>mind-wandering</span><small>Associative walks competing for access.</small></label>
+              <label class="deep-toggle" title="Deterministic seasons, food regrowth, hazard cycles, and drift enrich the simulated environment only; they do not imply a phenomenal world."><input type="checkbox" data-flag="world_dynamics_enabled" checked /><span>living world</span><small>Seasons, regrowth, hazard cycles, drift.</small></label>
+              <label class="deep-toggle" title="Rotating forage, reach, and patrol scores feed functional goal progress. Task completion is not purpose or experienced achievement."><input type="checkbox" data-flag="tasks_enabled" checked /><span>world tasks</span><small>Rotating structured tasks feeding goal progress.</small></label>
+            </div>
+          </div>
+
+          <div class="settings-group" data-group="Situated gendered self Phase 8">
+            <h4 class="sub">The situated gendered self (Phase 8)</h4>
+            <div class="deep-toggles" id="gender-toggles">
+              <label class="deep-toggle phase8-gate" title="A complete, explicit gender-life scenario must be installed through a full reset. No profile is inferred or silently assigned.">
+                <input type="checkbox" data-flag="gender_experience_enabled" data-explicit-scenario-only disabled />
+                <span>gender experience</span>
+                <small>Default off. Choose a complete life-course scenario in Mind to activate it.</small>
+              </label>
+            </div>
+            <p class="micro">
+              This flag is display-only here and is never restored from local storage.
+              <a href="#/mind">Open Gender experience</a> to inspect, configure and explicitly reset into a scenario.
+            </p>
+          </div>
+
+          <div class="settings-group" data-group="Persistence">
+            <h4 class="sub">Persistence &amp; I/O</h4>
+            <div class="deep-toggles" id="persistence-toggles">
+              <label class="deep-toggle"><input type="checkbox" data-flag="persist_memory" checked /><span>persist memory</span><small>Write autobiographical memory to disk each tick.</small></label>
+              <label class="deep-toggle"><input type="checkbox" data-flag="trace_logging" checked /><span>trace logging</span><small>Append every CycleTrace to the JSONL log.</small></label>
+            </div>
+            <p class="micro">Any change applies <span class="mono">POST /config</span> immediately. Fast training switches both off for you.</p>
+          </div>
+
+          <div class="settings-group" data-group="Society">
+            <h4 class="sub">Society</h4>
+            <p class="micro">Agent count is a structural field — change it from <a href="#/world">World &amp; society</a> (Apply resets the run).</p>
+          </div>
+        </section>
+
+        <section class="panel panel-config-full" aria-labelledby="cfg-full-title">
+          <div class="panel-head">
+            <h3 id="cfg-full-title">Full configuration <span class="micro">read-only</span></h3>
+            <span class="src">GET /config · live values vs defaults</span>
+          </div>
+          <p class="micro">Every SimConfig field, its live value and its default. <b>structural</b> fields (badged) 409 on hot-apply and need <span class="mono">POST /reset</span>.</p>
+          <div id="config-full" class="config-full"><div class="empty">Configuration not loaded yet.</div></div>
+        </section>
+
+        <section class="panel panel-appearance" aria-labelledby="appearance-title">
+          <div class="panel-head">
+            <h3 id="appearance-title">Appearance &amp; boundary</h3>
+            <span class="src">local preferences</span>
+          </div>
+          <p class="micro">Theme: use the topbar toggle (<kbd>t</kbd>) — dark observatory or archive-paper light. The scientific boundary line cannot be disabled; read the full framing anytime:</p>
+          <button class="btn btn-quiet" data-open-charter><svg width="14" height="14" aria-hidden="true"><use href="#i-boundary"/></svg>Epistemic charter</button>
+        </section>
+      </div>
+    </section>
   </main>
 
-  <footer class="colophon">
-    <span id="footer-disclaimer"></span>
+  <!-- ============================ BOUNDARY STRIP ============================ -->
+  <footer class="boundary-strip colophon" role="contentinfo">
+    <svg width="13" height="13" aria-hidden="true" class="boundary-icon"><use href="#i-boundary"/></svg>
+    <span id="footer-disclaimer" class="boundary-text">Functional simulation of processes associated with consciousness. The agent is not conscious, sentient, or alive.</span>
+    <button class="boundary-link" data-open-charter>Framing &amp; sources</button>
   </footer>
 
-  <script src="app.js?v=7.3"></script>
+  <!-- ============================ PROBE DOCK ============================ -->
+  <aside id="probe-dock" class="probe-dock" aria-labelledby="probe-dock-title" hidden>
+    <div class="probe-dock-head">
+      <h2 id="probe-dock-title">Causal probes</h2>
+      <button id="btn-probe-close" class="icon-btn" aria-label="Close the probe dock">
+        <svg width="16" height="16" aria-hidden="true"><use href="#i-close"/></svg>
+      </button>
+    </div>
+    <div id="probe-dock-body" class="probe-dock-body"></div>
+    <p class="micro probe-dock-foot">Same instrument as <a href="#/laboratory">Laboratory › Experimental interventions</a> — the panel moves here so you can watch the mechanism respond.</p>
+  </aside>
+
+  <!-- ============================ DIALOGS ============================ -->
+  <dialog id="charter" class="charter" aria-labelledby="charter-title">
+    <div class="charter-head">
+      <svg width="20" height="20" aria-hidden="true"><use href="#i-boundary"/></svg>
+      <h2 id="charter-title">The epistemic charter</h2>
+      <button class="icon-btn" data-close-dialog aria-label="Close">
+        <svg width="16" height="16" aria-hidden="true"><use href="#i-close"/></svg>
+      </button>
+    </div>
+    <p class="charter-framing" id="charter-framing">This version is a good-faith attempt to implement, as faithfully as tractable, the mechanisms that the major scientific theories of consciousness propose as constitutive or necessary. Reproducing the functional mechanisms does not prove phenomenality (the hard problem).</p>
+    <p class="charter-disclaimer" id="charter-disclaimer">Functional simulation of processes associated with consciousness. The agent is not conscious, sentient, or alive. Introspective reports are text generated from internal variables and are not evidence of subjective experience.</p>
+    <table class="data-table charter-levels">
+      <caption class="sr-only">The three-level distinction</caption>
+      <tbody>
+        <tr><th scope="row">1 · Phenomenal consciousness</th><td><b>Never claimed. Not verifiable.</b> No software test can establish or refute lived experience.</td></tr>
+        <tr><th scope="row">2 · Functional mechanisms</th><td><b>What this project implements, maximally.</b> Competition + ignition + broadcast, attention schema, higher-order reports, expected-free-energy minimization, Φ proxies — variables and algorithms, not an experience.</td></tr>
+        <tr><th scope="row">3 · Simulated introspection</th><td><b>Generated text.</b> Descriptions derived from internal variables — never a witness.</td></tr>
+      </tbody>
+    </table>
+    <p class="micro">Every panel keeps its <span class="mono">GET /endpoint</span> chip — you always see where a number comes from. Surfaces whose text comes from an LLM carry the <span class="llm-badge">LLM</span> badge. Mechanism coverage: <a href="#/laboratory">Laboratory › Theory coverage</a>.</p>
+    <div class="charter-actions">
+      <button class="btn btn-accent" id="btn-charter-ack" data-close-dialog>Understood — keep the boundary line visible</button>
+    </div>
+  </dialog>
+
+  <dialog id="command-palette" class="command-palette" aria-label="Command palette">
+    <div class="palette-input-row">
+      <svg width="15" height="15" aria-hidden="true"><use href="#i-command"/></svg>
+      <input id="palette-input" type="text" role="combobox" aria-expanded="true" aria-controls="palette-results"
+             aria-autocomplete="list" placeholder="Type a command, view, @metric or #setting…" autocomplete="off" />
+      <kbd>esc</kbd>
+    </div>
+    <ul id="palette-results" role="listbox" aria-label="Commands"></ul>
+    <p class="palette-hint micro"><kbd>↑↓</kbd> navigate · <kbd>↵</kbd> run · <kbd>&gt;</kbd> commands · <kbd>@</kbd> metrics · <kbd>#</kbd> settings</p>
+  </dialog>
+
+  <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title">
+    <h2 id="confirm-title">Confirm</h2>
+    <p id="confirm-body">Are you sure?</p>
+    <div class="confirm-actions">
+      <button class="btn btn-quiet" id="btn-confirm-cancel" data-close-dialog>Cancel</button>
+      <button class="btn btn-danger" id="btn-confirm-ok">Confirm</button>
+    </div>
+  </dialog>
+
+  <dialog id="more-sheet" class="more-sheet" aria-label="All views">
+    <div class="more-sheet-head">
+      <h2>Views</h2>
+      <button class="icon-btn" data-close-dialog aria-label="Close">
+        <svg width="16" height="16" aria-hidden="true"><use href="#i-close"/></svg>
+      </button>
+    </div>
+    <ul class="more-list">
+      <li><a href="#/overview" data-nav-more="overview"><svg width="18" height="18" aria-hidden="true"><use href="#i-overview"/></svg>Overview</a></li>
+      <li><a href="#/workspace" data-nav-more="workspace"><svg width="18" height="18" aria-hidden="true"><use href="#i-workspace"/></svg>Workspace</a></li>
+      <li><a href="#/world" data-nav-more="world"><svg width="18" height="18" aria-hidden="true"><use href="#i-world"/></svg>World &amp; society</a></li>
+      <li><a href="#/mind" data-nav-more="mind"><svg width="18" height="18" aria-hidden="true"><use href="#i-mind"/></svg>Mind</a></li>
+      <li><a href="#/learning-language" data-nav-more="learning-language"><svg width="18" height="18" aria-hidden="true"><use href="#i-learning"/></svg>Learning &amp; language</a></li>
+      <li><a href="#/laboratory" data-nav-more="laboratory"><svg width="18" height="18" aria-hidden="true"><use href="#i-laboratory"/></svg>Laboratory</a></li>
+      <li><a href="#/memory" data-nav-more="memory"><svg width="18" height="18" aria-hidden="true"><use href="#i-memory"/></svg>Memory</a></li>
+      <li><a href="#/settings" data-nav-more="settings"><svg width="18" height="18" aria-hidden="true"><use href="#i-settings"/></svg>Settings</a></li>
+      <li><button class="more-charter" data-open-charter><svg width="18" height="18" aria-hidden="true"><use href="#i-boundary"/></svg>Epistemic charter</button></li>
+    </ul>
+  </dialog>
+
+  <!-- Mobile bottom tab bar -->
+  <nav class="tabbar" aria-label="Primary views">
+    <a href="#/overview" data-tab="overview"><svg width="20" height="20" aria-hidden="true"><use href="#i-overview"/></svg><span>Overview</span></a>
+    <a href="#/workspace" data-tab="workspace"><svg width="20" height="20" aria-hidden="true"><use href="#i-workspace"/></svg><span>Workspace</span></a>
+    <a href="#/mind" data-tab="mind"><svg width="20" height="20" aria-hidden="true"><use href="#i-mind"/></svg><span>Mind</span></a>
+    <a href="#/laboratory" data-tab="laboratory"><svg width="20" height="20" aria-hidden="true"><use href="#i-laboratory"/></svg><span>Lab</span></a>
+    <button id="btn-more" aria-label="More views"><svg width="20" height="20" aria-hidden="true"><use href="#i-more"/></svg><span>More</span></button>
+  </nav>
+
+  <div id="toast-region" class="toast-region" aria-live="polite"></div>
+  <div id="conn-warning" class="conn-warning" role="status" hidden></div>
+
+  <script src="app.js?v=8.1"></script>
 </body>
 </html>

@@ -16,17 +16,32 @@
   const HIST = 60;            // sparkline history length
   const STREAM_MAX = 48;      // stream bars kept client-side
   const IGNITION_HISTORY_MAX = 120;
-  const SOURCE_COLORS = {
-    perception: "#d8a84e", memory: "#7fb5a6", self: "#9b86c8",
-    emotion: "#c87463", goal: "#80a85e", imagination: "#739bc5",
-    dream: "#755c9f", social: "#c98ba7", inner_speech: "#d0b674",
-    wandering: "#69a9ad", language: "#b69462", unknown: "#7b7870",
+  // Coalition sources are colored via the themed --src-* custom properties
+  // (styles.css), so the timeline/legend/bars re-tint with the theme and stay
+  // AA on both inset surfaces. Any source outside the known set maps to unknown.
+  const SOURCE_KEYS = [
+    "perception", "memory", "self", "emotion", "goal", "imagination",
+    "dream", "social", "inner_speech", "wandering", "language",
+    "motivation", "prediction_error", "interoception", "metacognition",
+    "concept", "unknown",
+  ];
+  const sourceKey = (source) => {
+    const key = String(source || "unknown").toLowerCase();
+    return SOURCE_KEYS.includes(key) ? key : "unknown";
   };
+  const sourceCssVar = (source) => "var(--src-" + sourceKey(source) + ")";
+  const SOURCE_COLORS = new Proxy({}, {
+    get: (_t, source) => cssVar("--src-" + sourceKey(source)),
+  });
   const HORIZON_FLAGS = [
     "phi_causal_enabled", "hierarchy_enabled", "planning_enabled",
     "vector_memory_enabled", "td_learning_enabled", "mind_wandering_enabled",
     "world_dynamics_enabled", "tasks_enabled",
   ];
+  const GENDER_HOSTILE_EVENTS = new Set([
+    "misgendering", "invalidation", "rejection", "discrimination",
+    "threat", "care_barrier", "access_denied",
+  ]);
 
   // ---------- helpers ----------
   const $ = (s) => document.querySelector(s);
@@ -58,7 +73,12 @@
       headers: { "Content-Type": "application/json" },
       ...opts,
     });
-    if (!res.ok) throw new Error(`${path} -> ${res.status}`);
+    if (!res.ok) {
+      const err = new Error(`${path} -> ${res.status}`);
+      err.status = res.status;
+      try { err.detail = await res.json(); } catch (e) { /* no JSON body */ }
+      throw err;
+    }
     const ct = res.headers.get("content-type") || "";
     return ct.includes("application/json") ? res.json() : null;
   }
@@ -74,11 +94,19 @@
   function loadSettings() {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
-      return raw ? JSON.parse(raw) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
+      // Phase 8 requires a complete, explicit scenario reset. A stale browser
+      // preference must never activate the mechanism or invent a profile.
+      if (parsed && typeof parsed === "object") delete parsed.gender_experience_enabled;
+      return parsed;
     } catch (e) { return null; }
   }
   function saveSettings(obj) {
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(obj)); } catch (e) { /* ignore */ }
+    try {
+      const safe = { ...(obj || {}) };
+      delete safe.gender_experience_enabled;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(safe));
+    } catch (e) { /* ignore */ }
   }
   function persistSetting(patch) {
     saveSettings({ ...(loadSettings() || {}), ...patch });
@@ -95,6 +123,18 @@
   let lastTick = -1;
   // most recent CycleTrace (from POST /tick) — holds Phase-2 imagination/sleep detail
   let lastTrace = null;
+  // shell / instrument client state (Le Méridien redesign)
+  let clientConfig = {};            // last GET /config dump (perception radius, nominal threshold…)
+  let lastWorkspaceState = null;    // last workspace payload fed to the aperture
+  let lastFullWorkspace = null;     // last payload WITH competition[] (the /agent/consciousness echo is reduced)
+  let lastSocietyData = null;       // last GET /society payload (society view + minis + inspector)
+  let lastDaylight = 1;             // last circadian daylight (theme retint)
+  let lastIsSleeping = false;       // aperture ASLEEP state
+  let prevIgnitedForPulse = false;  // rising-edge detector for the one-shot aperture pulse
+  let dynCursor = -1;               // keyboard cursor into ignitionHistory (-1 = follow latest)
+  let pollFailures = 0;             // consecutive poll batch failures (connection banner)
+  const pendingViewDraws = new Set(); // canvases skipped while their view was hidden
+  const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   // client-side metric history for sparklines
   const HISTORY = {};
@@ -111,6 +151,17 @@
   let memoryGraphRequest = null;
   let memoryGraphSelection = -1;
   let horizonGeneration = 0;
+  // Phase 8 client boundary: ordinary and public reads refresh in the poll.
+  // The private/debug payload only exists after the user explicitly reveals it.
+  let genderCatalog = [];
+  let genderManifestDraft = null;
+  let genderPayload = null;
+  let genderSocietyPayload = null;
+  let genderDebugPayload = null;
+  let genderProbeHistory = [];
+  let genderActivePresetId = null;
+  let genderSyncedProfileId = null;
+  let genderControlsBound = false;
 
   function resetHorizonClientState() {
     horizonGeneration += 1;
@@ -123,6 +174,11 @@
     memoryGraphSelection = -1;
     lastTrace = null;
     lastTick = -1;
+    genderPayload = null;
+    genderSocietyPayload = null;
+    genderDebugPayload = null;
+    genderProbeHistory = [];
+    genderSyncedProfileId = null;
 
     const searchResults = $("#memory-search-results");
     if (searchResults) searchResults.replaceChildren();
@@ -138,15 +194,25 @@
     renderIgnitionDynamics(null, -1);
     drawMemoryGraph(memoryGraphCache);
     renderHorizon(null, null);
+    renderGenderExperience(null, null);
   }
 
   // ============================================================
   //  STATUS + THEME
   // ============================================================
+  let lastErrorToast = { text: "", at: 0 };
   function setStatus(kind, text) {
     const pill = $("#status-pill");
     pill.className = "pill pill-" + kind;
     $("#status-label").textContent = text;
+    // surface errors as a toast too (deduped) — the pill alone is easy to miss
+    if (kind === "error") {
+      const now = performance.now();
+      if (text !== lastErrorToast.text || now - lastErrorToast.at > 6000) {
+        lastErrorToast = { text, at: now };
+        toast(text, "error");
+      }
+    }
   }
   function setRunningUI(isRunning) {
     running = isRunning;
@@ -163,15 +229,72 @@
       const next = cur === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", next);
       localStorage.setItem("cws-theme", next);
-      if (currentWorldSnap) drawWorld(currentWorldSnap); // re-tint canvas
-      renderIgnitionDynamics(null, lastTick);
-      drawMemoryGraph(memoryGraphCache);
+      retintAllCanvases(); // every themed canvas + the aperture, not just three
     });
   })();
 
-  // read CSS vars so the canvas matches the active theme
+  // ============================================================
+  //  CANVAS SCALING (HiDPI) + VIEW-VISIBILITY GATING
+  // ============================================================
+  // Every canvas keeps its LOGICAL design size for all drawing math; the
+  // backing store is sized to CSS width × devicePixelRatio (capped at 2) and
+  // the context transform maps logical→device. Hit-tests stay in logical
+  // coordinates (client px are converted with the logical size, not .width).
+  function ensureCanvasScale(canvas, logicalW, logicalH) {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cssW = canvas.clientWidth || logicalW;
+    const k = (cssW / logicalW) * dpr;
+    const w = Math.max(1, Math.round(logicalW * k));
+    const h = Math.max(1, Math.round(logicalH * k));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    return ctx;
+  }
+  // One ResizeObserver per canvas, created once (WeakSet guard) — the resize
+  // callback only marks + redraws through the canvas's own draw entry point.
+  const observedCanvases = new WeakSet();
+  function observeCanvasResize(canvas, redraw) {
+    if (!canvas || observedCanvases.has(canvas) || typeof ResizeObserver === "undefined") return;
+    observedCanvases.add(canvas);
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; redraw(); });
+    });
+    ro.observe(canvas);
+  }
+  // A canvas inside a hidden view has no layout box: skip the draw, remember it,
+  // and flush when the view becomes active again (see the router).
+  function canvasVisible(el) { return !!(el && el.offsetParent !== null); }
+
+  // read CSS vars so the canvas matches the active theme — memoized per theme
+  // (getComputedStyle is costly at 350ms poll cadence; the cache is invalidated
+  // on every theme toggle).
+  let cssVarCache = Object.create(null);
   function cssVar(name) {
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    let v = cssVarCache[name];
+    if (v == null) {
+      v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      cssVarCache[name] = v;
+    }
+    return v;
+  }
+  function invalidateCssVars() { cssVarCache = Object.create(null); }
+
+  // Redraw every themed surface after a palette change (all canvases + aperture).
+  function retintAllCanvases() {
+    invalidateCssVars();
+    if (currentWorldSnap) drawWorld(currentWorldSnap);
+    renderIgnitionDynamics(null, lastTick);
+    drawMemoryGraph(memoryGraphCache);
+    drawCircadianDial(lastDaylight);
+    if (lastSocietyData) renderSocietyAll(lastSocietyData);
+    refreshLabChart().catch(() => {});
+    updateAperture(lastWorkspaceState);
   }
 
   // ============================================================
@@ -215,11 +338,38 @@
     };
   }
 
+  // kind → distinct SHAPE (never color alone): food=disc, hazard=triangle,
+  // tool=square, curio=diamond. Shared by the world map, the society map and
+  // the overview miniatures.
+  function traceKindShape(ctx, kind, cx, cy, r) {
+    ctx.beginPath();
+    if (kind === "hazard") {
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx + r * 0.92, cy + r * 0.78);
+      ctx.lineTo(cx - r * 0.92, cy + r * 0.78);
+      ctx.closePath();
+    } else if (kind === "tool") {
+      ctx.rect(cx - r * 0.82, cy - r * 0.82, r * 1.64, r * 1.64);
+    } else if (kind === "curio") {
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx + r, cy);
+      ctx.lineTo(cx, cy + r);
+      ctx.lineTo(cx - r, cy);
+      ctx.closePath();
+    } else {
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    }
+  }
+
+  const WORLD_L = 560; // logical drawing size of the two big grid canvases
+
   function drawWorld(snapshot) {
     currentWorldSnap = snapshot;
+    drawMiniWorld(snapshot); // the overview echo has its own visibility gate
     const canvas = $("#world-canvas");
-    const ctx = canvas.getContext("2d");
-    const W = canvas.width, H = canvas.height;
+    if (!canvasVisible(canvas)) { pendingViewDraws.add("world"); return; }
+    const ctx = ensureCanvasScale(canvas, WORLD_L, WORLD_L);
+    const W = WORLD_L, H = WORLD_L;
     ctx.clearRect(0, 0, W, H);
 
     const kindColor = {
@@ -251,30 +401,31 @@
     const agent = (snapshot && snapshot.agent) ||
       { x: Math.floor(grid / 2), y: Math.floor(grid / 2), energy: 0 };
 
-    // perception radius ring
-    const radius = num(snapshot && snapshot.radius) || 3;
+    // perception radius ring — the REAL configured radius (the legacy /state
+    // snapshot has no radius field; the hardcoded 3 was a silent lie).
+    const radius = num(clientConfig.perception_radius) ||
+      num(snapshot && snapshot.radius) || 3;
     ctx.beginPath();
     ctx.arc(center(agent.x), center(agent.y), (radius + 0.5) * cell, 0, Math.PI * 2);
     ctx.strokeStyle = agentCol;
-    ctx.globalAlpha = 0.22;
+    ctx.globalAlpha = 0.45;
     ctx.setLineDash([4, 6]);
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
 
-    // objects: size hints novelty, opacity hints danger
+    // objects: SHAPE = kind, size hints novelty, opacity hints danger
     const objs = (snapshot && snapshot.objects) || [];
     objs.forEach((o) => {
       const color = kindColor[o.kind] || cssVar("--ink-faint");
       const novelty = clamp01(num(o.novelty));
       const danger = clamp01(num(o.danger));
       const r = cell * (0.18 + 0.2 * novelty);
-      const alpha = 0.4 + 0.5 * Math.max(danger, o.kind === "hazard" ? 0.35 : 0.18);
+      const alpha = 0.5 + 0.4 * Math.max(danger, o.kind === "hazard" ? 0.35 : 0.18);
       ctx.globalAlpha = Math.min(1, alpha);
       ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(center(o.x), center(o.y), r, 0, Math.PI * 2);
+      traceKindShape(ctx, o.kind, center(o.x), center(o.y), r);
       ctx.fill();
       if (danger > 0.4) {
         ctx.globalAlpha = 0.85;
@@ -301,6 +452,106 @@
 
     // The selected cell remains visible for both pointer and keyboard users.
     drawWorldCursor(ctx, cell, grid);
+
+    canvas.setAttribute("aria-label",
+      `World grid ${grid}×${grid}, tick ${num(snapshot && snapshot.tick)}, ` +
+      `${objs.length} object${objs.length === 1 ? "" : "s"}, agent at ${agent.x},${agent.y}. ` +
+      "Interactive: click or use arrow keys then Enter to inject a stimulus.");
+    renderWorldCellDetail(snapshot, agent, radius);
+    renderWorldObjectsTable(snapshot, agent);
+  }
+
+  // Inspector for the selected cell — real fields of the objects standing there.
+  function renderWorldCellDetail(snapshot, agent, radius) {
+    const host = $("#world-cell-detail");
+    if (!host) return;
+    if (worldCursor.x == null || worldCursor.y == null) {
+      host.innerHTML = '<span class="micro">Select a cell (pointer or arrows) to inspect it.</span>';
+      return;
+    }
+    const cx = worldCursor.x, cy = worldCursor.y;
+    const objs = ((snapshot && snapshot.objects) || [])
+      .filter((o) => num(o.x) === cx && num(o.y) === cy);
+    const ag = agent || (snapshot && snapshot.agent) || {};
+    const dist = Math.abs(num(ag.x) - cx) + Math.abs(num(ag.y) - cy);
+    const inRadius = dist <= (radius || 3);
+    const parts = [];
+    parts.push(`<span class="wcd-title mono">cell (${cx}, ${cy})</span>`);
+    if (num(ag.x) === cx && num(ag.y) === cy) {
+      parts.push(`<div>agent here · energy ${f2(ag.energy)}</div>`);
+    }
+    if (!objs.length) {
+      parts.push('<div class="micro">empty cell</div>');
+    } else {
+      objs.forEach((o) => {
+        parts.push(
+          `<div><b class="kind-${esc(o.kind)}">${esc(o.kind)}</b> #${num(o.id)} · ` +
+          `danger ${f2(o.danger)} · novelty ${f2(o.novelty)} · utility ${f2(o.utility)}</div>`);
+      });
+    }
+    parts.push(`<div class="micro">distance to agent ${dist} · ` +
+      `${inRadius ? "inside" : "outside"} perception radius (${radius || 3})</div>`);
+    host.innerHTML = parts.join("");
+  }
+
+  // Non-graphical equivalent of the world canvas: every object, by distance.
+  function renderWorldObjectsTable(snapshot, agent) {
+    const tbody = document.querySelector("#world-objects-table tbody");
+    if (!tbody) return;
+    const ag = agent || (snapshot && snapshot.agent) || { x: 0, y: 0 };
+    const objs = ((snapshot && snapshot.objects) || []).slice()
+      .sort((a, b) =>
+        (Math.abs(num(a.x) - ag.x) + Math.abs(num(a.y) - ag.y)) -
+        (Math.abs(num(b.x) - ag.x) + Math.abs(num(b.y) - ag.y)));
+    tbody.replaceChildren();
+    if (!objs.length) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = '<td colspan="6" class="micro">No objects in the world.</td>';
+      tbody.appendChild(tr);
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    objs.forEach((o) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        `<td class="kind-${esc(o.kind)}">${esc(o.kind)}</td>` +
+        `<td class="num">${num(o.id)}</td>` +
+        `<td class="num">${num(o.x)},${num(o.y)}</td>` +
+        `<td class="num">${f2(o.danger)}</td>` +
+        `<td class="num">${f2(o.novelty)}</td>` +
+        `<td class="num">${f2(o.utility)}</td>`;
+      frag.appendChild(tr);
+    });
+    tbody.appendChild(frag);
+  }
+
+  // Overview miniature — same real snapshot, reduced glyphs, click-through to #/world.
+  function drawMiniWorld(snapshot) {
+    const canvas = $("#overview-world-mini");
+    if (!canvas) return;
+    if (!canvasVisible(canvas)) { pendingViewDraws.add("overview"); return; }
+    const L = 220;
+    const ctx = ensureCanvasScale(canvas, L, L);
+    ctx.clearRect(0, 0, L, L);
+    const grid = num(snapshot && snapshot.grid_size) || lastGrid || 12;
+    const cell = L / grid;
+    const center = (c) => c * cell + cell / 2;
+    const kindColor = {
+      food: cssVar("--pos"), hazard: cssVar("--neg"),
+      tool: cssVar("--cool"), curio: cssVar("--curio"),
+    };
+    ((snapshot && snapshot.objects) || []).forEach((o) => {
+      ctx.fillStyle = kindColor[o.kind] || cssVar("--ink-faint");
+      ctx.globalAlpha = 0.8;
+      traceKindShape(ctx, o.kind, center(o.x), center(o.y), Math.max(2.4, cell * 0.2));
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    const agent = (snapshot && snapshot.agent) || { x: grid / 2, y: grid / 2 };
+    ctx.beginPath();
+    ctx.arc(center(agent.x), center(agent.y), Math.max(3, cell * 0.3), 0, Math.PI * 2);
+    ctx.fillStyle = cssVar("--accent");
+    ctx.fill();
   }
 
   // ============================================================
@@ -370,8 +621,10 @@
 
   // ignition gate — ignition_score vs effective_threshold (GET /agent/workspace).
   // Shows how close the system sits to conscious access; marker = effective cutoff.
+  // Also feeds the Ignition Aperture (the Overview's signature dial).
   function renderIgnitionGate(ws) {
     if (!ws) return;
+    lastWorkspaceState = ws;
     const score = clamp01(num(ws.ignition_score));
     const eff = clamp01(num(ws.effective_threshold != null ? ws.effective_threshold : ws.threshold));
     const fill = $("#ig-fill");
@@ -383,6 +636,137 @@
     if (thr) thr.style.left = (eff * 100).toFixed(1) + "%";
     if ($("#ig-score")) $("#ig-score").textContent = f3(score);
     if ($("#ig-eff")) $("#ig-eff").textContent = f3(eff);
+    updateAperture(ws);
+  }
+
+  // ============================================================
+  //  IGNITION APERTURE — the instrument's signature dial (#/overview)
+  // ============================================================
+  // A 240° dial (150°→390°, gap at the bottom). The score arc is the real
+  // ignition_score; the faint engraved band is the ignition zone beyond the
+  // EFFECTIVE threshold; the ghost tick marks the NOMINAL configured threshold
+  // — the visible gap between the two ticks IS the arousal/homeostatic
+  // modulation, drawn honestly. The inner arc is broadcast strength. It only
+  // pulses on a REAL ignition rising edge (and never under reduced motion).
+  const AP = { cx: 170, cy: 164, r: 126, rIn: 102, a0: 150, sweep: 240 };
+  function apPoint(r, v) {
+    const th = (AP.a0 + clamp01(v) * AP.sweep) * Math.PI / 180;
+    return [AP.cx + r * Math.cos(th), AP.cy + r * Math.sin(th)];
+  }
+  function apArc(r, v0, v1) {
+    const [x0, y0] = apPoint(r, v0);
+    const [x1, y1] = apPoint(r, v1);
+    const large = (clamp01(v1) - clamp01(v0)) * AP.sweep > 180 ? 1 : 0;
+    return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  }
+  let apertureNodes = null;
+  function buildAperture(svg) {
+    svg.replaceChildren();
+    for (let i = 0; i <= 40; i++) {
+      const v = i / 40, major = i % 10 === 0;
+      const [x0, y0] = apPoint(AP.r + 9, v);
+      const [x1, y1] = apPoint(AP.r + (major ? 19 : 14), v);
+      svg.appendChild(svgEl("line", {
+        x1: x0.toFixed(1), y1: y0.toFixed(1), x2: x1.toFixed(1), y2: y1.toFixed(1),
+        class: major ? "ap-tick-major" : "ap-tick",
+      }));
+      if (major) {
+        const [lx, ly] = apPoint(AP.r + 30, v);
+        const t = svgEl("text", {
+          x: lx.toFixed(1), y: ly.toFixed(1), class: "ap-tick-label",
+          "text-anchor": "middle", "dominant-baseline": "middle",
+        });
+        t.textContent = v === 0 ? ".00" : v === 1 ? "1.0" : v.toFixed(2).slice(1);
+        svg.appendChild(t);
+      }
+    }
+    const mk = (tag, attrs) => { const node = svgEl(tag, attrs); svg.appendChild(node); return node; };
+    const text = (y, cls) => {
+      const t = mk("text", { x: AP.cx, y, class: cls, "text-anchor": "middle" });
+      return t;
+    };
+    apertureNodes = {
+      track: mk("path", { d: apArc(AP.r, 0, 1), class: "ap-track" }),
+      zone: mk("path", { class: "ap-zone", d: "" }),
+      scoreArc: mk("path", { class: "ap-score-arc", d: "" }),
+      broadcastArc: mk("path", { class: "ap-broadcast-arc", d: "" }),
+      nominalTick: mk("line", { class: "ap-nominal" }),
+      effTick: mk("line", { class: "ap-eff" }),
+      state: text(AP.cy - 40, "ap-state"),
+      score: text(AP.cy + 8, "ap-score"),
+      thresholdLine: text(AP.cy + 30, "ap-threshold"),
+      winner: text(AP.cy + 54, "ap-winner"),
+      content: text(AP.cy + 72, "ap-content"),
+    };
+  }
+  function apSetTick(node, v, len) {
+    const [x0, y0] = apPoint(AP.r - len, v);
+    const [x1, y1] = apPoint(AP.r + len, v);
+    node.setAttribute("x1", x0.toFixed(1)); node.setAttribute("y1", y0.toFixed(1));
+    node.setAttribute("x2", x1.toFixed(1)); node.setAttribute("y2", y1.toFixed(1));
+    node.setAttribute("visibility", "visible");
+  }
+  function updateAperture(ws) {
+    const svg = $("#aperture");
+    if (!svg) return;
+    if (!canvasVisible(svg)) { pendingViewDraws.add("overview"); return; }
+    if (!apertureNodes || !svg.childElementCount) buildAperture(svg);
+    const n = apertureNodes;
+    const hasData = !!ws && lastTick >= 0;
+    if (!hasData) {
+      n.zone.setAttribute("d", ""); n.scoreArc.setAttribute("d", "");
+      n.broadcastArc.setAttribute("d", "");
+      n.nominalTick.setAttribute("visibility", "hidden");
+      n.effTick.setAttribute("visibility", "hidden");
+      n.state.textContent = "AWAITING";
+      n.score.textContent = "—";
+      n.thresholdLine.textContent = "no cycle yet";
+      n.winner.textContent = ""; n.content.textContent = "";
+      svg.classList.remove("is-ignited", "is-asleep");
+      svg.setAttribute("aria-label", "Ignition aperture: no cycle yet");
+      return;
+    }
+    const score = clamp01(num(ws.ignition_score));
+    const eff = clamp01(num(ws.effective_threshold != null ? ws.effective_threshold : ws.threshold));
+    const nominal = clamp01(num(
+      clientConfig.ignition_threshold != null ? clientConfig.ignition_threshold : ws.threshold));
+    const broadcast = clamp01(num(ws.broadcast_strength));
+    const ignited = !!ws.ignited;
+    const asleep = !!lastIsSleeping;
+    n.zone.setAttribute("d", eff < 0.996 ? apArc(AP.r, eff, 1) : "");
+    n.scoreArc.setAttribute("d", score > 0.004 ? apArc(AP.r, 0, score) : "");
+    n.broadcastArc.setAttribute("d", broadcast > 0.004 ? apArc(AP.rIn, 0, broadcast) : "");
+    apSetTick(n.effTick, eff, 12);
+    apSetTick(n.nominalTick, nominal, 8);
+    svg.classList.toggle("is-ignited", ignited);
+    svg.classList.toggle("is-asleep", asleep);
+    n.state.textContent = asleep ? "ASLEEP" : (ignited ? "GLOBAL ACCESS" : "SUBLIMINAL");
+    n.score.textContent = f3(score);
+    n.thresholdLine.textContent = "threshold " + f3(eff) +
+      (Math.abs(eff - nominal) > 0.002 ? " · nominal " + f3(nominal) : "");
+    n.winner.textContent = ws.winner_source || "";
+    n.winner.style.fill = ws.winner_source ? sourceCssVar(ws.winner_source) : "";
+    const content = ws.winner_content || "";
+    n.content.textContent = content
+      ? "“" + (content.length > 44 ? content.slice(0, 43) + "…" : content) + "”"
+      : "";
+    if (ignited && !prevIgnitedForPulse && !REDUCED_MOTION.matches) {
+      svg.classList.remove("igniting");
+      void svg.getBoundingClientRect();
+      svg.classList.add("igniting");
+      setTimeout(() => svg.classList.remove("igniting"), 320);
+    }
+    prevIgnitedForPulse = ignited;
+    if ($("#ap-strength")) $("#ap-strength").textContent =
+      ws.winner_strength != null ? f3(ws.winner_strength) : "—";
+    if ($("#ap-dominance")) $("#ap-dominance").textContent =
+      ws.dominance != null ? f3(ws.dominance) : "—";
+    if ($("#ap-arousal")) $("#ap-arousal").textContent =
+      ws.arousal != null ? f3(ws.arousal) : "—";
+    svg.setAttribute("aria-label",
+      `Ignition aperture: score ${f3(score)} against effective threshold ${f3(eff)} — ` +
+      (asleep ? "asleep" : ignited ? "global access (ignited)" : "present but subliminal") +
+      (ws.winner_source ? `. Winning source ${ws.winner_source}.` : "."));
   }
 
   // arousal / vigilance bar — GET /state.arousal (or /metrics), baseline marker.
@@ -395,11 +779,17 @@
     if (mark && baseline != null) mark.style.left = (clamp01(num(baseline)) * 100).toFixed(1) + "%";
   }
 
-  // half-circle gauge: dasharray 132 ≈ arc length
-  function setGauge(pathSel, valSel, v) {
-    const len = 132;
-    $(pathSel).style.strokeDashoffset = (len * (1 - clamp01(v))).toFixed(1);
-    $(valSel).textContent = f2(v);
+  // HOT readouts: calibrated horizontal meters (comparable, unlike the old
+  // repeated half-circle gauges) — the ids stayed, the geometry changed.
+  function setGauge(fillSel, valSel, v) {
+    const fill = $(fillSel);
+    if (fill) fill.style.width = (clamp01(v) * 100).toFixed(1) + "%";
+    const val = $(valSel);
+    if (val) val.textContent = f2(v);
+    const meter = fill && fill.parentElement;
+    if (meter && meter.getAttribute("role") === "meter") {
+      meter.setAttribute("aria-valuenow", clamp01(v).toFixed(3));
+    }
   }
 
   function renderWorkspace(ws) {
@@ -410,6 +800,13 @@
     const threshold = clamp01(
       num(ws.effective_threshold != null ? ws.effective_threshold : ws.threshold) || 0.30
     );
+
+    // The /agent/consciousness echo of the workspace is REDUCED (no
+    // competition[]); keep the last full payload so the bars never blank out
+    // mid-run when only the echo arrives.
+    if (Array.isArray(ws.competition) && ws.competition.length) lastFullWorkspace = ws;
+    const barSource = Array.isArray(ws.competition) && ws.competition.length
+      ? ws : (lastFullWorkspace || ws);
 
     // keep the threshold line element, rebuild coalition rows
     box.querySelectorAll(".coalition").forEach((n) => n.remove());
@@ -424,14 +821,25 @@
     winnerEl.classList.toggle("subliminal", !ws.ignited);
     $("#threshold-val").textContent = f3(threshold);
 
+    // Decision banner — the HONEST scale: ignition_score (winner strength ×
+    // dominance, arousal-modulated) against the effective threshold. The bars
+    // below are softmax SHARES of the broadcast field, an incommensurable
+    // scale, so the threshold no longer cuts across them.
+    const scoreEl = $("#ws-score");
+    if (scoreEl) scoreEl.textContent = ws.ignition_score != null ? f3(ws.ignition_score) : "—";
+    const verdictEl = $("#ws-verdict");
+    if (verdictEl) {
+      verdictEl.textContent = ws.ignited ? "ignited — global access" : "subliminal";
+      verdictEl.classList.toggle("is-ignited", !!ws.ignited);
+    }
+
     // mirror arousal + ignition gate from the same workspace payload
     renderArousal(ws.arousal, configValue("arousal_baseline"));
     renderIgnitionGate(ws);
 
-    const coalitions = (ws.competition || []).slice();
-    // sort descending by activation for a clean ranked readout
+    const coalitions = (barSource.competition || []).slice();
+    // sort descending by share for a clean ranked readout
     coalitions.sort((a, b) => num(b.activation) - num(a.activation));
-    const maxAct = Math.max(0.001, ...coalitions.map((c) => num(c.activation)));
 
     const frag = document.createDocumentFragment();
     coalitions.forEach((c) => {
@@ -440,29 +848,44 @@
       const isDominant = c.source === ws.winner_source;
       const cls = isDominant ? (ws.ignited ? " winner" : " dominant") : "";
       const row = el("div", "coalition" + cls);
+      row.style.setProperty("--src", sourceCssVar(c.source));
+      const badge = isDominant
+        ? `<span class="co-badge">${ws.ignited ? "access" : "dominant"}</span>` : "";
       const label = el("div", "co-label",
-        `<span class="co-src">${esc(c.source)}</span>${esc(c.content || "")}`);
+        `<span class="co-src">${esc(c.source)}${badge}</span>${esc(c.content || "")}`);
+      label.title = `${c.source} — softmax share ${f3(c.activation)} · precision ${f2(c.precision)}`;
       const barWrap = el("div", "co-bar");
       const fill = el("div", "co-fill");
-      // scale bar width to the strongest activation so differences read clearly
-      fill.style.width = (clamp01(num(c.activation) / maxAct) * 100).toFixed(1) + "%";
+      // RAW share on the absolute 0..1 axis (shares sum to 1) — two instants
+      // stay comparable; no re-normalization to the window maximum.
+      fill.style.width = (clamp01(num(c.activation)) * 100).toFixed(1) + "%";
       barWrap.appendChild(fill);
       const val = el("div", "co-val", f3(c.activation));
       row.appendChild(label); row.appendChild(barWrap); row.appendChild(val);
       frag.appendChild(row);
     });
+    if (!coalitions.length) {
+      frag.appendChild(el("div", "empty",
+        "No competition data yet — step the simulation to populate the workspace."));
+    }
     box.appendChild(frag);
 
-    // place threshold line across the bar column.
-    // The coalition bars show softmax SHARES (scaled to maxAct) — a different
-    // scale from the absolute ignition_score the effective_threshold gates.
-    // The canonical score-vs-threshold comparison lives in the hero ignition
-    // gate; here we mark the effective cutoff as a direct fraction of the bar
-    // area (0..1), a sober homeostatic reference that drifts with arousal.
-    const line = $("#threshold-line");
-    const barFrac = clamp01(threshold);
-    // 124px label + 10px gap = 134px offset, bar then flexes; value col 44px + 10px gap.
-    line.style.left = `calc(134px + (100% - 134px - 54px) * ${barFrac})`;
+    // accessible equivalent: the same competition as a real table
+    const tbody = document.querySelector("#coalition-table tbody");
+    if (tbody) {
+      tbody.replaceChildren();
+      const tfrag = document.createDocumentFragment();
+      coalitions.forEach((c) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML =
+          `<td>${esc(c.source)}${c.source === ws.winner_source ? (ws.ignited ? " (access)" : " (dominant)") : ""}</td>` +
+          `<td>${esc(c.content || "")}</td>` +
+          `<td class="num">${f3(c.activation)}</td>` +
+          `<td class="num">${c.precision != null ? f2(c.precision) : "—"}</td>`;
+        tfrag.appendChild(tr);
+      });
+      tbody.appendChild(tfrag);
+    }
   }
 
   function renderStream(moments) {
@@ -480,8 +903,11 @@
         (m.contents ? `\n${m.contents}` : "");
       frag.appendChild(bar);
     });
+    // stay pinned to the latest moment ONLY if the user was already at the
+    // right edge (don't fight a manual scroll through history)
+    const stick = track.scrollLeft >= track.scrollWidth - track.clientWidth - 12;
     track.appendChild(frag);
-    track.scrollLeft = track.scrollWidth;
+    if (stick) track.scrollLeft = track.scrollWidth;
   }
 
   // ============================================================
@@ -501,6 +927,11 @@
     ["wandering_occupancy", "Default-mode occupancy", "cool", f3, (v) => clamp01(v)],
     ["task_progress", "Task progress", "pos", f3, (v) => clamp01(v)],
   ];
+  // the six Overview KPI echoes (key, formatter) — fed by the same merged view
+  const KPI_DEFS = [
+    ["awareness_level", f3], ["phi_proxy", f3], ["arousal", f3],
+    ["prediction_error", f3], ["free_energy", f3], ["energy", f2],
+  ];
 
   function ensureMetricCells() {
     const grid = $("#metric-grid");
@@ -512,24 +943,27 @@
         `<div class="mc-top"><span class="mc-label">${esc(label)}</span>` +
         `<span class="mc-val" data-val>—</span></div>` +
         `<svg class="mc-spark" viewBox="0 0 100 26" preserveAspectRatio="none">` +
-        `<path class="area" data-area></path><path data-line></path></svg>`;
+        `<path class="area" data-area></path><path data-line></path></svg>` +
+        `<span class="mc-range micro" data-range></span>`;
       grid.appendChild(cell);
     });
   }
 
   function sparkPath(values) {
-    // auto-scale to min/max of the window so any range (incl. negatives) reads
+    // auto-scale to min/max of the window so any range (incl. negatives) reads;
+    // the window bounds are returned so tiles can PRINT the scale (no silent axis)
     const n = values.length;
-    if (n === 0) return { line: "", area: "" };
+    if (n === 0) return { line: "", area: "", lo: null, hi: null };
     let lo = Math.min(...values), hi = Math.max(...values);
-    if (hi - lo < 1e-9) { hi += 0.5; lo -= 0.5; }
+    const flat = hi - lo < 1e-9;
+    if (flat) { hi += 0.5; lo -= 0.5; }
     const W = 100, H = 26, pad = 3;
     const sx = (i) => (n === 1 ? W / 2 : (i / (n - 1)) * W);
     const sy = (v) => H - pad - ((v - lo) / (hi - lo)) * (H - 2 * pad);
     let line = "";
     values.forEach((v, i) => { line += (i ? "L" : "M") + sx(i).toFixed(1) + " " + sy(v).toFixed(1) + " "; });
     const area = line + `L${W} ${H} L0 ${H} Z`;
-    return { line: line.trim(), area };
+    return { line: line.trim(), area, lo: flat ? values[0] : lo, hi: flat ? values[0] : hi };
   }
 
   function renderMetrics(metrics, consciousness) {
@@ -568,6 +1002,26 @@
       const sp = sparkPath(HISTORY[key]);
       cell.querySelector("[data-line]").setAttribute("d", sp.line);
       cell.querySelector("[data-area]").setAttribute("d", sp.area);
+      const range = cell.querySelector("[data-range]");
+      if (range && sp.lo != null) {
+        range.textContent = HISTORY[key].length > 1
+          ? `window ${fmt(sp.lo)} – ${fmt(sp.hi)}` : "collecting…";
+      }
+    });
+
+    // Overview KPI echoes (the canonical sparkline grid lives in Laboratory)
+    merged.awareness_level = m.awareness_level != null
+      ? m.awareness_level : cm.awareness_level;
+    if (merged.awareness_level != null) pushHist("awareness_level", merged.awareness_level);
+    KPI_DEFS.forEach(([key, fmt]) => {
+      const tile = document.querySelector(`#overview-kpis [data-kpi="${key}"]`);
+      if (!tile) return;
+      const v = merged[key];
+      if (v == null) return;
+      tile.querySelector("[data-val]").textContent = fmt(v);
+      const sp = sparkPath(HISTORY[key] || []);
+      tile.querySelector("[data-line]").setAttribute("d", sp.line);
+      tile.querySelector("[data-area]").setAttribute("d", sp.area);
     });
   }
 
@@ -739,6 +1193,7 @@
       try {
         const live = (await api("config")) || {};
         const liveCfg = live.config || {};
+        clientConfig = liveCfg;   // nominal threshold / radius for the dials
         patch = {};
         for (const k in cfg) {
           if (liveCfg[k] !== cfg[k]) patch[k] = cfg[k];
@@ -754,8 +1209,9 @@
   function drawCircadianDial(daylight) {
     const cv = $("#circadian-dial");
     if (!cv) return;
-    const ctx = cv.getContext("2d");
-    const W = cv.width, H = cv.height;
+    if (!canvasVisible(cv)) { pendingViewDraws.add("mind"); return; }
+    const W = 120, H = 120;
+    const ctx = ensureCanvasScale(cv, W, H);
     ctx.clearRect(0, 0, W, H);
     const cx = W / 2, cy = H / 2, r = Math.min(W, H) / 2 - 10;
     const lit = clamp01(num(daylight));
@@ -809,9 +1265,11 @@
     const s = src.metrics || src;
     const tr = trace || lastTrace || {};
 
-    drawCircadianDial(s.daylight != null ? s.daylight : 1);
+    lastDaylight = s.daylight != null ? s.daylight : 1;
+    lastIsSleeping = !!s.is_sleeping;
+    drawCircadianDial(lastDaylight);
 
-    const asleep = !!s.is_sleeping;
+    const asleep = lastIsSleeping;
     const ss = $("#sleep-state");
     if (ss) {
       ss.textContent = asleep ? "asleep" : "awake";
@@ -1041,10 +1499,11 @@
     const canvas = $("#ignition-chart");
     const summary = $("#ignition-chart-summary");
     if (!canvas || !canvas.getContext) return;
-    const ctx = canvas.getContext("2d");
+    if (!canvasVisible(canvas)) { pendingViewDraws.add("workspace"); return; }
+    const W = 720, H = 260;
+    const ctx = ensureCanvasScale(canvas, W, H);
     if (!ctx) return;
-    const W = canvas.width, H = canvas.height;
-    const left = 44, right = 16, top = 26, bottom = 32;
+    const left = 44, right = 16, top = 14, bottom = 32;
     const plotW = W - left - right, plotH = H - top - bottom;
     const n = ignitionHistory.length;
 
@@ -1066,19 +1525,7 @@
       ctx.textAlign = "right";
       ctx.fillText(value.toFixed(2), left - 7, y);
     }
-
-    // Compact in-canvas legend; threshold is dashed, score is solid brass.
-    ctx.textAlign = "left";
-    ctx.fillStyle = cssVar("--accent");
-    ctx.fillRect(left, 9, 18, 2);
-    ctx.fillStyle = cssVar("--ink-soft");
-    ctx.fillText("score", left + 24, 10);
-    ctx.save();
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = cssVar("--ink-faint");
-    ctx.beginPath(); ctx.moveTo(left + 78, 10); ctx.lineTo(left + 96, 10); ctx.stroke();
-    ctx.restore();
-    ctx.fillText("effective threshold", left + 102, 10);
+    // (the legend lives in the DOM next to the chart — nothing decorative in-canvas)
 
     if (!n) {
       ctx.fillStyle = cssVar("--ink-faint");
@@ -1091,6 +1538,23 @@
 
     const xAt = (i) => left + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
     const yAt = (value) => top + (1 - clamp01(num(value))) * plotH;
+
+    // ignition zone — the region ABOVE the (moving) effective threshold,
+    // engraved faintly so a crossing reads as entering the zone
+    ctx.save();
+    ctx.beginPath();
+    ignitionHistory.forEach((sample, i) => {
+      const x = xAt(i), y = yAt(sample.effective_threshold);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.lineTo(xAt(n - 1), yAt(1));
+    ctx.lineTo(xAt(0), yAt(1));
+    ctx.closePath();
+    ctx.fillStyle = cssVar("--accent");
+    ctx.globalAlpha = 0.07;
+    ctx.fill();
+    ctx.restore();
+
     const drawLine = (key, color, dashed) => {
       ctx.save();
       ctx.beginPath();
@@ -1118,6 +1582,17 @@
       ctx.stroke();
     });
 
+    // keyboard inspection cursor (←/→ on the focused chart)
+    if (dynCursor >= 0 && dynCursor < n) {
+      const cx = xAt(dynCursor) + 0.5;
+      ctx.save();
+      ctx.strokeStyle = cssVar("--ink");
+      ctx.globalAlpha = 0.55;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx, top + plotH); ctx.stroke();
+      ctx.restore();
+    }
+
     const first = ignitionHistory[0], latest = ignitionHistory[n - 1];
     ctx.fillStyle = cssVar("--ink-faint");
     ctx.textAlign = "left";
@@ -1129,20 +1604,41 @@
     const summaryText = `Latest t${f0(latest.tick)}: score ${f3(latest.score)}, ` +
       `effective threshold ${f3(latest.effective_threshold)}; ignition rate ${pctTxt(rate)} across ${n} sample${n === 1 ? "" : "s"}.`;
     if (summary) summary.textContent = summaryText;
+    const readout = $("#dynamics-readout");
+    if (readout) {
+      const s = dynCursor >= 0 && dynCursor < n ? ignitionHistory[dynCursor] : latest;
+      readout.textContent = `${dynCursor >= 0 ? "inspecting" : "latest"} t${f0(s.tick)} · ` +
+        `score ${f3(s.score)} / eff ${f3(s.effective_threshold)} · ` +
+        (s.ignited ? "ignited" : "subliminal") +
+        (dynCursor >= 0 ? "  (Esc to follow live)" : "");
+    }
     canvas.setAttribute("aria-label", "Ignition score and effective-threshold history. " + summaryText);
   }
 
-  function renderHorizonStream(moments) {
-    const host = $("#horizon-stream");
-    if (!host) return;
-    const data = (Array.isArray(moments) ? moments : streamData).slice(-STREAM_MAX);
+  // keyboard scrutiny of the access-dynamics samples (chart is focusable)
+  $("#ignition-chart")?.addEventListener("keydown", (ev) => {
+    const n = ignitionHistory.length;
+    if (!n) return;
+    if (ev.key === "ArrowLeft") dynCursor = dynCursor < 0 ? n - 2 : Math.max(0, dynCursor - 1);
+    else if (ev.key === "ArrowRight") dynCursor = dynCursor < 0 ? n - 1 : Math.min(n - 1, dynCursor + 1);
+    else if (ev.key === "Home") dynCursor = 0;
+    else if (ev.key === "End") dynCursor = n - 1;
+    else if (ev.key === "Escape") dynCursor = -1;
+    else return;
+    ev.preventDefault();
+    renderIgnitionDynamics(null, lastTick);
+  });
+
+  // one renderer, two windows: the canonical timeline in #/workspace and its
+  // compact echo on #/overview — plus a DOM source legend (color never alone).
+  function renderStreamHost(host, data, compact) {
+    if (!host) return { sources: new Set(), ignitedCount: 0 };
     host.innerHTML = "";
     const fragment = document.createDocumentFragment();
     const sources = new Set();
     let ignitedCount = 0;
     data.forEach((moment) => {
       const source = String(moment && moment.dominant_source || "unknown").toLowerCase();
-      const color = SOURCE_COLORS[source] || SOURCE_COLORS.unknown;
       const awareness = clamp01(num(moment && moment.awareness_level));
       const ignited = !!(moment && moment.ignited);
       const tickLabel = "t" + f0(moment && moment.tick);
@@ -1150,9 +1646,8 @@
       const description = `${tickLabel} · ${source} · awareness ${f3(awareness)} · ` +
         `${ignited ? "ignited" : "subliminal"} · ${content}`;
       const bar = el("span", "moment" + (ignited ? " ignited" : ""));
-      bar.style.height = Math.max(4, awareness * 50).toFixed(1) + "px";
-      bar.style.backgroundColor = color;
-      bar.style.color = color;
+      bar.style.height = Math.max(4, awareness * (compact ? 36 : 50)).toFixed(1) + "px";
+      bar.style.background = sourceCssVar(source);   // themed CSS variable
       bar.title = description;
       bar.setAttribute("aria-label", description);
       fragment.appendChild(bar);
@@ -1166,6 +1661,30 @@
       ? `${data.length} recent workspace moments; ${ignitedCount} ignited; ` +
         `${sources.size} dominant sources; latest source ${latestSource}.`
       : "No dominant-source moments recorded yet.");
+    return { sources, ignitedCount };
+  }
+
+  function renderSourceLegend(sources) {
+    const host = $("#source-legend");
+    if (!host) return;
+    host.replaceChildren();
+    const frag = document.createDocumentFragment();
+    [...sources].sort().forEach((source) => {
+      const item = el("span", "lg");
+      const dot = el("i", "dot");
+      dot.style.background = sourceCssVar(source);
+      item.appendChild(dot);
+      item.appendChild(document.createTextNode(source));
+      frag.appendChild(item);
+    });
+    host.appendChild(frag);
+  }
+
+  function renderHorizonStream(moments) {
+    const data = (Array.isArray(moments) ? moments : streamData).slice(-STREAM_MAX);
+    const main = renderStreamHost($("#horizon-stream"), data, false);
+    renderStreamHost($("#overview-stream"), data, true);
+    renderSourceLegend(main.sources);
   }
 
   async function refreshMemoryGraph(force) {
@@ -1255,11 +1774,14 @@
     ctx.restore();
   }
 
+  const MEMG_W = 720, MEMG_H = 440; // logical drawing space of the memory graph
+
   function drawMemoryGraph(graph) {
     const canvas = $("#memory-graph");
     const summary = $("#memory-graph-summary");
     if (!canvas || !canvas.getContext) return;
-    const ctx = canvas.getContext("2d");
+    if (!canvasVisible(canvas)) { pendingViewDraws.add("memory"); return; }
+    const ctx = ensureCanvasScale(canvas, MEMG_W, MEMG_H);
     if (!ctx) return;
     const nodes = Array.isArray(graph && graph.nodes) ? graph.nodes : [];
     const edges = Array.isArray(graph && graph.edges) ? graph.edges : [];
@@ -1297,7 +1819,7 @@
       });
       edgeList.appendChild(edgeFragment);
     }
-    const W = canvas.width, H = canvas.height;
+    const W = MEMG_W, H = MEMG_H;
     const cx = W / 2, cy = H / 2;
     const maxRadius = Math.min(W, H) * 0.43;
     const goldenAngle = 2.399963229728653;
@@ -1529,6 +2051,829 @@
   }
 
   // ============================================================
+  //  SITUATED GENDERED SELF (Phase 8)
+  // ============================================================
+  // Three boundaries are deliberately kept separate:
+  //   1. complete private scenario input (explicit debug reveal only),
+  //   2. the simulated agent's readable self-understanding,
+  //   3. public projection and observer-local recognition.
+  // The browser never infers identity from affect, body, expression or society.
+  const genderHuman = (value) => String(value == null ? "" : value)
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const genderSigned = (value) => {
+    const n = num(value);
+    return (n >= 0 ? "+" : "") + n.toFixed(3);
+  };
+  const genderAxisText = (axes) => {
+    const a = axes || {};
+    return `f ${f2(a.feminine)} · m ${f2(a.masculine)} · a ${f2(a.androgynous)}`;
+  };
+
+  function setGenderStatus(text, kind) {
+    const node = $("#gender-scenario-status");
+    if (!node) return;
+    node.textContent = text || "";
+    node.classList.toggle("is-error", kind === "error");
+    node.classList.toggle("is-ok", kind === "ok");
+  }
+
+  function genderLabelsMarkup(values, emptyText, extraClass) {
+    const labels = Array.isArray(values) ? values : [];
+    if (!labels.length) {
+      return `<span class="gender-label ${extraClass || ""}">${esc(emptyText || "none disclosed")}</span>`;
+    }
+    return labels.map((label) =>
+      `<span class="gender-label ${extraClass || ""}">${esc(label)}</span>`
+    ).join("");
+  }
+
+  function renderGenderMetricGroup(selector, items) {
+    const host = $(selector);
+    if (!host) return;
+    host.replaceChildren();
+    (items || []).forEach((item) => {
+      const value = clamp01(num(item.value));
+      const metric = el("div", "gender-metric");
+      metric.dataset.tone = item.tone || "neutral";
+      const head = el("div", "gender-metric-head");
+      head.appendChild(el("span", "", esc(item.label)));
+      const output = document.createElement("output");
+      output.textContent = f3(value);
+      head.appendChild(output);
+      const meter = el("div", "meter");
+      meter.setAttribute("role", "meter");
+      meter.setAttribute("aria-label", item.label);
+      meter.setAttribute("aria-valuemin", "0");
+      meter.setAttribute("aria-valuemax", "1");
+      meter.setAttribute("aria-valuenow", value.toFixed(3));
+      const fill = el("div", "meter-fill");
+      fill.style.width = pctTxt(value);
+      meter.appendChild(fill);
+      metric.append(head, meter);
+      host.appendChild(metric);
+    });
+  }
+
+  function renderGenderTimeline(plan, state) {
+    const track = $("#gender-life-track");
+    const list = $("#gender-life-list");
+    if (!track || !list) return;
+    track.replaceChildren();
+    list.replaceChildren();
+
+    let stages = plan && Array.isArray(plan.stages) ? plan.stages : [];
+    if (!stages.length && state && state.life_stage) {
+      stages = [{ stage: state.life_stage, duration_ticks: null }];
+    }
+    stages.forEach((stage) => {
+      const current = !!(state && stage.stage === state.life_stage);
+      const visual = el("span", "gender-track-stage" + (current ? " is-current" : ""));
+      const duration = stage.duration_ticks == null ? 12 : num(stage.duration_ticks);
+      visual.style.setProperty("--stage-weight", String(clamp(duration / 12, 1, 8)));
+      track.appendChild(visual);
+
+      const item = el("li", current ? "is-current" : "");
+      const text = el("div");
+      const title = document.createElement("strong");
+      title.textContent = genderHuman(stage.stage);
+      const meta = document.createElement("span");
+      const durationText = stage.duration_ticks == null
+        ? "current stage"
+        : `${Math.round(num(stage.duration_ticks))} configured ticks`;
+      const currentText = current && state
+        ? ` · tick ${Math.round(num(state.tick_in_stage))} in stage`
+        : "";
+      meta.textContent = durationText + currentText;
+      text.append(title, meta);
+      item.appendChild(text);
+      list.appendChild(item);
+    });
+
+    const note = $("#gender-course-note");
+    if (note) {
+      const historyCount = plan && Array.isArray(plan.initial_history_summary)
+        ? plan.initial_history_summary.length : 0;
+      note.textContent = plan
+        ? `${stages.length} configured stage${stages.length === 1 ? "" : "s"} · ${historyCount} prior-history note${historyCount === 1 ? "" : "s"}`
+        : "Current stage shown; reveal experiment input for the full plan.";
+    }
+  }
+
+  function renderGenderSelf(state) {
+    const host = $("#gender-self-content");
+    if (!host) return;
+    const self = (state && state.self_understanding) || {};
+    const labels = Array.isArray(self.labels) ? self.labels : [];
+    const scopes = self.disclosure_scopes || {};
+    const currentIntent = state && state.current_intent;
+    host.innerHTML =
+      `<div class="gender-labels">${genderLabelsMarkup(
+        labels,
+        self.questioning ? "questioning / unlabeled" : "no active label",
+        self.questioning ? "is-questioning" : ""
+      )}</div>` +
+      `<dl class="gender-layer-kv">` +
+        `<dt>certainty</dt><dd class="mono">${f3(self.certainty)}</dd>` +
+        `<dt>questioning</dt><dd>${self.questioning ? "yes" : "no"}</dd>` +
+        `<dt>last revision</dt><dd class="mono">t${Math.round(num(self.last_revision_tick))}</dd>` +
+        `<dt>private scope</dt><dd>${esc((scopes.private || []).join(", ") || "none")}</dd>` +
+        `<dt>trusted scope</dt><dd>${esc((scopes.trusted || []).join(", ") || "none")}</dd>` +
+        `<dt>public scope</dt><dd>${esc((scopes.public || []).join(", ") || "none")}</dd>` +
+        `<dt>current intent</dt><dd>${currentIntent
+          ? `${esc(genderHuman(currentIntent.type))} · <span class="mono">${esc(currentIntent.provenance)}</span>`
+          : "none"}</dd>` +
+      `</dl>`;
+
+    const fits = Object.entries(self.fit_by_label || {});
+    if (fits.length) {
+      const heading = el("span", "eyebrow", "Fit evidence ledger");
+      const fitList = el("div", "gender-fit-list");
+      fits.sort((a, b) => num(b[1]) - num(a[1])).forEach(([label, raw]) => {
+        const value = clamp01(num(raw));
+        const row = el("div", "gender-fit-row");
+        row.appendChild(el("span", "", esc(label)));
+        const meter = el("div", "meter");
+        meter.setAttribute("role", "meter");
+        meter.setAttribute("aria-label", `Fit evidence for ${label}`);
+        meter.setAttribute("aria-valuemin", "0");
+        meter.setAttribute("aria-valuemax", "1");
+        meter.setAttribute("aria-valuenow", value.toFixed(3));
+        const fill = el("div", "meter-fill");
+        fill.style.width = pctTxt(value);
+        meter.appendChild(fill);
+        row.appendChild(meter);
+        row.appendChild(el("span", "mono", f2(value)));
+        fitList.appendChild(row);
+      });
+      host.append(heading, fitList);
+    }
+    if (state && state.report) {
+      host.appendChild(el("p", "report-voice", esc(state.report)));
+    }
+  }
+
+  function renderGenderPublic(society, state) {
+    const host = $("#gender-public-content");
+    if (!host) return;
+    const projections = (society && society.projections) || {};
+    const projection = projections["0"] || projections[0] || null;
+    if (!projection) {
+      host.innerHTML = '<div class="empty">No public projection is available.</div>';
+      return;
+    }
+    const recognitions = ((society && society.recognition) || [])
+      .filter((item) => num(item.target_id) === num(state && state.agent_id));
+    host.innerHTML =
+      `<div class="gender-labels">${genderLabelsMarkup(projection.labels, "no label disclosed")}</div>` +
+      `<dl class="gender-layer-kv">` +
+        `<dt>name</dt><dd>${esc(projection.name || "not disclosed")}</dd>` +
+        `<dt>pronouns</dt><dd>${esc((projection.pronouns || []).join(", ") || "not disclosed")}</dd>` +
+        `<dt>scope</dt><dd>${esc(projection.disclosure_scope || "public")}</dd>` +
+        `<dt>observer records</dt><dd class="mono">${recognitions.length}</dd>` +
+        `<dt>updated</dt><dd class="mono">t${Math.round(num(projection.updated_tick))}</dd>` +
+      `</dl>`;
+    const expression = Object.entries(projection.expression || {});
+    if (expression.length) {
+      const wrap = el("div", "gender-fit-list");
+      expression.forEach(([channel, axes]) => {
+        const row = el("div", "gender-fit-row");
+        row.appendChild(el("span", "", esc(genderHuman(channel))));
+        row.appendChild(el("span", "mono", esc(genderAxisText(axes))));
+        row.appendChild(el("span", "mono", "public"));
+        wrap.appendChild(row);
+      });
+      host.appendChild(wrap);
+    }
+  }
+
+  function renderGenderPrivate(debug) {
+    const host = $("#gender-private-content");
+    if (!host || !debug) return;
+    const profile = debug.profile || {};
+    const initial = profile.initial_self_understanding || {};
+    const affinities = Object.entries(profile.felt_affinities || {})
+      .sort((a, b) => num(b[1]) - num(a[1]));
+    const priorities = Object.entries(profile.transition_priorities || {});
+    const history = (debug.life_course && debug.life_course.initial_history_summary) || [];
+    host.innerHTML =
+      `<dl class="gender-layer-kv">` +
+        `<dt>profile input</dt><dd class="mono">${esc(profile.profile_id || "—")}</dd>` +
+        `<dt>assigned category</dt><dd>${esc(profile.assigned_category || "unspecified")}</dd>` +
+        `<dt>felt affinities</dt><dd>${esc(affinities.map(([k, v]) => `${k} ${f2(v)}`).join(" · ") || "none")}</dd>` +
+        `<dt>fluidity</dt><dd class="mono">${f3(profile.fluidity)}</dd>` +
+        `<dt>gender salience</dt><dd class="mono">${f3(profile.gender_salience)}</dd>` +
+        `<dt>initial labels</dt><dd>${esc((initial.labels || []).join(", ") || "unlabeled")}</dd>` +
+        `<dt>expression inputs</dt><dd>${esc(Object.keys(profile.preferred_expression || {}).map(genderHuman).join(", ") || "none")}</dd>` +
+        `<dt>body inputs</dt><dd>${esc(Object.keys(profile.body_preferences || {}).map(genderHuman).join(", ") || "none")}</dd>` +
+        `<dt>transition priorities</dt><dd>${esc(priorities.map(([k, v]) => `${genderHuman(k)} ${f2(v)}`).join(" · ") || "none")}</dd>` +
+        `<dt>prior history</dt><dd>${esc(history.join(" ") || "none configured")}</dd>` +
+        `<dt>pending events</dt><dd class="mono">${(debug.pending_events || []).length}</dd>` +
+        `<dt>event ledger</dt><dd class="mono">${Math.round(num(debug.event_ledger_size))}</dd>` +
+        `<dt>profile checksum</dt><dd class="mono">${esc(String(debug.profile_checksum || "").slice(0, 14))}…</dd>` +
+      `</dl>` +
+      `<p class="micro">${esc(debug.framing || "Experiment inputs are unavailable to simulated observers.")}</p>`;
+    host.hidden = false;
+    renderGenderTimeline(debug.life_course, debug.state);
+  }
+
+  function renderGenderExpression(state) {
+    const host = $("#gender-expression");
+    if (!host) return;
+    host.replaceChildren();
+    Object.entries((state && state.expression) || {}).forEach(([channel, item]) => {
+      const card = el("article", "gender-data-card");
+      card.innerHTML =
+        `<header><h5>${esc(genderHuman(channel))}</h5><output>accent ${f3(item.accentuation)}</output></header>` +
+        `<div class="gender-data-points">` +
+          `<span>visibility<b>${f2(item.visibility)}</b></span>` +
+          `<span>safety cost<b>${f2(item.safety_cost)}</b></span>` +
+          `<span>accentuation<b>${f2(item.accentuation)}</b></span>` +
+        `</div>` +
+        `<p class="micro">desired ${esc(genderAxisText(item.desired))}<br>public ${esc(genderAxisText(item.public))}</p>` +
+        `<div class="gender-driver-list">${(item.drivers || []).length
+          ? item.drivers.map((driver) => `<span class="gender-driver">${esc(genderHuman(driver))}</span>`).join("")
+          : '<span class="gender-driver">no accentuation driver</span>'}</div>`;
+      host.appendChild(card);
+    });
+    if (!host.childElementCount) host.innerHTML = '<div class="empty">No expression channels configured.</div>';
+  }
+
+  function renderGenderBody(state) {
+    const host = $("#gender-body");
+    if (!host) return;
+    host.replaceChildren();
+    Object.entries((state && state.body) || {}).forEach(([domain, item]) => {
+      const change = num(item.change_rate);
+      const card = el("article", "gender-data-card");
+      card.innerHTML =
+        `<header><h5>${esc(genderHuman(domain))}</h5><output>align ${f3(item.alignment)}</output></header>` +
+        `<div class="gender-data-points">` +
+          `<span>alignment<b>${f2(item.alignment)}</b></span>` +
+          `<span>salience<b>${f2(item.salience)}</b></span>` +
+          `<span>public vis.<b>${f2(item.public_visibility)}</b></span>` +
+        `</div>` +
+        `<p class="micro">current ${esc(genderAxisText(item.current))}<br>preferred ${esc(genderAxisText(item.preferred))}</p>` +
+        `<span class="gender-transition-meta">abstract change rate ${change >= 0 ? "+" : ""}${change.toFixed(3)}</span>`;
+      host.appendChild(card);
+    });
+    if (!host.childElementCount) host.innerHTML = '<div class="empty">No body domains configured.</div>';
+  }
+
+  function genderTransitionBar(label, value, kind) {
+    const v = clamp01(num(value));
+    return `<div class="gender-transition-bar" data-kind="${esc(kind)}">` +
+      `<span>${esc(label)}</span>` +
+      `<div class="meter" role="meter" aria-label="${esc(label)}" aria-valuemin="0" aria-valuemax="1" aria-valuenow="${v.toFixed(3)}">` +
+        `<div class="meter-fill" style="width:${pctTxt(v)}"></div>` +
+      `</div><span class="mono">${f2(v)}</span></div>`;
+  }
+
+  function renderGenderTransitions(state) {
+    const host = $("#gender-transitions");
+    if (!host) return;
+    host.replaceChildren();
+    Object.entries((state && state.transitions) || {}).forEach(([dimension, item]) => {
+      const card = el("article", "gender-transition");
+      card.innerHTML =
+        `<header><h5>${esc(genderHuman(dimension))}</h5><span class="gender-transition-status">${esc(genderHuman(item.status))}</span></header>` +
+        `<div class="gender-transition-bars">` +
+          genderTransitionBar("desire", item.desire, "desire") +
+          genderTransitionBar("access", item.access, "access") +
+          genderTransitionBar("progress", item.progress, "progress") +
+        `</div>` +
+        `<div class="gender-transition-meta">satisfaction ${num(item.satisfaction).toFixed(3)} · ${esc(genderHuman(item.reversibility))}</div>` +
+        `<div class="gender-transition-meta">${esc(item.last_reason || "no status change yet")} · t${Math.round(num(item.last_change_tick))}</div>`;
+      host.appendChild(card);
+    });
+    if (!host.childElementCount) host.innerHTML = '<div class="empty">No transition dimensions configured.</div>';
+  }
+
+  function renderGenderProbeLog(state) {
+    const host = $("#gender-probe-log");
+    if (!host) return;
+    host.replaceChildren();
+    const rows = genderProbeHistory.slice(0, 6);
+    const currentIntent = state && state.current_intent;
+    if (currentIntent && !rows.some((row) => row.id === `intent-${currentIntent.intent_id}`)) {
+      rows.unshift({
+        id: `intent-${currentIntent.intent_id}`,
+        label: `intent · ${genderHuman(currentIntent.type)}`,
+        tick: currentIntent.tick,
+        provenance: currentIntent.provenance,
+      });
+    }
+    const knownIds = new Set(rows.map((row) => String(row.eventId || "")));
+    ((state && state.recent_event_ids) || []).slice().reverse().forEach((eventId) => {
+      if (!knownIds.has(String(eventId)) && rows.length < 6) {
+        rows.push({
+          id: `event-${eventId}`,
+          label: `processed event #${eventId}`,
+          tick: state.tick,
+          provenance: "ledger",
+        });
+      }
+    });
+    rows.forEach((row) => {
+      const item = el("div", "gender-probe-entry");
+      item.appendChild(el("span", "", esc(row.label)));
+      item.appendChild(el("span", "", `t${Math.round(num(row.tick))} · ${esc(row.provenance || "unknown")}`));
+      host.appendChild(item);
+    });
+    if (!host.childElementCount) {
+      host.innerHTML = '<div class="empty">No recent event or intention provenance.</div>';
+    }
+  }
+
+  function renderGenderExperience(payload, society) {
+    if (payload !== undefined) genderPayload = payload;
+    if (society !== undefined) genderSocietyPayload = society;
+    const live = genderPayload;
+    const state = live && live.state;
+    const active = !!(live && live.enabled && live.configured && state);
+    const badge = $("#gender-phase-badge");
+    if (badge) {
+      badge.dataset.state = active ? "active" : "dormant";
+      badge.innerHTML = `<span aria-hidden="true"></span> ${active ? "active" : "dormant"}`;
+    }
+    const gate = document.querySelector('[data-flag="gender_experience_enabled"]');
+    if (gate) gate.checked = !!(live && live.enabled);
+    const disclaimer = $("#gender-disclaimer");
+    if (disclaimer && live && live.disclaimer) disclaimer.textContent = live.disclaimer;
+    const empty = $("#gender-empty");
+    const observatory = $("#gender-observatory");
+    if (empty) empty.hidden = active;
+    if (observatory) observatory.hidden = !active;
+    if (!active) {
+      const privateContent = $("#gender-private-content");
+      if (privateContent) privateContent.hidden = true;
+      const debugButton = $("#btn-gender-debug");
+      if (debugButton) {
+        debugButton.setAttribute("aria-expanded", "false");
+        debugButton.textContent = "Reveal private input";
+      }
+      return;
+    }
+
+    // On a fresh browser load, align the blueprint chooser with the active
+    // profile once. Subsequent user selection is left untouched so they can
+    // prepare a different scenario without the poll loop fighting the form.
+    if (genderSyncedProfileId !== state.profile_id) {
+      const matchingPreset = genderCatalog.find((item) => {
+        const agent = item.manifest && item.manifest.agents &&
+          (item.manifest.agents["0"] || item.manifest.agents[0]);
+        return agent && agent.profile && agent.profile.profile_id === state.profile_id;
+      });
+      if (matchingPreset && $("#gender-scenario-select")) {
+        $("#gender-scenario-select").value = matchingPreset.preset_id;
+        genderActivePresetId = matchingPreset.preset_id;
+        renderGenderScenarioEditor();
+      }
+      genderSyncedProfileId = state.profile_id;
+    }
+
+    $("#gender-life-position").textContent =
+      `${genderHuman(state.life_stage)} · ${Math.round(num(state.tick_in_stage))} ticks in stage`;
+    $("#gender-profile-id").textContent = state.profile_id || "—";
+    $("#gender-state-tick").textContent = "t" + Math.round(num(state.tick));
+    renderGenderTimeline(genderDebugPayload && genderDebugPayload.life_course, state);
+    renderGenderSelf(state);
+    renderGenderPublic(genderSocietyPayload, state);
+
+    const congruence = state.congruence || {};
+    renderGenderMetricGroup("#gender-congruence", [
+      { label: "body", value: congruence.body, tone: "private" },
+      { label: "expression", value: congruence.expression, tone: "constructive" },
+      { label: "social", value: congruence.social, tone: "public" },
+      { label: "administrative", value: congruence.administrative, tone: "public" },
+      { label: "total", value: congruence.total, tone: "constructive" },
+    ]);
+    const affect = state.affect || {};
+    renderGenderMetricGroup("#gender-affect", [
+      { label: "dysphoria", value: affect.dysphoria, tone: "stress" },
+      { label: "euphoria", value: affect.euphoria, tone: "constructive" },
+      { label: "fulfillment", value: affect.fulfillment, tone: "constructive" },
+    ]);
+    const stress = state.minority_stress || {};
+    renderGenderMetricGroup("#gender-stress", [
+      { label: "external now", value: stress.external_current, tone: "stress" },
+      { label: "external chronic", value: stress.external_chronic, tone: "stress" },
+      { label: "rejection expectation", value: stress.rejection_expectation, tone: "stress" },
+      { label: "concealment pressure", value: stress.concealment_pressure, tone: "stress" },
+      { label: "vigilance", value: stress.vigilance, tone: "stress" },
+      { label: "internalized transphobia", value: stress.internalized_transphobia, tone: "private" },
+      { label: "cumulative exposure", value: stress.cumulative_exposure, tone: "stress" },
+    ]);
+    const resilience = state.resilience || {};
+    renderGenderMetricGroup("#gender-resilience", [
+      { label: "support", value: resilience.support, tone: "constructive" },
+      { label: "community", value: resilience.community, tone: "constructive" },
+      { label: "positive representation", value: resilience.positive_representation, tone: "constructive" },
+      { label: "pride", value: resilience.pride, tone: "constructive" },
+      { label: "self-acceptance", value: resilience.self_acceptance, tone: "constructive" },
+      { label: "combined index", value: resilience.index, tone: "constructive" },
+    ]);
+    renderGenderExpression(state);
+    renderGenderBody(state);
+    renderGenderTransitions(state);
+    renderGenderProbeLog(state);
+  }
+
+  function renderGenderScenarioEditor() {
+    const select = $("#gender-scenario-select");
+    const item = genderCatalog.find((candidate) => candidate.preset_id === (select && select.value));
+    if (!item) {
+      genderManifestDraft = null;
+      const apply = $("#btn-gender-apply");
+      if (apply) apply.disabled = true;
+      return;
+    }
+    genderManifestDraft = JSON.parse(JSON.stringify(item.manifest));
+    genderActivePresetId = genderActivePresetId || item.preset_id;
+    const title = $("#gender-scenario-title");
+    if (title) title.textContent = genderHuman(item.preset_id);
+    const description = $("#gender-scenario-description");
+    if (description) description.textContent = item.description;
+    renderGenderLifeEditor(genderManifestDraft);
+    const confirm = $("#gender-reset-confirm");
+    const apply = $("#btn-gender-apply");
+    if (confirm) confirm.checked = false;
+    if (apply) apply.disabled = true;
+    setGenderStatus("Blueprint loaded. Inspect or configure it before applying.", "");
+  }
+
+  function renderGenderLifeEditor(manifest) {
+    const stagesHost = $("#gender-life-stages");
+    const contextHost = $("#gender-context-fields");
+    if (!stagesHost || !contextHost || !manifest) return;
+    stagesHost.replaceChildren();
+    contextHost.replaceChildren();
+    const agentInput = manifest.agents && (manifest.agents["0"] || manifest.agents[0]);
+    const stages = (agentInput && agentInput.life_course && agentInput.life_course.stages) || [];
+    stages.forEach((stage, index) => {
+      const card = el("section", "gender-stage-editor");
+      card.dataset.stageIndex = String(index);
+      card.innerHTML =
+        `<label><input type="checkbox" data-stage-enabled checked><span>${esc(genderHuman(stage.stage))}</span></label>` +
+        `<label><span>duration ticks</span><input type="number" data-stage-field="duration_ticks" min="1" max="1000000" value="${Math.round(num(stage.duration_ticks))}"></label>` +
+        `<label><span>body change <output>${f2(stage.body_change_rate)}</output></span><input type="range" data-stage-field="body_change_rate" min="0" max="1" step="0.01" value="${num(stage.body_change_rate)}"></label>` +
+        `<label><span>autonomy <output>${f2(stage.autonomy)}</output></span><input type="range" data-stage-field="autonomy" min="0" max="1" step="0.01" value="${num(stage.autonomy)}"></label>` +
+        `<label><span>resource access <output>${f2(stage.resource_access)}</output></span><input type="range" data-stage-field="resource_access" min="0" max="1" step="0.01" value="${num(stage.resource_access)}"></label>` +
+        `<label><span>norm exposure <output>${f2(stage.norm_exposure)}</output></span><input type="range" data-stage-field="norm_exposure" min="0" max="1" step="0.01" value="${num(stage.norm_exposure)}"></label>`;
+      const enabled = card.querySelector("[data-stage-enabled]");
+      enabled.addEventListener("change", () => card.classList.toggle("is-omitted", !enabled.checked));
+      card.querySelectorAll('input[type="range"]').forEach((input) => {
+        input.addEventListener("input", () => {
+          const output = input.closest("label").querySelector("output");
+          if (output) output.textContent = f2(input.valueAsNumber);
+        });
+      });
+      stagesHost.appendChild(card);
+    });
+
+    const context = manifest.social_context || {};
+    const contextFields = [
+      ["norm_rigidity", "norm rigidity"],
+      ["institutional_hostility", "institutional hostility"],
+      ["baseline_safety", "baseline safety"],
+      ["care_access", "abstract care access"],
+      ["community_visibility", "community visibility"],
+      ["positive_representation", "positive representation"],
+    ];
+    contextFields.forEach(([key, label]) => {
+      const value = clamp01(num(context[key]));
+      const field = el("label", "gender-context-field");
+      field.innerHTML =
+        `<span>${esc(label)} <output>${f2(value)}</output></span>` +
+        `<input type="range" data-context-field="${esc(key)}" min="0" max="1" step="0.01" value="${value}">`;
+      const input = field.querySelector("input");
+      input.addEventListener("input", () => {
+        field.querySelector("output").textContent = f2(input.valueAsNumber);
+      });
+      contextHost.appendChild(field);
+    });
+    const hostility = el("label", "gender-context-hostility");
+    hostility.innerHTML =
+      `<input type="checkbox" data-context-hostility ${context.hostility_enabled ? "checked" : ""}>` +
+      `<span>allow configured hostile social events</span>`;
+    contextHost.appendChild(hostility);
+  }
+
+  function buildGenderManifestFromEditor() {
+    if (!genderManifestDraft) throw new Error("Choose a scenario blueprint first.");
+    const manifest = JSON.parse(JSON.stringify(genderManifestDraft));
+    const agentInput = manifest.agents && (manifest.agents["0"] || manifest.agents[0]);
+    if (!agentInput || !agentInput.life_course) throw new Error("Scenario has no agent 0 life course.");
+    const original = agentInput.life_course.stages || [];
+    const selectedStages = [];
+    document.querySelectorAll("#gender-life-stages .gender-stage-editor").forEach((card) => {
+      if (!card.querySelector("[data-stage-enabled]").checked) return;
+      const index = Math.max(0, Math.trunc(Number(card.dataset.stageIndex) || 0));
+      const stage = JSON.parse(JSON.stringify(original[index]));
+      card.querySelectorAll("[data-stage-field]").forEach((input) => {
+        const key = input.dataset.stageField;
+        stage[key] = key === "duration_ticks"
+          ? Math.max(1, Math.min(1000000, Math.round(input.valueAsNumber || 1)))
+          : clamp01(input.valueAsNumber);
+      });
+      selectedStages.push(stage);
+    });
+    if (!selectedStages.length) throw new Error("Keep at least one life stage.");
+    agentInput.life_course.stages = selectedStages;
+    document.querySelectorAll("#gender-context-fields [data-context-field]").forEach((input) => {
+      manifest.social_context[input.dataset.contextField] = clamp01(input.valueAsNumber);
+    });
+    const hostility = document.querySelector("#gender-context-fields [data-context-hostility]");
+    if (hostility) manifest.social_context.hostility_enabled = !!hostility.checked;
+    const seedInput = $("#gender-scenario-seed");
+    const seed = Math.max(0, Math.min(4294967295, Math.trunc(Number(seedInput && seedInput.value) || 0)));
+    if (seedInput) seedInput.value = String(seed);
+    manifest.seed = seed;
+    const root = manifest.preset_id || "custom";
+    manifest.scenario_id = `${root}-${seed}-configured`.slice(0, 96);
+    return manifest;
+  }
+
+  async function loadGenderScenarios() {
+    const select = $("#gender-scenario-select");
+    const seedInput = $("#gender-scenario-seed");
+    if (!select || !seedInput) return;
+    const previous = select.value || "nonbinary";
+    const seed = Math.max(0, Math.min(4294967295, Math.trunc(Number(seedInput.value) || 42)));
+    seedInput.value = String(seed);
+    select.disabled = true;
+    setGenderStatus("Loading inspectable manifests…", "");
+    try {
+      const result = await api(`gender/scenarios?seed=${encodeURIComponent(seed)}`);
+      genderCatalog = Array.isArray(result && result.scenarios) ? result.scenarios : [];
+      select.replaceChildren();
+      genderCatalog.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.preset_id;
+        option.textContent = genderHuman(item.preset_id);
+        select.appendChild(option);
+      });
+      const wanted = genderCatalog.some((item) => item.preset_id === previous)
+        ? previous
+        : (genderCatalog.some((item) => item.preset_id === "nonbinary") ? "nonbinary" : (genderCatalog[0] && genderCatalog[0].preset_id));
+      if (wanted) select.value = wanted;
+      renderGenderScenarioEditor();
+    } catch (error) {
+      genderCatalog = [];
+      genderManifestDraft = null;
+      select.innerHTML = '<option value="">Scenario API unavailable</option>';
+      setGenderStatus("Could not load gender-life scenarios.", "error");
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  async function applyGenderScenario(event) {
+    event.preventDefault();
+    const confirm = $("#gender-reset-confirm");
+    const button = $("#btn-gender-apply");
+    if (!confirm || !confirm.checked) {
+      setGenderStatus("Confirm the full reset before applying.", "error");
+      return;
+    }
+    let manifest;
+    try {
+      manifest = buildGenderManifestFromEditor();
+    } catch (error) {
+      setGenderStatus(error.message, "error");
+      return;
+    }
+    button.disabled = true;
+    button.textContent = "Resetting…";
+    setGenderStatus("Installing the complete manifest transactionally…", "");
+    try {
+      const response = await postJSON("gender/scenario", { scenario: manifest });
+      resetHorizonClientState();
+      genderActivePresetId = manifest.preset_id || $("#gender-scenario-select").value;
+      genderPayload = response.agents && (response.agents["0"] || response.agents[0]);
+      genderSocietyPayload = response.public_society || null;
+      genderDebugPayload = null;
+      renderGenderExperience(genderPayload, genderSocietyPayload);
+      applyControlStates({ gender_experience_enabled: true });
+      clientConfig.gender_experience_enabled = true;
+      buildConfigFull();
+      confirm.checked = false;
+      setGenderStatus(
+        `${genderHuman(manifest.preset_id || "custom scenario")} installed · full reset · initialized t${Math.round(num(response.initialized_tick))}.`,
+        "ok"
+      );
+      toast("Gender-life scenario applied through a full reset.", "ok");
+      await refreshAll();
+    } catch (error) {
+      const detail = error && error.detail && error.detail.detail;
+      const validationMessage = Array.isArray(detail) && detail[0] && detail[0].msg;
+      setGenderStatus(
+        typeof detail === "string"
+          ? detail
+          : (validationMessage || "Scenario rejected; the live run was not partially changed."),
+        "error"
+      );
+      setStatus("error", "Gender scenario error");
+    } finally {
+      button.textContent = "Apply & reset";
+      button.disabled = true;
+    }
+  }
+
+  function hideGenderDebug() {
+    genderDebugPayload = null;
+    const content = $("#gender-private-content");
+    const button = $("#btn-gender-debug");
+    if (content) {
+      content.replaceChildren();
+      content.hidden = true;
+    }
+    if (button) {
+      button.setAttribute("aria-expanded", "false");
+      button.textContent = "Reveal private input";
+    }
+    const state = genderPayload && genderPayload.state;
+    if (state) renderGenderTimeline(null, state);
+  }
+
+  async function revealGenderDebug(options) {
+    const quiet = options && options.quiet;
+    const button = $("#btn-gender-debug");
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Loading private input…";
+    }
+    try {
+      const debug = await api("agent/gender/debug");
+      genderDebugPayload = debug;
+      renderGenderPrivate(debug);
+      if (button) {
+        button.setAttribute("aria-expanded", "true");
+        button.textContent = "Hide private input";
+      }
+      if (!quiet) toast("Private experiment input revealed locally.", "ok");
+    } catch (error) {
+      if (!quiet) toast("Private input is unavailable until a scenario is configured.", "error");
+      hideGenderDebug();
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  async function toggleGenderDebug() {
+    const content = $("#gender-private-content");
+    if (content && !content.hidden) hideGenderDebug();
+    else await revealGenderDebug();
+  }
+
+  async function queueGenderEvent(event) {
+    event.preventDefault();
+    if (!(genderPayload && genderPayload.configured)) {
+      toast("Choose a gender-life scenario first.", "error");
+      return;
+    }
+    const type = $("#gender-event-type").value;
+    const domain = $("#gender-event-domain").value;
+    const intensity = clamp01($("#gender-event-intensity").valueAsNumber);
+    const hostile = GENDER_HOSTILE_EVENTS.has(type);
+    try {
+      const response = await postJSON("agent/gender/event", {
+        type,
+        domain,
+        intensity,
+        visibility: hostile ? "public" : "trusted",
+        deliberate: hostile,
+        context_code: `ui_${type}`.slice(0, 64),
+      });
+      genderProbeHistory.unshift({
+        id: `event-${response.event.event_id}`,
+        eventId: response.event.event_id,
+        label: `event · ${genderHuman(type)} · ${genderHuman(domain)}`,
+        tick: response.scheduled_tick,
+        provenance: response.event.provenance,
+      });
+      renderGenderProbeLog(genderPayload.state);
+      toast(`Event queued for t${response.scheduled_tick}.`, "ok");
+      if (genderDebugPayload) await revealGenderDebug({ quiet: true });
+    } catch (error) {
+      toast("Event rejected without changing the queue.", "error");
+    }
+  }
+
+  async function queueGenderIntent(event) {
+    event.preventDefault();
+    if (!(genderPayload && genderPayload.configured)) {
+      toast("Choose a gender-life scenario first.", "error");
+      return;
+    }
+    const type = $("#gender-intent-type").value;
+    const dimension = $("#gender-intent-dimension").value;
+    const body = {
+      type,
+      domain: dimension || "general",
+      urgency: clamp01($("#gender-intent-urgency").valueAsNumber),
+    };
+    if (dimension) body.transition_dimension = dimension;
+    if (type === "disclose") body.disclosure_scope = "public";
+    if (type === "conceal") body.disclosure_scope = "private";
+    try {
+      const response = await postJSON("agent/gender/intent", body);
+      genderProbeHistory.unshift({
+        id: `intent-${response.intent.intent_id}`,
+        label: `intent · ${genderHuman(type)}${dimension ? ` · ${genderHuman(dimension)}` : ""}`,
+        tick: response.scheduled_tick,
+        provenance: response.intent.provenance,
+      });
+      renderGenderProbeLog(genderPayload.state);
+      toast(`Intention queued for t${response.scheduled_tick}.`, "ok");
+      if (genderDebugPayload) await revealGenderDebug({ quiet: true });
+    } catch (error) {
+      toast("Intention rejected without changing the queue.", "error");
+    }
+  }
+
+  function renderGenderBattery(result) {
+    const host = $("#gender-battery-result");
+    if (!host) return;
+    host.replaceChildren();
+    Object.entries((result && result.comparisons) || {}).forEach(([name, values]) => {
+      const row = el("div", "gender-comparison");
+      const same = values && values.same_private_profile;
+      row.appendChild(el(
+        "strong",
+        "",
+        `${esc(genderHuman(name))}${same === true ? ' <span class="gender-driver">same private profile</span>' : ""}`
+      ));
+      Object.entries(values || {})
+        .filter(([key, value]) => key !== "same_private_profile" && typeof value === "number")
+        .forEach(([key, value]) => {
+          row.appendChild(el("span", "", `${esc(genderHuman(key))} ${genderSigned(value)}`));
+        });
+      host.appendChild(row);
+    });
+    host.appendChild(el("p", "gender-battery-note", esc(
+      (result && result.interpretation) || "Counterfactual interpretation unavailable."
+    )));
+  }
+
+  async function runGenderBattery(event) {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector("button[type='submit']");
+    const ticks = Math.max(4, Math.min(500, Math.round($("#gender-battery-ticks").valueAsNumber || 24)));
+    const seed = Math.max(0, Math.min(4294967295, Math.trunc(Number($("#gender-scenario-seed").value) || 42)));
+    const presetId = genderActivePresetId || $("#gender-scenario-select").value || "nonbinary";
+    button.disabled = true;
+    button.textContent = "Running 8 arms…";
+    $("#gender-battery-result").innerHTML = '<div class="empty">Computing deterministic matched arms…</div>';
+    try {
+      const result = await postJSON("battery/gender-experience", {
+        preset_id: presetId,
+        seed,
+        ticks,
+      });
+      renderGenderBattery(result);
+    } catch (error) {
+      $("#gender-battery-result").innerHTML = '<div class="empty">Battery request failed.</div>';
+    } finally {
+      button.disabled = false;
+      button.textContent = "Run 8 matched arms";
+    }
+  }
+
+  function bindGenderControls() {
+    if (genderControlsBound) return;
+    genderControlsBound = true;
+    $("#gender-scenario-select")?.addEventListener("change", renderGenderScenarioEditor);
+    $("#gender-scenario-seed")?.addEventListener("change", () => { void loadGenderScenarios(); });
+    $("#gender-reset-confirm")?.addEventListener("change", (event) => {
+      const button = $("#btn-gender-apply");
+      if (button) button.disabled = !event.currentTarget.checked || !genderManifestDraft;
+    });
+    $("#gender-scenario-form")?.addEventListener("submit", applyGenderScenario);
+    $("#btn-gender-debug")?.addEventListener("click", () => { void toggleGenderDebug(); });
+    $("#gender-event-form")?.addEventListener("submit", queueGenderEvent);
+    $("#gender-intent-form")?.addEventListener("submit", queueGenderIntent);
+    $("#gender-battery-form")?.addEventListener("submit", runGenderBattery);
+
+    [
+      ["#gender-event-intensity", "#gender-event-intensity-value"],
+      ["#gender-intent-urgency", "#gender-intent-urgency-value"],
+    ].forEach(([inputSelector, outputSelector]) => {
+      const input = $(inputSelector);
+      const output = $(outputSelector);
+      if (input && output) input.addEventListener("input", () => {
+        output.textContent = f2(input.valueAsNumber);
+      });
+    });
+  }
+
+  async function initGenderExperience() {
+    bindGenderControls();
+    renderGenderExperience(null, null);
+    await loadGenderScenarios();
+  }
+
+  // ============================================================
   //  REFRESH (poll /state + agent endpoints)
   // ============================================================
   async function refreshAll() {
@@ -1554,7 +2899,10 @@
   async function performRefreshAll() {
     const generation = horizonGeneration;
     try {
-      const [state, metrics, consciousness, ws, stream, self, mem, intro] = await Promise.all([
+      const [
+        state, metrics, consciousness, ws, stream, self, mem, intro,
+        gender, genderSociety,
+      ] = await Promise.all([
         api("state").catch(() => null),
         api("metrics").catch(() => null),
         api("agent/consciousness").catch(() => null),
@@ -1563,6 +2911,8 @@
         api("agent/self-model").catch(() => null),
         api("agent/memory?limit=20").catch(() => []),
         api("agent/introspection").catch(() => null),
+        api("agent/gender").catch(() => null),
+        api("society/gender").catch(() => null),
       ]);
       if (generation !== horizonGeneration) return;
 
@@ -1579,6 +2929,10 @@
         drawWorld(snap);
         $("#world-meta").textContent = "tick " + tick + " · GET /state";
         lastTick = tick;
+        const tickChip = $("#topbar-tick");
+        if (tickChip) tickChip.textContent = "t " + tick;
+        const cta = $("#overview-cta");
+        if (cta && tick > 0 && !cta.hidden) cta.hidden = true;
         // canonical arousal source: GET /state.arousal
         if (state.arousal != null) renderArousal(state.arousal, configValue("arousal_baseline"));
         if (typeof state.running === "boolean") {
@@ -1591,8 +2945,18 @@
         }
         renderWorkingMemory(state.working_memory || null, num(state.working_memory_load));
         if (state.self_model && !self) renderSelfModel(state.self_model);
-        if (state.disclaimer) $("#footer-disclaimer").textContent = state.disclaimer;
-        if (state.framing) $("#framing-text").textContent = state.framing;
+        if (state.disclaimer) {
+          const strip = $("#footer-disclaimer");
+          strip.textContent = state.disclaimer;   // server text, verbatim
+          strip.title = state.disclaimer;         // full text on the ellipsed strip
+          const charterDisc = $("#charter-disclaimer");
+          if (charterDisc) charterDisc.textContent = state.disclaimer;
+        }
+        if (state.framing) {
+          $("#framing-text").textContent = state.framing;
+          const charterFraming = $("#charter-framing");
+          if (charterFraming) charterFraming.textContent = state.framing;
+        }
       }
 
       renderMetrics(metrics, consciousness);
@@ -1603,6 +2967,7 @@
       if (self) renderSelfModel(self);
       renderMemories(mem || []);
       if (intro) renderIntrospection(intro);
+      if (gender) renderGenderExperience(gender, genderSociety);
       // The optional trace sub-objects (learning, personality, sleep, opacity,
       // individuation, asymptote…) now ride on GET /agent/consciousness, so
       // every panel refreshes during BACKGROUND runs; a client-side CycleTrace
@@ -1635,9 +3000,27 @@
       if (generation !== horizonGeneration) return;
       // society view updates inside the same serialized network batch
       try { await refreshSociety(generation); } catch (e) { /* non-fatal */ }
+      if (pollFailures) { pollFailures = 0; updateConnBanner(); }
     } catch (err) {
       console.error("refresh failed", err);
+      pollFailures += 1;
+      updateConnBanner();
       setStatus("error", "API error");
+    }
+  }
+
+  // A quiet fixed banner after ≥3 consecutive failed poll batches; hidden on
+  // the first success (the poll itself is the retry loop — nothing else to do).
+  function updateConnBanner() {
+    const banner = document.getElementById("conn-warning");
+    if (!banner) return;
+    if (pollFailures >= 3) {
+      banner.hidden = false;
+      banner.textContent = `Backend unreachable — retrying (${pollFailures} failed polls)`;
+    } else if (!banner.hidden) {
+      banner.hidden = true;
+      banner.textContent = "";
+      toast("Backend reachable again.", "ok");
     }
   }
 
@@ -1668,6 +3051,14 @@
     }
     if (trace.self_model) renderSelfModel(trace.self_model);
     if (trace.introspection) renderIntrospection(trace.introspection);
+    if (trace.gender_experience) {
+      renderGenderExperience({
+        enabled: true,
+        configured: true,
+        state: trace.gender_experience,
+        disclaimer: trace.gender_experience.disclaimer,
+      }, genderSocietyPayload);
+    }
     if (trace.working_memory) {
       const load = trace.metrics ? trace.metrics.working_memory_load
         : trace.working_memory.length / 5;
@@ -1831,6 +3222,7 @@
   }
 
   function activateIntervention(name, moveFocus) {
+    lastProbeTab = name; // the probe dock reopens on the last tab used
     const tabs = Array.from(document.querySelectorAll("#intervention-tabs [role='tab']"));
     const panels = Array.from(document.querySelectorAll("[data-intervention-panel]"));
     tabs.forEach((tab) => {
@@ -1968,15 +3360,21 @@
     } catch (e) { setStatus("error", "Pause error"); }
   });
 
-  $("#btn-reset").addEventListener("click", async () => {
-    try {
-      stopPolling();
-      await postJSON("reset", currentConfigPatch());
-      resetHorizonClientState();
-      setRunningUI(false);
-      await refreshAll();
-      await refreshMemoryGraph(true);
-    } catch (e) { setStatus("error", "Reset error"); }
+  $("#btn-reset").addEventListener("click", () => {
+    confirmAction(
+      "Reset the simulation?",
+      "The world, the agents, their memory and every learned state restart from scratch (the current slider values are applied). Saved checkpoints are kept.",
+      async () => {
+        try {
+          stopPolling();
+          await postJSON("reset", currentConfigPatch());
+          resetHorizonClientState();
+          setRunningUI(false);
+          await refreshAll();
+          await refreshMemoryGraph(true);
+          await refreshClientConfig();
+        } catch (e) { setStatus("error", "Reset error"); }
+      });
   });
 
   // ---------- goal form ----------
@@ -2055,10 +3453,10 @@
     const shellRect = canvas.parentElement.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
     const anchorX = clientX == null
-      ? canvasRect.left - shellRect.left + point.x / canvas.width * canvasRect.width
+      ? canvasRect.left - shellRect.left + point.x / MEMG_W * canvasRect.width
       : clientX - shellRect.left;
     const anchorY = clientY == null
-      ? canvasRect.top - shellRect.top + point.y / canvas.height * canvasRect.height
+      ? canvasRect.top - shellRect.top + point.y / MEMG_H * canvasRect.height
       : clientY - shellRect.top;
     tooltip.hidden = false;
     tooltip.style.left = "0px";
@@ -2103,9 +3501,10 @@
       tooltip.hidden = true;
       return;
     }
+    // client px → LOGICAL graph coordinates (the backing store is DPR-scaled)
     const rect = canvas.getBoundingClientRect();
-    const x = (ev.clientX - rect.left) * canvas.width / Math.max(1, rect.width);
-    const y = (ev.clientY - rect.top) * canvas.height / Math.max(1, rect.height);
+    const x = (ev.clientX - rect.left) * MEMG_W / Math.max(1, rect.width);
+    const y = (ev.clientY - rect.top) * MEMG_H / Math.max(1, rect.height);
     let hit = null;
     let nearest = Infinity;
     points.forEach((point) => {
@@ -2159,9 +3558,11 @@
   //  CONFIG SLIDERS -> POST /config
   // ============================================================
   function fmtSlider(fmt, v) {
-    if (fmt === "int" || fmt === "f0") return f0(v);
-    if (fmt === "f2") return f2(v);
-    return f3(v);
+    // range inputs hand us STRINGS — coerce before the num()-based formatters
+    const x = typeof v === "number" ? v : parseFloat(v);
+    if (fmt === "int" || fmt === "f0") return f0(x);
+    if (fmt === "f2") return f2(x);
+    return f3(x);
   }
   function configValue(key) {
     const row = document.querySelector(`#config-sliders .slider-row[data-key="${key}"]`);
@@ -2194,13 +3595,13 @@
           persistSetting(patch);   // remember the slider values across reloads
           const snap = out && (out.state ? out.state.world : (out.world || out.snapshot));
           if (snap) drawWorld(snap);
-          // reflect a possibly-changed ignition threshold on the workspace line
-          if (out && out.config && out.config.ignition_threshold != null) {
-            $("#threshold-val").textContent = f3(out.config.ignition_threshold);
+          if (out && out.config) {
+            clientConfig = out.config;   // nominal threshold / radius for the dials
+            buildConfigFull();
           }
           // refresh the arousal baseline marker if it changed
           renderArousal(num($("#arousal-val").textContent), configValue("arousal_baseline"));
-        } catch (e) { setStatus("error", "Config error"); }
+        } catch (e) { configErrorFeedback(e); }
       }, 120);
     });
   });
@@ -2211,15 +3612,41 @@
   // checked by default (matches applyDeepDefaults); each flips one feature flag.
   // covers both the #deep-toggles (Phase 2) and #lp-toggles (Phase 3) groups.
   document.querySelectorAll(".panel-config input[data-flag]").forEach((box) => {
+    if (box.hasAttribute("data-explicit-scenario-only")) return;
     box.addEventListener("change", async () => {
       const flag = box.dataset.flag;
       try {
-        await postJSON("config", { [flag]: box.checked });
+        const out = await postJSON("config", { [flag]: box.checked });
         persistSetting({ [flag]: box.checked });   // survive reload
+        if (out && out.config) { clientConfig = out.config; buildConfigFull(); }
         try { refreshCoverage(); } catch (e) { /* non-fatal */ }
-      } catch (e) { setStatus("error", "Config error"); }
+      } catch (e) { configErrorFeedback(e); }
     });
   });
+
+  // 409 = structural field: explain instead of a generic "Config error"
+  function configErrorFeedback(e) {
+    const fields = e && e.detail && e.detail.detail && e.detail.detail.fields;
+    if (e && e.status === 409 && Array.isArray(fields)) {
+      toast("Structural field (" + fields.join(", ") + ") — apply it through Reset.", "error");
+      setStatus("error", "Requires reset");
+    } else {
+      setStatus("error", "Config error");
+    }
+  }
+
+  // Client copy of the live SimConfig (nominal threshold, perception radius,
+  // read-only Settings disclosure). Refreshed at boot and after every mutation.
+  async function refreshClientConfig() {
+    try {
+      const live = await api("config");
+      if (live && live.config) {
+        clientConfig = live.config;
+        applyControlStates(live.config);
+        buildConfigFull();
+      }
+    } catch (e) { /* non-fatal — dials fall back to payload values */ }
+  }
 
   $("#btn-horizon-profile")?.addEventListener("click", async (ev) => {
     const button = ev.currentTarget;
@@ -2228,7 +3655,8 @@
     button.disabled = true;
     button.textContent = "Activating…";
     try {
-      await postJSON("config", patch);
+      const out = await postJSON("config", patch);
+      if (out && out.config) { clientConfig = out.config; buildConfigFull(); }
       persistSetting(patch);
       applyControlStates(patch);
       try { await refreshCoverage(); } catch (e) { /* non-fatal */ }
@@ -2250,6 +3678,7 @@
   //  SOCIETY VIEW (multi-agent) — GET /society
   // ============================================================
   let SOC_SELECTED = 0;
+  let socInspectorFetchedFor = -1;
 
   async function refreshSociety(generation) {
     let data;
@@ -2258,45 +3687,248 @@
     } catch (e) { return; }
     if (generation != null && generation !== horizonGeneration) return;
     if (!data) return;
-    drawSociety(data.world, SOC_SELECTED);
-    renderRelations(data.relations, data.agents);
+    lastSocietyData = data;
+    renderSocietyAll(data);
   }
 
-  function drawSociety(world, selected) {
+  // One entry point re-renders every society window from the SAME payload —
+  // the selection is the single source of truth, no re-fetch needed.
+  function renderSocietyAll(data) {
+    if (!data || !data.world) return;
+    const ids = (data.world.agents || []).map((a) => num(a.id));
+    if (ids.length && !ids.includes(SOC_SELECTED)) SOC_SELECTED = ids[0];
+    const n = ids.length;
+    // topbar + overview echoes
+    const agentChip = $("#topbar-agent");
+    if (agentChip) {
+      agentChip.hidden = n <= 1;
+      agentChip.textContent = "agent " + SOC_SELECTED;
+    }
+    const nEl = $("#overview-nagents");
+    if (nEl) nEl.textContent = n > 1 ? "· " + n + " agents" : "";
+    const langNote = $("#language-society-note");
+    if (langNote) langNote.hidden = n > 1;
+    drawSociety(data.world, SOC_SELECTED, data.relations);
+    drawMiniSociety(data.world, SOC_SELECTED);
+    renderSocietyAgents(data);
+    renderRelations(data.relations, data.agents);
+    renderSocietyMessages(data);
+    void refreshSocietyInspector(false);
+  }
+
+  function drawSociety(world, selected, relations) {
     const cv = document.getElementById("society-canvas");
     if (!cv || !world) return;
-    const ctx = cv.getContext("2d");
-    const g = num(world.grid_size) || 12, cell = cv.width / g;
-    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (!canvasVisible(cv)) { pendingViewDraws.add("world"); return; }
+    const ctx = ensureCanvasScale(cv, WORLD_L, WORLD_L);
+    const g = num(world.grid_size) || 12, cell = WORLD_L / g;
+    ctx.clearRect(0, 0, WORLD_L, WORLD_L);
     const KIND = {
       food: cssVar("--pos"),
       hazard: cssVar("--neg"),
       tool: cssVar("--cool"),
       curio: cssVar("--curio"),
     };
+    const center = (c) => c * cell + cell / 2;
     (world.objects || []).forEach((o) => {
       ctx.fillStyle = KIND[o.kind] || cssVar("--ink-faint");
-      ctx.fillRect(o.x * cell + cell * 0.3, o.y * cell + cell * 0.3, cell * 0.4, cell * 0.4);
+      ctx.globalAlpha = 0.7;
+      traceKindShape(ctx, o.kind, center(o.x), center(o.y), cell * 0.2);
+      ctx.fill();
     });
+    ctx.globalAlpha = 1;
+    const agents = world.agents || [];
+    const byId = new Map(agents.map((a) => [num(a.id), a]));
+    // trust links drawn on the map: width = trust, colour = affect valence
+    ((relations && relations.edges) || []).forEach((e) => {
+      const a = byId.get(num(e.from)), b = byId.get(num(e.to));
+      if (!a || !b) return;
+      const trust = clamp01(num(e.trust));
+      ctx.beginPath();
+      ctx.moveTo(center(a.x), center(a.y));
+      ctx.lineTo(center(b.x), center(b.y));
+      ctx.strokeStyle = String(e.affect || "").includes("neg") || num(e.trust) < 0.25
+        ? cssVar("--neg") : cssVar("--pos");
+      ctx.globalAlpha = 0.18 + trust * 0.4;
+      ctx.lineWidth = 0.8 + trust * 2.4;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+    // earshot circles of the live messages (real x/y/radius/ttl fields only)
+    ((world.messages) || []).forEach((msg) => {
+      const r = num(msg.radius);
+      if (!(r > 0)) return;
+      ctx.beginPath();
+      ctx.arc(center(num(msg.x)), center(num(msg.y)), r * cell, 0, Math.PI * 2);
+      ctx.strokeStyle = cssVar("--curio");
+      ctx.globalAlpha = 0.12 + 0.18 * clamp01(num(msg.ttl) / 4);
+      ctx.setLineDash([3, 4]);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    });
+    agents.forEach((a) => {
+      const ax = center(a.x), ay = center(a.y);
+      const isSel = num(a.id) === selected;
+      ctx.beginPath();
+      ctx.arc(ax, ay, cell * 0.32, 0, Math.PI * 2);
+      ctx.fillStyle = isSel ? cssVar("--accent") : cssVar("--ink");
+      ctx.fill();
+      if (isSel) { // double ring: selection is a SHAPE, not only a tint
+        ctx.beginPath();
+        ctx.arc(ax, ay, cell * 0.44, 0, Math.PI * 2);
+        ctx.strokeStyle = cssVar("--accent");
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+      }
+      ctx.fillStyle = cssVar("--bg-inset");
+      ctx.font = `600 ${Math.floor(cell * 0.4)}px ${cssVar("--sans") || "sans-serif"}`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(a.id), ax, ay);
+    });
+    cv.setAttribute("aria-label",
+      `Society map: ${agents.length} agent${agents.length === 1 ? "" : "s"}, ` +
+      `agent ${selected} selected. Arrow keys cycle the selection.`);
+  }
+
+  function drawMiniSociety(world, selected) {
+    const canvas = $("#overview-society-mini");
+    if (!canvas || !world) return;
+    if (!canvasVisible(canvas)) { pendingViewDraws.add("overview"); return; }
+    const L = 220;
+    const ctx = ensureCanvasScale(canvas, L, L);
+    ctx.clearRect(0, 0, L, L);
+    const g = num(world.grid_size) || 12, cell = L / g;
+    const center = (c) => c * cell + cell / 2;
+    (world.objects || []).forEach((o) => {
+      ctx.fillStyle = cssVar("--ink-faint");
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(center(o.x) - 1.4, center(o.y) - 1.4, 2.8, 2.8);
+    });
+    ctx.globalAlpha = 1;
     (world.agents || []).forEach((a) => {
       ctx.beginPath();
-      ctx.arc(a.x * cell + cell / 2, a.y * cell + cell / 2, cell * 0.32, 0, Math.PI * 2);
-      ctx.fillStyle = a.id === selected ? cssVar("--accent") : cssVar("--ink");
+      ctx.arc(center(a.x), center(a.y), Math.max(3.4, cell * 0.3), 0, Math.PI * 2);
+      ctx.fillStyle = num(a.id) === selected ? cssVar("--accent") : cssVar("--ink");
       ctx.fill();
-      ctx.fillStyle = cssVar("--bg-inset");
-      ctx.font = `${Math.floor(cell * 0.4)}px sans-serif`;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(String(a.id), a.x * cell + cell / 2, a.y * cell + cell / 2);
     });
+  }
+
+  // Comparable agent cards — same columns for everyone (from /society.agents,
+  // data already polled and previously discarded).
+  function renderSocietyAgents(data) {
+    const host = $("#society-agents");
+    if (!host) return;
+    const worldAgents = (data.world && data.world.agents) || [];
+    if (worldAgents.length <= 1) { host.replaceChildren(); return; }
+    host.replaceChildren();
+    const frag = document.createDocumentFragment();
+    worldAgents.forEach((wa) => {
+      const id = num(wa.id);
+      const detail = (data.agents && data.agents[String(id)]) || {};
+      const met = detail.metrics || {};
+      const card = el("button", "agent-card" + (id === SOC_SELECTED ? " selected" : ""));
+      card.type = "button";
+      card.setAttribute("aria-pressed", id === SOC_SELECTED ? "true" : "false");
+      card.innerHTML =
+        `<span class="ac-head"><span>agent ${id}</span><span class="mono">E ${f0(wa.energy)}</span></span>` +
+        `<span>Φ ${f3(met.phi_proxy)} · aware ${f3(met.awareness_level)}</span>` +
+        `<span class="micro">${esc(wa.last_action || "—")} · affect ${esc(wa.affect || "—")} ${f2(wa.valence)}</span>`;
+      card.addEventListener("click", () => selectSocietyAgent(id, true));
+      frag.appendChild(card);
+    });
+    host.appendChild(frag);
   }
 
   function renderRelations(rel, agents) {
     const box = document.getElementById("society-relations");
     if (!box || !rel) return;
-    box.innerHTML = (rel.edges || [])
-      .map((e) => `<div class="row"><span class="mono">${esc(e.from)}→${esc(e.to)}</span>` +
-                  `<span class="micro">trust ${f2(e.trust)} · ${esc(e.affect)}</span></div>`)
-      .join("") || '<div class="micro">No relations yet.</div>';
+    const edges = (rel.edges || []).slice()
+      .sort((a, b) =>
+        (num(b.from) === SOC_SELECTED || num(b.to) === SOC_SELECTED ? 1 : 0) -
+        (num(a.from) === SOC_SELECTED || num(a.to) === SOC_SELECTED ? 1 : 0));
+    box.innerHTML = edges
+      .map((e) => `<div class="row"><div class="row-top">` +
+        `<span class="row-title mono">${esc(e.from)} → ${esc(e.to)}</span>` +
+        `<span class="row-tag">trust ${f2(e.trust)}` +
+        (e.familiarity != null ? ` · fam ${f2(e.familiarity)}` : "") +
+        `</span></div><div class="row-sub">${esc(e.affect)}</div></div>`)
+      .join("") ||
+      ((rel.nodes || []).length > 1
+        ? '<div class="empty">No relations yet.</div>'
+        : '<div class="empty">Single agent — no relations to model.</div>');
+  }
+
+  // Live messages of the shared world (real Message fields only: no invented
+  // listeners — delivery happens next tick and is not in the payload).
+  function renderSocietyMessages(data) {
+    const host = $("#society-messages");
+    if (!host) return;
+    const messages = ((data.world && data.world.messages) || []).slice(-48);
+    const filtered = (data.world && data.world.agents || []).length > 1 && SOC_SELECTED != null
+      ? messages : messages;
+    if (!filtered.length) {
+      host.innerHTML = '<div class="empty">No live messages.</div>';
+      return;
+    }
+    host.innerHTML = filtered.map((m) =>
+      `<div class="row"><div class="row-top">` +
+      `<span class="row-title">agent ${num(m.sender_id)}${m.word ? " · <span class=\"mono\">“" + esc(m.word) + "”</span>" : ""}</span>` +
+      `<span class="row-tag">t${num(m.tick_emitted)} · ttl ${num(m.ttl)}</span></div>` +
+      `<div class="row-sub">${esc(m.content || "")} · reach ${num(m.radius)} cells</div></div>`
+    ).join("");
+  }
+
+  // Per-agent inspector (D4): a snapshot from the per-agent endpoints when the
+  // selection changes — the main instrument keeps observing agent 0.
+  async function refreshSocietyInspector(force) {
+    const host = $("#society-inspector");
+    if (!host) return;
+    const n = lastSocietyData && lastSocietyData.world && lastSocietyData.world.agents
+      ? lastSocietyData.world.agents.length : 1;
+    if (n <= 1) {
+      host.innerHTML = '<p class="micro">Single agent — every panel of the instrument already observes agent 0.</p>';
+      socInspectorFetchedFor = -1;
+      return;
+    }
+    if (!force && socInspectorFetchedFor === SOC_SELECTED) return;
+    socInspectorFetchedFor = SOC_SELECTED;
+    const id = SOC_SELECTED;
+    host.innerHTML = `<div class="inset-box"><span class="micro">inspecting agent ${id}…</span></div>`;
+    try {
+      const [consc, self] = await Promise.all([
+        api(`society/agent/${id}/consciousness`).catch(() => null),
+        api(`society/agent/${id}/self-model`).catch(() => null),
+      ]);
+      if (id !== SOC_SELECTED) return;
+      const cm = (consc && consc.conscious_moment) || {};
+      const ws = (consc && consc.workspace) || {};
+      const ast = (consc && consc.attention_schema) || {};
+      host.innerHTML =
+        `<div class="inset-box">` +
+        `<span class="wcd-title">Agent ${id} — snapshot <span class="micro">(GET /society/agent/${id}/consciousness + self-model; the main instrument stays on agent 0)</span></span>` +
+        `<div>${ws.ignited ? "ignited — global access" : "subliminal"} · score <span class="mono">${f3(ws.ignition_score)}</span> / eff <span class="mono">${f3(ws.effective_threshold != null ? ws.effective_threshold : ws.threshold)}</span></div>` +
+        `<div>aware of: ${esc(ast.aware_of || cm.contents || "—")}</div>` +
+        (self ? `<div>identity <span class="mono">${esc(self.identity)}</span> · energy <span class="mono">${f2(self.energy)}</span> · mood <span class="mono">${f3(self.mood)}</span> · coherence <span class="mono">${f3(self.coherence)}</span></div>` : "") +
+        `</div>`;
+    } catch (e) {
+      if (id === SOC_SELECTED) {
+        host.innerHTML = `<div class="inset-box"><span class="micro">Inspector unavailable for agent ${id}.</span></div>`;
+      }
+    }
+  }
+
+  function selectSocietyAgent(id, announce) {
+    SOC_SELECTED = num(id);
+    const sel = document.getElementById("soc-selected");
+    if (sel) sel.textContent = `viewing agent ${SOC_SELECTED}`;
+    const live = $("#society-selection");
+    if (live && announce) {
+      live.textContent = `Agent ${SOC_SELECTED} selected.`;
+    }
+    if (lastSocietyData) renderSocietyAll(lastSocietyData);
+    void refreshSocietyInspector(true);
   }
 
   document.getElementById("btn-society-apply")?.addEventListener("click", async () => {
@@ -2309,25 +3941,40 @@
       else stopPolling();
       await refreshAll();
       await refreshMemoryGraph(true);
+      SOC_SELECTED = 0;
+      socInspectorFetchedFor = -1;
+      await refreshClientConfig();
     } catch (e) { setStatus("error", "Society error"); }
   });
 
   document.getElementById("society-canvas")?.addEventListener("click", (ev) => {
-    api("society").then((d) => {
-      if (!d || !d.world) return;
-      const cv = ev.currentTarget, g = num(d.world.grid_size) || 12, cell = cv.width / g;
-      const rect = cv.getBoundingClientRect();
-      // canvas is CSS-scaled to fit; map client px back to canvas px first
-      const sx = cv.width / rect.width, sy = cv.height / rect.height;
-      const gx = Math.floor((ev.clientX - rect.left) * sx / cell);
-      const gy = Math.floor((ev.clientY - rect.top) * sy / cell);
-      const hit = (d.world.agents || []).find((a) => a.x === gx && a.y === gy);
-      if (hit) {
-        SOC_SELECTED = hit.id;
-        document.getElementById("soc-selected").textContent = `viewing agent ${hit.id}`;
-      }
-      refreshSociety();
-    }).catch(() => {});
+    const cv = ev.currentTarget;
+    const world = lastSocietyData && lastSocietyData.world;
+    if (!world) { refreshSociety(); return; }
+    const g = num(world.grid_size) || 12, cell = WORLD_L / g;
+    const rect = cv.getBoundingClientRect();
+    // client px → LOGICAL canvas px (backing store is DPR-scaled)
+    const sx = WORLD_L / Math.max(1, rect.width), sy = WORLD_L / Math.max(1, rect.height);
+    const gx = Math.floor((ev.clientX - rect.left) * sx / cell);
+    const gy = Math.floor((ev.clientY - rect.top) * sy / cell);
+    const hit = (world.agents || []).find((a) => num(a.x) === gx && num(a.y) === gy);
+    if (hit) selectSocietyAgent(hit.id, true);
+  });
+  // keyboard selection: ←/→ cycle through the agents on the focused map
+  document.getElementById("society-canvas")?.addEventListener("keydown", (ev) => {
+    const world = lastSocietyData && lastSocietyData.world;
+    const ids = ((world && world.agents) || []).map((a) => num(a.id)).sort((a, b) => a - b);
+    if (!ids.length) return;
+    const idx = Math.max(0, ids.indexOf(SOC_SELECTED));
+    if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
+      ev.preventDefault(); selectSocietyAgent(ids[(idx + 1) % ids.length], true);
+    } else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") {
+      ev.preventDefault(); selectSocietyAgent(ids[(idx - 1 + ids.length) % ids.length], true);
+    } else if (ev.key === "Home") {
+      ev.preventDefault(); selectSocietyAgent(ids[0], true);
+    } else if (ev.key === "End") {
+      ev.preventDefault(); selectSocietyAgent(ids[ids.length - 1], true);
+    }
   });
 
   // ============================================================
@@ -2338,23 +3985,40 @@
   async function refreshLabChart(generation) {
     const cv = $("#lab-chart");
     if (!cv) return;
-    const ctx = cv.getContext("2d");
-    const W = cv.width, H = cv.height;
+    // hidden view → skip the fetch entirely (200 rows per poll saved); the
+    // router flushes a redraw when the Laboratory becomes visible again.
+    if (!canvasVisible(cv)) { pendingViewDraws.add("laboratory"); return; }
+    const W = 560, H = 220;
+    const ctx = ensureCanvasScale(cv, W, H);
     ctx.clearRect(0, 0, W, H);
 
     const metric = ($("#lab-metric") && $("#lab-metric").value) || "energy";
     const d = await api("metrics/history?limit=200");
     if (generation != null && generation !== horizonGeneration) return;
     const rows = (d && d.series && d.series.rows) || [];
-    if (!rows.length) return;
+    const emptyEl = $("#lab-chart-empty");
+    const legendEl = $("#lab-chart-legend");
+    if (!rows.length) {
+      if (emptyEl) {
+        emptyEl.hidden = false;
+        emptyEl.textContent = "No recorded series yet — run or train first.";
+      }
+      if (legendEl) legendEl.replaceChildren();
+      return;
+    }
+    if (emptyEl) emptyEl.hidden = true;
 
-    // group rows by agent_id, preserving order
+    // group rows by agent_id, preserving order (+ keep ticks for the x axis)
     const byAgent = new Map();
+    let tickLo = Infinity, tickHi = -Infinity;
     rows.forEach((r) => {
       const id = r.agent_id != null ? r.agent_id : 0;
       let arr = byAgent.get(id);
       if (!arr) { arr = []; byAgent.set(id, arr); }
       arr.push(num(r[metric]));
+      const t = num(r.tick);
+      if (t < tickLo) tickLo = t;
+      if (t > tickHi) tickHi = t;
     });
 
     // auto-scale y to the min/max of the selected metric across all agents
@@ -2366,10 +4030,31 @@
     if (!isFinite(lo) || !isFinite(hi)) return;
     if (hi - lo < 1e-9) { hi += 0.5; lo -= 0.5; }
 
-    const pad = 10;
+    const left = 42, right = 10, top = 10, bottom = 24;
+    const plotW = W - left - right, plotH = H - top - bottom;
     const maxLen = Math.max(...Array.from(byAgent.values(), (a) => a.length));
-    const sx = (i) => pad + (maxLen <= 1 ? 0 : (i / (maxLen - 1)) * (W - 2 * pad));
-    const sy = (v) => H - pad - ((v - lo) / (hi - lo)) * (H - 2 * pad);
+    const sx = (i) => left + (maxLen <= 1 ? 0 : (i / (maxLen - 1)) * plotW);
+    const sy = (v) => top + plotH - ((v - lo) / (hi - lo)) * plotH;
+
+    // y axis: printed min/max + midline (no silent auto-scale)
+    ctx.font = "10px monospace";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = cssVar("--ink-faint");
+    ctx.strokeStyle = cssVar("--line");
+    ctx.lineWidth = 1;
+    [[hi, top + 0.5], [(hi + lo) / 2, top + plotH / 2 + 0.5], [lo, top + plotH + 0.5]]
+      .forEach(([v, y]) => {
+        ctx.globalAlpha = 0.45;
+        ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(W - right, y); ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.textAlign = "right";
+        ctx.fillText(f2(v), left - 6, y);
+      });
+    // x axis: real tick range
+    ctx.textAlign = "left";
+    ctx.fillText("t" + f0(tickLo), left, H - 9);
+    ctx.textAlign = "right";
+    ctx.fillText("t" + f0(tickHi), W - right, H - 9);
 
     const palette = [
       cssVar("--accent"), cssVar("--cool"), cssVar("--pos"),
@@ -2377,7 +4062,9 @@
     ];
 
     let ai = 0;
-    byAgent.forEach((vals) => {
+    const agentIds = [];
+    byAgent.forEach((vals, id) => {
+      agentIds.push(id);
       ctx.beginPath();
       vals.forEach((v, i) => {
         const x = sx(i), y = sy(v);
@@ -2388,6 +4075,25 @@
       ctx.stroke();
       ai++;
     });
+
+    if (legendEl) {
+      legendEl.replaceChildren();
+      const frag = document.createDocumentFragment();
+      agentIds.forEach((id, i) => {
+        const item = el("span", "lg");
+        const sw = el("i", "swatch");
+        sw.style.background = palette[i % palette.length];
+        item.appendChild(sw);
+        const last = byAgent.get(id);
+        item.appendChild(document.createTextNode(
+          `agent ${id} · last ${f2(last[last.length - 1])}`));
+        frag.appendChild(item);
+      });
+      legendEl.appendChild(frag);
+    }
+    cv.setAttribute("aria-label",
+      `Time series of ${metric} for ${byAgent.size} agent${byAgent.size === 1 ? "" : "s"}, ` +
+      `ticks ${f0(tickLo)} to ${f0(tickHi)}, range ${f2(lo)} to ${f2(hi)}.`);
   }
 
   $("#lab-metric")?.addEventListener("change", () => {
@@ -2553,29 +4259,40 @@
         loadBtn.title = "Legacy checkpoint: incompatible with this build";
         tag.textContent += " · legacy";
       }
-      loadBtn.addEventListener("click", async () => {
-        setCkptStatus("loading " + name + "…");
-        try {
-          const r = await postJSON("checkpoint/load", { name });
-          setCkptStatus("loaded " + name + " @ tick " + num(r && r.tick));
-          resetHorizonClientState();
-          await refreshAll();
-          await refreshMemoryGraph(true);
-        } catch (e) {
-          setCkptStatus("load failed");
-        }
+      loadBtn.addEventListener("click", () => {
+        confirmAction(
+          `Load checkpoint “${name}”?`,
+          "The live run is replaced by the saved one (world, agents, learned state, memory, RNG).",
+          async () => {
+            setCkptStatus("loading " + name + "…");
+            try {
+              const r = await postJSON("checkpoint/load", { name });
+              setCkptStatus("loaded " + name + " @ tick " + num(r && r.tick));
+              resetHorizonClientState();
+              await refreshAll();
+              await refreshMemoryGraph(true);
+              await refreshClientConfig();
+            } catch (e) {
+              setCkptStatus("load failed");
+            }
+          });
       });
       const delBtn = el("button", "btn btn-quiet micro");
       delBtn.textContent = "Delete";
-      delBtn.addEventListener("click", async () => {
-        setCkptStatus("deleting " + name + "…");
-        try {
-          await postJSON("checkpoint/delete", { name });
-          setCkptStatus("deleted " + name);
-          refreshCheckpoints();
-        } catch (e) {
-          setCkptStatus("delete failed");
-        }
+      delBtn.addEventListener("click", () => {
+        confirmAction(
+          `Delete checkpoint “${name}”?`,
+          "The saved run is removed from disk. This cannot be undone.",
+          async () => {
+            setCkptStatus("deleting " + name + "…");
+            try {
+              await postJSON("checkpoint/delete", { name });
+              setCkptStatus("deleted " + name);
+              refreshCheckpoints();
+            } catch (e) {
+              setCkptStatus("delete failed");
+            }
+          });
       });
       actions.appendChild(loadBtn);
       actions.appendChild(delBtn);
@@ -2818,20 +4535,488 @@
   });
 
   // ============================================================
+  //  SHELL — toasts, dialogs, router, probe dock, palette, shortcuts
+  //  (Le Méridien: 8 hash views over one persistent DOM — no re-mounting,
+  //   no listener churn; the router only toggles [hidden] and flushes the
+  //   canvas draws that were skipped while a view was off-screen.)
+  // ============================================================
+  function toast(message, kind) {
+    const region = $("#toast-region");
+    if (!region) return;
+    const node = el("div", "toast" + (kind ? " is-" + kind : ""));
+    node.textContent = message;
+    region.appendChild(node);
+    while (region.children.length > 4) region.firstElementChild.remove();
+    setTimeout(() => { node.remove(); }, 5200);
+  }
+
+  let confirmHandler = null;
+  function confirmAction(title, body, onConfirm) {
+    const dlg = $("#confirm-dialog");
+    if (!dlg || typeof dlg.showModal !== "function") { void onConfirm(); return; }
+    $("#confirm-title").textContent = title;
+    $("#confirm-body").textContent = body;
+    confirmHandler = onConfirm;
+    dlg.showModal();
+    $("#btn-confirm-ok").focus();
+  }
+  $("#btn-confirm-ok")?.addEventListener("click", () => {
+    const dlg = $("#confirm-dialog");
+    const run = confirmHandler;
+    confirmHandler = null;
+    if (dlg) dlg.close();
+    if (run) void run();
+  });
+  document.querySelectorAll("dialog").forEach((dlg) => {
+    dlg.addEventListener("click", (ev) => {
+      const closer = ev.target.closest("[data-close-dialog]");
+      if (closer) { ev.preventDefault(); dlg.close(); }
+      // a navigation link inside a dialog (More sheet) also closes it
+      if (ev.target.closest("a[href^='#/']")) dlg.close();
+    });
+    dlg.addEventListener("close", () => {
+      if (dlg.id === "confirm-dialog") confirmHandler = null;
+    });
+  });
+
+  function openCharter() {
+    const dlg = $("#charter");
+    if (dlg && typeof dlg.showModal === "function" && !dlg.open) dlg.showModal();
+  }
+  document.addEventListener("click", (ev) => {
+    const opener = ev.target.closest("[data-open-charter]");
+    if (opener) {
+      ev.preventDefault();
+      const host = opener.closest("dialog");
+      if (host && host.open) host.close();
+      openCharter();
+    }
+  });
+  $("#btn-charter-ack")?.addEventListener("click", () => {
+    try { localStorage.setItem("humanity.ui.charter.dismissed", "1"); } catch (e) { /* ignore */ }
+  });
+
+  // ---------- hash router ----------
+  const VIEW_DEFS = [
+    { name: "overview", title: "Overview" },
+    { name: "workspace", title: "Workspace" },
+    { name: "world", title: "World & society" },
+    { name: "mind", title: "Mind" },
+    { name: "learning-language", title: "Learning & language" },
+    { name: "laboratory", title: "Laboratory" },
+    { name: "memory", title: "Memory" },
+    { name: "settings", title: "Settings" },
+  ];
+  let activeView = "overview";
+
+  function parseRoute() {
+    const m = /^#\/([\w-]+)(?:\/([\w-]+))?/.exec(location.hash || "");
+    const name = m && VIEW_DEFS.some((v) => v.name === m[1]) ? m[1] : null;
+    return { view: name, section: m ? m[2] : null };
+  }
+
+  // Re-run the draws that were skipped while this view was hidden — always
+  // from cached data (the poll keeps accumulating regardless of the view).
+  function flushViewDraws(view) {
+    if (!pendingViewDraws.has(view)) return;
+    pendingViewDraws.delete(view);
+    if (view === "world") {
+      if (currentWorldSnap) drawWorld(currentWorldSnap);
+      if (lastSocietyData) renderSocietyAll(lastSocietyData);
+    } else if (view === "workspace") {
+      renderIgnitionDynamics(null, lastTick);
+    } else if (view === "memory") {
+      drawMemoryGraph(memoryGraphCache);
+    } else if (view === "laboratory") {
+      refreshLabChart().catch(() => {});
+    } else if (view === "mind") {
+      drawCircadianDial(lastDaylight);
+    } else if (view === "overview") {
+      updateAperture(lastWorkspaceState);
+      if (currentWorldSnap) drawMiniWorld(currentWorldSnap);
+      if (lastSocietyData) drawMiniSociety(lastSocietyData.world, SOC_SELECTED);
+    }
+  }
+
+  function activateView(name, section) {
+    activeView = name;
+    document.querySelectorAll(".view").forEach((sec) => {
+      sec.hidden = sec.dataset.view !== name;
+    });
+    document.querySelectorAll("#app-nav .nav-item").forEach((a) => {
+      if (a.dataset.nav === name) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+    document.querySelectorAll(".tabbar a[data-tab]").forEach((a) => {
+      if (a.dataset.tab === name) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+    const def = VIEW_DEFS.find((v) => v.name === name);
+    const crumb = $("#topbar-view");
+    if (crumb) crumb.textContent = def ? def.title : name;
+    document.title = "Humanity — " + (def ? def.title : "Instrument");
+    try { localStorage.setItem("humanity.ui.lastRoute", "#/" + name); } catch (e) { /* ignore */ }
+    document.body.classList.remove("nav-open");
+    flushViewDraws(name);
+    if (section) {
+      const target = document.getElementById(section) ||
+        document.querySelector(`#view-${name} .panel-${section}`);
+      if (target) target.scrollIntoView({ block: "start" });
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }
+
+  function onHashChange() {
+    const route = parseRoute();
+    if (!route.view) { location.replace("#/overview"); return; }
+    activateView(route.view, route.section);
+  }
+  window.addEventListener("hashchange", onHashChange);
+
+  // ---------- sidebar / mobile nav ----------
+  function setNavCollapsed(collapsed) {
+    document.body.classList.toggle("nav-collapsed", collapsed);
+    try { localStorage.setItem("humanity.ui.nav", collapsed ? "collapsed" : "open"); } catch (e) { /* ignore */ }
+  }
+  $("#btn-nav-collapse")?.addEventListener("click", () => {
+    setNavCollapsed(!document.body.classList.contains("nav-collapsed"));
+  });
+  $("#btn-nav-toggle")?.addEventListener("click", () => {
+    const open = document.body.classList.toggle("nav-open");
+    $("#btn-nav-toggle").setAttribute("aria-expanded", String(open));
+  });
+  $("#btn-more")?.addEventListener("click", () => {
+    const dlg = $("#more-sheet");
+    if (dlg && typeof dlg.showModal === "function") dlg.showModal();
+  });
+
+  // ---------- probe dock (one instrument, two windows) ----------
+  // The interventions panel is a SINGLE DOM node whose canonical home is the
+  // Laboratory; opening the dock ADOPTS the node into the drawer (listeners,
+  // tab state and the correlated ledger move with it) and closing returns it.
+  const DOCK_DEFAULT_TAB = { workspace: "inject", world: "stimulus", mind: "perturb", memory: "ask" };
+  let lastProbeTab = "ask";
+  let interventionsHome = null;
+  let dockHideTimer = null;
+  function dockIsOpen() { return document.body.classList.contains("dock-open"); }
+  function setDockOpen(open, forcedTab) {
+    const dock = $("#probe-dock");
+    const panel = $("#experimental-interventions");
+    if (!dock || !panel) return;
+    if (open) {
+      if (!interventionsHome) {
+        interventionsHome = { parent: panel.parentElement, next: panel.nextElementSibling };
+      }
+      clearTimeout(dockHideTimer);
+      dock.hidden = false;
+      $("#probe-dock-body").appendChild(panel);
+      requestAnimationFrame(() => document.body.classList.add("dock-open"));
+      const tab = forcedTab || DOCK_DEFAULT_TAB[activeView] || lastProbeTab;
+      activateIntervention(tab, false);
+      lastProbeTab = tab;
+      const tabBtn = document.querySelector(`#intervention-tabs [data-intervention="${tab}"]`);
+      if (tabBtn) tabBtn.focus();
+    } else if (dockIsOpen()) {
+      document.body.classList.remove("dock-open");
+      if (interventionsHome && interventionsHome.parent) {
+        interventionsHome.parent.insertBefore(panel, interventionsHome.next);
+      }
+      dockHideTimer = setTimeout(() => {
+        if (!dockIsOpen()) dock.hidden = true;
+      }, 260);
+      $("#btn-probe")?.focus();
+    }
+  }
+  $("#btn-probe")?.addEventListener("click", () => setDockOpen(!dockIsOpen()));
+  $("#btn-probe-close")?.addEventListener("click", () => setDockOpen(false));
+
+  // ---------- command palette (Ctrl/Cmd+K) ----------
+  const paletteState = { items: [], sel: 0 };
+  function goView(name, section) {
+    location.hash = "#/" + name + (section ? "/" + section : "");
+  }
+  function clickLater(sel) {
+    const node = document.querySelector(sel);
+    if (node) setTimeout(() => node.click(), 60);
+  }
+  function buildPaletteCommands() {
+    const cmds = [];
+    VIEW_DEFS.forEach((v, i) => cmds.push({
+      kind: "cmd", label: "Go to " + v.title, hint: "#/" + v.name + " · " + (i + 1),
+      run: () => goView(v.name),
+    }));
+    cmds.push(
+      { kind: "cmd", label: "Run / pause simulation", hint: "POST /run · r", run: () => (running ? $("#btn-pause") : $("#btn-start"))?.click() },
+      { kind: "cmd", label: "Step one tick", hint: "POST /tick · s", run: () => $("#btn-step")?.click() },
+      { kind: "cmd", label: "Reset simulation…", hint: "POST /reset · Shift+R", run: () => $("#btn-reset")?.click() },
+      { kind: "cmd", label: "Toggle theme", hint: "t", run: () => $("#btn-theme")?.click() },
+      { kind: "cmd", label: "Toggle probe dock", hint: "p", run: () => setDockOpen(!dockIsOpen()) },
+      { kind: "cmd", label: "Open epistemic charter", hint: "!", run: openCharter },
+      { kind: "cmd", label: "Show keyboard shortcuts", hint: "?", run: showShortcutsHelp },
+      { kind: "cmd", label: "Save checkpoint", hint: "POST /checkpoint/save", run: () => { goView("laboratory", "ckpt-title"); clickLater("#btn-ckpt-save"); } },
+      { kind: "cmd", label: "Export metrics CSV", hint: "GET /export.csv", run: () => $("#btn-export-csv")?.click() },
+      { kind: "cmd", label: "Export metrics JSON", hint: "GET /export.json", run: () => $("#btn-export-json")?.click() },
+      { kind: "cmd", label: "Export trace analysis", hint: "GET /export/analysis", run: () => $("#btn-export-analysis")?.click() },
+      { kind: "cmd", label: "Activate all Phase 7", hint: "POST /config", run: () => $("#btn-horizon-profile")?.click() },
+    );
+    [["mirror", "Mirror"], ["false-memory", "False memory"], ["calibration", "Calibration"],
+     ["relational-self", "Relational self"], ["masking", "Masking"], ["blink", "Attentional blink"],
+     ["priming", "Subliminal priming"], ["reality-monitor", "Reality monitoring"],
+     ["language-genesis", "Language genesis"]].forEach(([id, label]) => {
+      cmds.push({
+        kind: "cmd", label: "Run battery: " + label,
+        hint: "POST /battery/" + id.replace(/-/g, "_"),
+        run: () => { goView("laboratory", "batteries-title"); clickLater("#btn-" + id); },
+      });
+    });
+    document.querySelectorAll("#lab-metric option").forEach((opt) => {
+      cmds.push({
+        kind: "metric", label: "Metric: " + opt.textContent.trim(), hint: "@ time series",
+        run: () => {
+          goView("laboratory", "series-title");
+          const select = $("#lab-metric");
+          select.value = opt.value;
+          select.dispatchEvent(new Event("change"));
+        },
+      });
+    });
+    document.querySelectorAll(".panel-config input[data-flag]").forEach((box) => {
+      const label = box.closest(".deep-toggle");
+      const name = label ? label.querySelector("span").textContent.trim() : box.dataset.flag;
+      cmds.push({
+        kind: "setting", label: "Setting: " + name, hint: "# " + box.dataset.flag,
+        run: () => focusSetting(label, name),
+      });
+    });
+    document.querySelectorAll("#config-sliders .slider-row").forEach((row) => {
+      const name = row.querySelector(".slider-label").firstChild.textContent.trim();
+      cmds.push({
+        kind: "setting", label: "Setting: " + name, hint: "# " + row.dataset.key,
+        run: () => focusSetting(row, name),
+      });
+    });
+    return cmds;
+  }
+  function focusSetting(node, term) {
+    goView("settings");
+    const filter = $("#settings-filter");
+    if (filter) {
+      filter.value = term;
+      filter.dispatchEvent(new Event("input"));
+    }
+    if (node) {
+      setTimeout(() => {
+        node.scrollIntoView({ block: "center" });
+        node.classList.add("settings-hit");
+        const input = node.querySelector("input");
+        if (input) input.focus({ preventScroll: true });
+        setTimeout(() => node.classList.remove("settings-hit"), 2400);
+      }, 80);
+    }
+  }
+  function paletteFilter(term) {
+    let pool = paletteState.items;
+    let text = term.trim().toLowerCase();
+    if (text.startsWith(">")) { pool = pool.filter((c) => c.kind === "cmd"); text = text.slice(1).trim(); }
+    else if (text.startsWith("@")) { pool = pool.filter((c) => c.kind === "metric"); text = text.slice(1).trim(); }
+    else if (text.startsWith("#")) { pool = pool.filter((c) => c.kind === "setting"); text = text.slice(1).trim(); }
+    if (!text) return pool.slice(0, 14);
+    return pool
+      .map((c) => ({ c, at: c.label.toLowerCase().indexOf(text) }))
+      .filter((x) => x.at >= 0 || (x.c.hint || "").toLowerCase().includes(text))
+      .sort((a, b) => (a.at < 0 ? 99 : a.at) - (b.at < 0 ? 99 : b.at))
+      .slice(0, 14)
+      .map((x) => x.c);
+  }
+  function renderPalette(list) {
+    const host = $("#palette-results");
+    host.replaceChildren();
+    if (!list.length) {
+      const liEmpty = el("li", "p-empty", "No matching command.");
+      liEmpty.setAttribute("role", "option");
+      host.appendChild(liEmpty);
+      return;
+    }
+    list.forEach((c, i) => {
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      li.setAttribute("aria-selected", String(i === paletteState.sel));
+      li.innerHTML = `<span class="p-label">${esc(c.label)}</span><span class="p-hint">${esc(c.hint || "")}</span>`;
+      li.addEventListener("click", () => runPaletteItem(c));
+      host.appendChild(li);
+    });
+  }
+  let paletteList = [];
+  function refreshPaletteResults() {
+    paletteList = paletteFilter($("#palette-input").value || "");
+    if (paletteState.sel >= paletteList.length) paletteState.sel = Math.max(0, paletteList.length - 1);
+    renderPalette(paletteList);
+  }
+  function runPaletteItem(item) {
+    $("#command-palette").close();
+    if (item) void item.run();
+  }
+  function openPalette() {
+    const dlg = $("#command-palette");
+    if (!dlg || typeof dlg.showModal !== "function" || dlg.open) return;
+    paletteState.items = buildPaletteCommands();
+    paletteState.sel = 0;
+    const input = $("#palette-input");
+    input.value = "";
+    dlg.showModal();
+    refreshPaletteResults();
+    input.focus();
+  }
+  $("#btn-palette")?.addEventListener("click", openPalette);
+  $("#palette-input")?.addEventListener("input", () => { paletteState.sel = 0; refreshPaletteResults(); });
+  $("#palette-input")?.addEventListener("keydown", (ev) => {
+    if (ev.key === "ArrowDown") { ev.preventDefault(); paletteState.sel = Math.min(paletteList.length - 1, paletteState.sel + 1); renderPalette(paletteList); }
+    else if (ev.key === "ArrowUp") { ev.preventDefault(); paletteState.sel = Math.max(0, paletteState.sel - 1); renderPalette(paletteList); }
+    else if (ev.key === "Enter") { ev.preventDefault(); runPaletteItem(paletteList[paletteState.sel]); }
+  });
+
+  function showShortcutsHelp() {
+    confirmAction("Keyboard shortcuts",
+      "1–8 views · r run/pause · s step · Shift+R reset · p probe dock · t theme · " +
+      "[ sidebar · ! charter · / search memory (on Memory) · Ctrl/Cmd+K commands · arrows drive the world grid, " +
+      "the society map, the memory graph and the access chart.",
+      () => {});
+  }
+
+  // ---------- global shortcuts ----------
+  document.addEventListener("keydown", (ev) => {
+    if (ev.defaultPrevented) return;
+    const meta = ev.ctrlKey || ev.metaKey;
+    if (meta && (ev.key === "k" || ev.key === "K")) { ev.preventDefault(); openPalette(); return; }
+    if (meta || ev.altKey) return;
+    const dlgOpen = document.querySelector("dialog[open]");
+    if (ev.key === "Escape" && dockIsOpen() && !dlgOpen) { setDockOpen(false); return; }
+    if (dlgOpen || ev.target.closest("input, textarea, select, [contenteditable='true']")) return;
+    const k = ev.key;
+    if (k >= "1" && k <= "8") { goView(VIEW_DEFS[+k - 1].name); return; }
+    if (k === "r") { (running ? $("#btn-pause") : $("#btn-start"))?.click(); return; }
+    if (k === "s") { $("#btn-step")?.click(); return; }
+    if (k === "R") { $("#btn-reset")?.click(); return; }
+    if (k === "p") { setDockOpen(!dockIsOpen()); return; }
+    if (k === "t") { $("#btn-theme")?.click(); return; }
+    if (k === "[") { setNavCollapsed(!document.body.classList.contains("nav-collapsed")); return; }
+    if (k === "!") { openCharter(); return; }
+    if (k === "?") { showShortcutsHelp(); return; }
+    if (k === "/" && activeView === "memory") { ev.preventDefault(); $("#memory-search-input")?.focus(); }
+  });
+
+  // ---------- settings: filter + full read-only configuration ----------
+  (function initSettingsFilter() {
+    const input = $("#settings-filter");
+    if (!input) return;
+    input.addEventListener("input", () => {
+      const term = input.value.trim().toLowerCase();
+      let hits = 0;
+      document.querySelectorAll("#view-settings .settings-group").forEach((group) => {
+        let groupHits = 0;
+        group.querySelectorAll(".deep-toggle, .slider-row").forEach((row) => {
+          const flag = row.querySelector("input[data-flag]");
+          const haystack = (row.textContent + " " + (row.dataset.key || "") + " " +
+            (flag ? flag.dataset.flag : "") + " " + (row.title || "") + " " +
+            (group.dataset.group || "")).toLowerCase();
+          const hit = !term || haystack.includes(term);
+          row.classList.toggle("filtered-out", !hit);
+          if (hit) groupHits++;
+        });
+        group.classList.toggle("filtered-out", !!term && groupHits === 0);
+        hits += groupHits;
+      });
+      const count = $("#settings-filter-count");
+      if (count) count.textContent = term ? hits + " match" + (hits === 1 ? "" : "es") : "";
+    });
+  })();
+
+  // Defaults of every SimConfig field (schemas/models.py) so the read-only
+  // disclosure can print live value vs default without inventing anything.
+  const CONFIG_STRUCTURAL = ["grid_size", "n_objects", "random_seed", "n_agents",
+    "stream_length", "metrics_history_max", "phi_ar_window", "phi_causal_window", "n_concepts"];
+  const CONFIG_CATALOG = [
+    ["World & agent", { grid_size: 12, n_objects: 10, world_noise: 0.1, perception_radius: 3, random_seed: 42, initial_energy: 100 }],
+    ["Attention & memory", { attention_capacity: 4, working_memory_capacity: 5, working_memory_decay: 4, memory_importance_threshold: 0.25, memory_retrieval_k: 3 }],
+    ["Drives & learning", { curiosity: 1, caution: 1, energy_drive: 1, coherence_drive: 1, learning_rate: 0.2 }],
+    ["Consciousness architecture", { ignition_threshold: 0.3, workspace_temp: 0.5, precision_weight: 1, epistemic_weight: 1, pragmatic_weight: 1, stream_length: 20 }],
+    ["Ignition dynamics", { arousal_baseline: 0.45, arousal_gain: 1, competition_sharpness: 3, ignition_maintenance: 0.12 }],
+    ["Society", { n_agents: 1, comm_radius: 4, message_ttl: 2, contagion_rate: 0.15, affiliation_drive: 1 }],
+    ["Phase 2 — deep consciousness", { circadian_enabled: false, circadian_period: 50, night_threshold: 0.3, sleep_enabled: false, dream_enabled: false, sleep_fatigue_threshold: 0.8, wake_fatigue_threshold: 0.35, max_sleep_ticks: 30, replay_boost: 1.3, consolidation_prune_threshold: 0, imagination_enabled: false, imagination_horizon: 3, curiosity_enabled: false, curiosity_window: 8, agency_enabled: false }],
+    ["Phase 3 — learning & personality", { learning_enabled: false, value_learning_rate: 0.2, value_learning_weight: 0.5, concepts_enabled: false, n_concepts: 6, concept_lr: 0.2, meta_learning_enabled: false, meta_lr_min: 0.05, meta_lr_max: 0.6, personality_enabled: false, personality_drift: 0.05 }],
+    ["Phase 4 — instrument", { metrics_history_max: 1000 }],
+    ["Performance & persistence", { persist_memory: true, trace_logging: true }],
+    ["Behaviour balance", { satiation_enabled: false, satiation_weight: 3, explore_reward_weight: 0.5 }],
+    ["Relational & reflexive self", { social_mirror_enabled: false, social_mirror_weight: 0.3, self_opacity_enabled: false, individuation_enabled: false, individuation_drive: 1 }],
+    ["Phase 5 — the asymptote", { recurrence_enabled: false, recurrence_passes: 3, recurrence_gain: 0.5, reality_monitor_enabled: false, intero_inference_enabled: false, intero_lr: 0.25, temporality_enabled: false, retention_horizon: 5, protention_window: 6, inner_speech_enabled: false, inner_speech_gain: 0.6, phi_ar_enabled: false, phi_ar_window: 32, phi_ar_every: 8, priming_enabled: false, priming_decay: 0.5, priming_gain: 0.35 }],
+    ["Phase 6 — the invention of language", { language_drive_enabled: false, language_drive: 1 }],
+    ["Phase 7 — the horizon", { phi_causal_enabled: false, phi_causal_nodes: 5, phi_causal_window: 96, phi_causal_every: 16, hierarchy_enabled: false, hierarchy_lr: 0.15, hierarchy_gain: 0.3, planning_enabled: false, planning_horizon: 3, planning_discount: 0.7, vector_memory_enabled: false, semantic_weight: 0.6, td_learning_enabled: false, td_lambda: 0.8, td_discount: 0.9, mind_wandering_enabled: false, wandering_gain: 0.6, world_dynamics_enabled: false, season_period: 200, regrow_rate: 0.02, tasks_enabled: false }],
+    ["Phase 8 — situated gendered self", { gender_experience_enabled: false, gender_affect_weight: 0.2, gender_motivation_weight: 1, gender_internalization_rate: 0.05, gender_recovery_rate: 0.03, gender_event_memory_max: 256 }],
+  ];
+  const cfgFmt = (v) => typeof v === "boolean" ? (v ? "on" : "off") : String(v);
+  function buildConfigFull() {
+    const host = $("#config-full");
+    if (!host) return;
+    if (!clientConfig || !Object.keys(clientConfig).length) {
+      host.innerHTML = '<div class="empty">Configuration not loaded yet.</div>';
+      return;
+    }
+    host.replaceChildren();
+    const frag = document.createDocumentFragment();
+    CONFIG_CATALOG.forEach(([group, fields]) => {
+      frag.appendChild(el("div", "cf-group", esc(group)));
+      Object.entries(fields).forEach(([key, def]) => {
+        const live = clientConfig[key];
+        const row = el("div", "cf-row");
+        row.innerHTML =
+          `<span class="cf-key">${esc(key)}${CONFIG_STRUCTURAL.includes(key) ? '<span class="cf-structural">reset</span>' : ""}</span>` +
+          `<span class="cf-val">${esc(cfgFmt(live != null ? live : def))}</span>` +
+          `<span class="cf-def">default ${esc(cfgFmt(def))}</span>`;
+        frag.appendChild(row);
+      });
+    });
+    host.appendChild(frag);
+  }
+
+  // ============================================================
   //  INIT
   // ============================================================
+  // shell first: the router decides which view is visible before first paint
+  (function initShellRoute() {
+    try {
+      if (localStorage.getItem("humanity.ui.nav") === "collapsed") setNavCollapsed(true);
+    } catch (e) { /* ignore */ }
+    let saved = null;
+    try { saved = localStorage.getItem("humanity.ui.lastRoute"); } catch (e) { /* ignore */ }
+    if (!parseRoute().view) location.replace(saved && /^#\/[\w-]+$/.test(saved) ? saved : "#/overview");
+    onHashChange();
+  })();
   ensureMetricCells();
+  updateAperture(null);
   drawWorld(null);
   drawCircadianDial(1);
   drawMemoryGraph(memoryGraphCache);
   renderIgnitionDynamics(null, -1);
+  // HiDPI: re-render a canvas when its CSS box resizes (one observer each)
+  observeCanvasResize($("#world-canvas"), () => { if (currentWorldSnap) drawWorld(currentWorldSnap); });
+  observeCanvasResize($("#society-canvas"), () => { if (lastSocietyData) drawSociety(lastSocietyData.world, SOC_SELECTED, lastSocietyData.relations); });
+  observeCanvasResize($("#ignition-chart"), () => renderIgnitionDynamics(null, lastTick));
+  observeCanvasResize($("#memory-graph"), () => drawMemoryGraph(memoryGraphCache));
+  observeCanvasResize($("#lab-chart"), () => { refreshLabChart().catch(() => {}); });
   // apply the saved settings (or first-run defaults), then take the first reading
   async function bootstrap() {
+    try { await initGenderExperience(); } catch (e) { /* Phase 8 remains explicitly dormant */ }
     try { await applyDeepDefaults(); } catch (e) { /* first reading still useful */ }
     await refreshAll();
     try { await refreshCoverage(); } catch (e) { /* non-fatal */ }
     try { await refreshMemoryGraph(true); } catch (e) { /* non-fatal */ }
     try { await refreshCheckpoints(); } catch (e) { /* non-fatal */ }
+    try { await refreshClientConfig(); } catch (e) { /* non-fatal */ }
+    // first launch: the epistemic charter presents the boundary once
+    try {
+      if (!localStorage.getItem("humanity.ui.charter.dismissed")) openCharter();
+    } catch (e) { /* ignore */ }
   }
   void bootstrap();
   // load the checkpoint list once (on-demand only — not in the polling loop)

@@ -36,6 +36,7 @@ from core.concepts import ConceptFormation
 from core.curiosity import Curiosity
 from core.dialogue import IntrospectiveDialogue
 from core.emotion import EmotionModel
+from core.gender_experience import GenderExperienceEngine, GenderInfluence
 from core.global_workspace import GlobalWorkspace
 from core.imagination import Imagination
 from core.individuation import compute_individuation
@@ -85,10 +86,20 @@ from schemas.models import (
     ConsciousMoment,
     CycleTrace,
     EmotionState,
+    GenderDebugState,
+    GenderEvent,
+    GenderEventProvenance,
+    GenderEventRequest,
+    GenderExperienceState,
+    GenderIntent,
+    GenderIntentRequest,
+    GenderProfile,
+    GenderSocialContext,
     ImaginationState,
     IntegrationState,
     IntrospectionReport,
     LearningState,
+    LifeCoursePlan,
     MemoryRecord,
     MetacognitiveState,
     Metrics,
@@ -219,7 +230,14 @@ class CognitiveAgent:
         self.interoceptive = InteroceptiveModel()
         self.temporality = Temporality()
         self.inner_speech = InnerSpeech()
-        self.phi_ar_monitor = PhiARMonitor(WORKSPACE_SOURCES, config.phi_ar_window)
+        workspace_sources = (
+            [*WORKSPACE_SOURCES, "gender_experience"]
+            if config.gender_experience_enabled
+            else WORKSPACE_SOURCES
+        )
+        self.phi_ar_monitor = PhiARMonitor(
+            workspace_sources, config.phi_ar_window
+        )
         # Protention violation queued into the NEXT tick's arousal salience.
         self._pending_temporal_surprise: float = 0.0
 
@@ -235,7 +253,9 @@ class CognitiveAgent:
         # hierarchical generative model with explicit VFE, multi-step EFE
         # planning, semantic vector memory, contextual TD(λ), and default-mode
         # wandering. None approaches level 1 (phenomenal consciousness).
-        self.phi_causal_monitor = PhiCausalMonitor(WORKSPACE_SOURCES, config.phi_causal_window)
+        self.phi_causal_monitor = PhiCausalMonitor(
+            workspace_sources, config.phi_causal_window
+        )
         self.hierarchical = HierarchicalModel()
         self.planner = Planner()
         self.vector_index = VectorMemoryIndex()
@@ -244,6 +264,14 @@ class CognitiveAgent:
         self.td_learner = TDLearner()
         self.mind_wandering = MindWandering()
         self._last_curiosity = None  # CuriosityState | None (for wandering's boredom)
+
+        # Phase 8: constructed for checkpoint stability but inert until both the
+        # default-off flag and an explicit scenario profile are installed.
+        self.gender_experience = GenderExperienceEngine(
+            config, agent_id=self.agent_id
+        )
+        self._last_gender_state: GenderExperienceState | None = None
+        self._last_gender_influence = GenderInfluence()
 
         # "Become someone": a standing individuation drive. The full state is
         # recomputed each tick and fed one-tick-deferred to the motivation drive;
@@ -265,9 +293,20 @@ class CognitiveAgent:
         """
         cfg = self.config
 
+        # Phase 8 runs before ordinary cognition so lifecycle changes and queued
+        # events can contribute to this tick's workspace and motivation.
+        cur_tick = (
+            self._shared_world.tick
+            if self._shared_world is not None
+            else self.world.tick
+        )
+        gender_state = self.gender_experience.update(int(cur_tick) + 1)
+        gender_influence = self.gender_experience.influence()
+        self._last_gender_state = gender_state
+        self._last_gender_influence = gender_influence
+
         # Phase 2 — circadian phase + sleep decision (gated). Computed first so the
         # arousal update and coalition builder can read them this tick.
-        cur_tick = self._shared_world.tick if self._shared_world is not None else self.world.tick
         circadian = self.circadian.state(cur_tick, cfg) if cfg.circadian_enabled else None
         self._last_circadian = circadian
         is_night = bool(circadian.is_night) if circadian is not None else False
@@ -333,6 +372,11 @@ class CognitiveAgent:
                               if cfg.language_drive_enabled else None),
             language_urge=(self.lexicon.urge
                            if cfg.language_drive_enabled else 1.0),
+            gender_goal_pressures=(
+                gender_influence.goal_pressures
+                if gender_state is not None
+                else None
+            ),
         )
 
         # 4) Attention: select salient items under the capacity bottleneck.
@@ -433,6 +477,26 @@ class CognitiveAgent:
             emotion=self.last_emotion,
             cfg=cfg,
         )
+
+        if gender_state is not None and gender_influence.activation > 0.0:
+            coalitions.append(
+                self.global_workspace.make_coalition(
+                    "gender_experience",
+                    gender_influence.content,
+                    activation=gender_influence.activation,
+                    precision=0.8,
+                    vector=[
+                        float(gender_state.affect.dysphoria),
+                        float(gender_state.affect.euphoria),
+                        float(gender_state.minority_stress.external_current),
+                        (
+                            float(gender_state.current_intent.urgency)
+                            if gender_state.current_intent is not None
+                            else 0.0
+                        ),
+                    ],
+                )
+            )
 
         # Phase 7 — the wandering coalition (gated): spontaneous, task-unrelated
         # content competes for global access like any specialist bid.
@@ -807,6 +871,9 @@ class CognitiveAgent:
             tick=result.tick,
             conscious_contents=conscious_moment.contents,
             reflected=reflected,
+            gender_influence=(
+                gender_influence if gender_state is not None else None
+            ),
         )
         self_state_after = self.self_model.snapshot()
         if agency_state is not None:
@@ -1046,6 +1113,7 @@ class CognitiveAgent:
             semantic_memory=semantic_state,
             wandering=wandering_state,
             task=task_state,
+            gender_experience=gender_state,
         )
         # Per-tick JSONL trace write is the second-largest per-tick I/O cost;
         # ``trace_logging=False`` skips it for fast/headless training.
@@ -1463,6 +1531,11 @@ class CognitiveAgent:
             self.last_prediction_error,
             float(self.world_model.current_uncertainty),
             self.config,
+            gender_goal_pressures=(
+                self._last_gender_influence.goal_pressures
+                if self._last_gender_state is not None
+                else None
+            ),
         )
         salient = self.attention.select(
             percepts, goals, self.last_prediction_error, self.last_emotion, self.config
@@ -1548,6 +1621,57 @@ class CognitiveAgent:
     def world_snapshot(self) -> dict:
         """Return a JSON-serializable snapshot of the world."""
         return self.world.snapshot()
+
+    # ------------------------------------------------------------------ #
+    # Phase-8 situated gendered-self accessors
+    # ------------------------------------------------------------------ #
+    def install_gender_experience(
+        self,
+        profile: GenderProfile,
+        life_course: LifeCoursePlan,
+        *,
+        social_context: GenderSocialContext | None = None,
+        seed: int | None = None,
+        initial_events: list[GenderEvent] | None = None,
+    ) -> None:
+        """Install one explicit private profile after a structural reset."""
+        self.gender_experience.install(
+            profile,
+            life_course,
+            social_context=social_context,
+            seed=seed,
+            initial_events=initial_events,
+        )
+        self._last_gender_state = None
+        self._last_gender_influence = GenderInfluence()
+
+    def gender_state(self) -> GenderExperienceState | None:
+        """Return agent-readable Phase-8 state (never the private profile)."""
+        return self.gender_experience.current_state
+
+    def gender_debug_state(self) -> GenderDebugState:
+        """Return private experiment inputs for explicit debug endpoints only."""
+        return self.gender_experience.debug_state()
+
+    def queue_gender_event(
+        self,
+        request: GenderEventRequest,
+        *,
+        provenance: GenderEventProvenance = GenderEventProvenance.USER_PROBE,
+    ) -> GenderEvent:
+        return self.gender_experience.queue_event(
+            request, provenance=provenance
+        )
+
+    def queue_gender_intent(
+        self,
+        request: GenderIntentRequest,
+        *,
+        provenance: GenderEventProvenance = GenderEventProvenance.USER_PROBE,
+    ) -> GenderIntent:
+        return self.gender_experience.queue_intent(
+            request, provenance=provenance
+        )
 
     # ------------------------------------------------------------------ #
     # Interaction modalities (grounded; read/affect real internal variables)
@@ -1752,6 +1876,7 @@ class CognitiveAgent:
                 "semantic_memory": _opt("semantic_memory"),
                 "wandering": _opt("wandering"),
                 "task": _opt("task"),
+                "gender_experience": _opt("gender_experience"),
             }
         # No cycle yet: neutral placeholders.
         return {
@@ -1772,6 +1897,7 @@ class CognitiveAgent:
             "temporality": None,
             "inner_speech": None,
             "phi_ar": None,
+            "gender_experience": None,
         }
 
     def stream(self, n: int) -> list[ConsciousMoment]:

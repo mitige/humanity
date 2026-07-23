@@ -104,10 +104,10 @@ def test_horizon_observatory_is_wired_end_to_end():
             f"missing HTML data-flag values: {sorted(missing_data_flags)}"
         )
 
-    if "styles.css?v=7.3" not in attributes.hrefs:
-        violations.append("styles.css cache-buster must be exactly ?v=7.3")
-    if "app.js?v=7.3" not in attributes.srcs:
-        violations.append("app.js cache-buster must be exactly ?v=7.3")
+    if "styles.css?v=8.1" not in attributes.hrefs:
+        violations.append("styles.css cache-buster must be exactly ?v=8.1")
+    if "app.js?v=8.1" not in attributes.srcs:
+        violations.append("app.js cache-buster must be exactly ?v=8.1")
     if not any(href.startswith("data:image/svg+xml") for href in attributes.hrefs):
         violations.append("UI must provide an inline favicon without a 404 request")
 
@@ -374,6 +374,7 @@ def test_phase7_is_documented_and_final_roadmap_is_completed():
     for marker in (
         "### Foundations delivered — Phases 1–6",
         "### Phase 7 — The Horizon delivered",
+        "### Phase 8 — The situated gendered self delivered",
         "### Delivery quality completed",
         "Coarse causal Φ",
         "Predictive hierarchy and VFE",
@@ -385,7 +386,7 @@ def test_phase7_is_documented_and_final_roadmap_is_completed():
         "Structured tasks",
         "Horizon Observatoire and interventions",
         "Atomic persistence and checkpoints",
-        "627/627 tests",
+        "692/692 tests",
     ):
         if marker not in roadmap_section:
             violations.append(f"missing completed-roadmap evidence: {marker}")
