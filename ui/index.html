@@ -8,7 +8,7 @@
   <title>Humanity — Instrument</title>
   <!-- Cache-busting: bump ?v= on every ui change so browsers never run a stale
        script against a newer backend (the page froze on cached app.js before). -->
-  <link rel="stylesheet" href="styles.css?v=8.0" />
+  <link rel="stylesheet" href="styles.css?v=8.1" />
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -570,6 +570,349 @@
             <button type="submit" class="btn btn-quiet">Set</button>
           </form>
           <p class="report-voice narrative-note" id="self-narrative"></p>
+        </section>
+
+        <section class="panel panel-gender" id="gender-experience" aria-labelledby="gender-title">
+          <div class="panel-head gender-panel-head">
+            <div>
+              <span class="eyebrow">Phase 8 · situated self</span>
+              <h3 id="gender-title">Gender experience</h3>
+            </div>
+            <div class="gender-panel-state">
+              <span id="gender-phase-badge" class="gender-phase-badge" data-state="dormant">
+                <span aria-hidden="true"></span> dormant
+              </span>
+              <span class="src">GET /agent/gender · /society/gender</span>
+            </div>
+          </div>
+
+          <p id="gender-disclaimer" class="gender-boundary">
+            Functional qualitative model of gender experience. Not a diagnostic, clinical or
+            predictive model, and not evidence of subjective experience.
+          </p>
+
+          <div class="gender-scenario-console" aria-labelledby="gender-scenario-title">
+            <div class="gender-console-copy">
+              <span class="eyebrow">Life-course blueprint</span>
+              <h4 id="gender-scenario-title">Choose a gender-life scenario</h4>
+              <p id="gender-scenario-description">
+                Presets are inspectable examples, not archetypes. Identity is never inferred from
+                dysphoria, expression, anatomy, observers or transition choices.
+              </p>
+            </div>
+            <form id="gender-scenario-form" class="gender-scenario-form">
+              <label>
+                <span>Example path</span>
+                <select id="gender-scenario-select" name="preset_id" aria-describedby="gender-scenario-description">
+                  <option value="">Loading scenarios…</option>
+                </select>
+              </label>
+              <label>
+                <span>Deterministic seed</span>
+                <input id="gender-scenario-seed" name="seed" type="number" min="0" max="4294967295" step="1" value="42" />
+              </label>
+              <label class="gender-reset-consent">
+                <input id="gender-reset-confirm" type="checkbox" />
+                <span>I understand that applying a scenario fully resets the current run.</span>
+              </label>
+              <button id="btn-gender-apply" class="btn btn-accent" type="submit" disabled>
+                Apply &amp; reset
+              </button>
+            </form>
+            <p id="gender-scenario-status" class="micro gender-status" role="status" aria-live="polite"></p>
+          </div>
+
+          <details id="gender-life-editor" class="disclosure gender-life-editor">
+            <summary>Configure this life course and social context</summary>
+            <p class="micro">
+              This editor changes the selected experiment manifest before reset. Stages may be
+              omitted, adult-start paths are valid, and every transition dimension remains optional.
+            </p>
+            <div id="gender-life-stages" class="gender-life-stages"></div>
+            <fieldset class="gender-context-editor">
+              <legend>Social context</legend>
+              <div id="gender-context-fields" class="gender-context-fields"></div>
+            </fieldset>
+          </details>
+
+          <div id="gender-empty" class="gender-empty-state">
+            <span class="gender-empty-mark" aria-hidden="true">◇</span>
+            <div>
+              <h4>Choose a gender-life scenario</h4>
+              <p>
+                Phase 8 is off and no private profile exists. Select an example above, inspect or
+                configure its life course, then explicitly confirm the full reset.
+              </p>
+            </div>
+          </div>
+
+          <div id="gender-observatory" class="gender-observatory" hidden>
+            <div class="gender-state-ribbon">
+              <div>
+                <span class="eyebrow">Current life position</span>
+                <strong id="gender-life-position">—</strong>
+              </div>
+              <div>
+                <span class="eyebrow">Profile</span>
+                <strong id="gender-profile-id" class="mono">—</strong>
+              </div>
+              <div>
+                <span class="eyebrow">State tick</span>
+                <strong id="gender-state-tick" class="mono">—</strong>
+              </div>
+            </div>
+
+            <section class="gender-section gender-course" aria-labelledby="gender-course-title">
+              <div class="gender-section-head">
+                <div>
+                  <span class="eyebrow">Configured sequence, not a required sequence</span>
+                  <h4 id="gender-course-title">Life-course timeline</h4>
+                </div>
+                <span id="gender-course-note" class="micro">Current stage shown; reveal experiment input for the full plan.</span>
+              </div>
+              <div id="gender-life-track" class="gender-life-track" aria-hidden="true"></div>
+              <ol id="gender-life-list" class="gender-life-list" aria-label="Semantic gender life-course timeline"></ol>
+            </section>
+
+            <div class="gender-layer-grid" aria-label="Gender information boundaries">
+              <section class="gender-layer gender-layer-private" aria-labelledby="gender-private-title">
+                <header>
+                  <span class="gender-layer-index">01</span>
+                  <div>
+                    <span class="eyebrow">Private · experiment only</span>
+                    <h4 id="gender-private-title">Experiment input</h4>
+                  </div>
+                </header>
+                <p class="micro">
+                  Configured felt profile and life plan. Never available to simulated observers;
+                  never a discovered “true gender”.
+                </p>
+                <div id="gender-private-locked" class="gender-private-lock">
+                  <button id="btn-gender-debug" type="button" class="btn btn-quiet" aria-expanded="false">
+                    Reveal private input
+                  </button>
+                  <span>Explicit debug request required.</span>
+                </div>
+                <div id="gender-private-content" class="gender-layer-content" hidden></div>
+              </section>
+
+              <section class="gender-layer gender-layer-self" aria-labelledby="gender-self-title">
+                <header>
+                  <span class="gender-layer-index">02</span>
+                  <div>
+                    <span class="eyebrow">Agent-readable</span>
+                    <h4 id="gender-self-title">Self-understanding</h4>
+                  </div>
+                </header>
+                <p class="micro">
+                  Labels are configured or emerge from fit evidence and available vocabulary—not
+                  from distress, appearance or other people's recognition.
+                </p>
+                <div id="gender-self-content" class="gender-layer-content"></div>
+              </section>
+
+              <section class="gender-layer gender-layer-public" aria-labelledby="gender-public-title">
+                <header>
+                  <span class="gender-layer-index">03</span>
+                  <div>
+                    <span class="eyebrow">Observer-safe</span>
+                    <h4 id="gender-public-title">Public presentation</h4>
+                  </div>
+                </header>
+                <p class="micro">
+                  Only deliberately disclosed labels, name, pronouns and public expression. Private
+                  affinities, body preferences and undisclosed intents never appear here.
+                </p>
+                <div id="gender-public-content" class="gender-layer-content"></div>
+              </section>
+            </div>
+
+            <section class="gender-section" aria-labelledby="gender-signals-title">
+              <div class="gender-section-head">
+                <div>
+                  <span class="eyebrow">Independent coordinates</span>
+                  <h4 id="gender-signals-title">Congruence, affect, stress &amp; resilience</h4>
+                </div>
+                <span class="micro">qualitative 0–1 simulator coordinates · not clinical scales</span>
+              </div>
+              <div class="gender-signal-groups">
+                <div class="gender-signal-group">
+                  <h5>Congruence</h5>
+                  <div id="gender-congruence" class="gender-metrics"></div>
+                </div>
+                <div class="gender-signal-group">
+                  <h5>Affect</h5>
+                  <div id="gender-affect" class="gender-metrics"></div>
+                </div>
+                <div class="gender-signal-group">
+                  <h5>Minority stress</h5>
+                  <div id="gender-stress" class="gender-metrics"></div>
+                </div>
+                <div class="gender-signal-group">
+                  <h5>Resilience</h5>
+                  <div id="gender-resilience" class="gender-metrics"></div>
+                </div>
+              </div>
+            </section>
+
+            <div class="gender-detail-grid">
+              <section class="gender-section" aria-labelledby="gender-expression-title">
+                <div class="gender-section-head">
+                  <div>
+                    <span class="eyebrow">Relative to a personal baseline</span>
+                    <h4 id="gender-expression-title">Expression &amp; accentuation</h4>
+                  </div>
+                </div>
+                <div id="gender-expression" class="gender-card-list"></div>
+              </section>
+
+              <section class="gender-section" aria-labelledby="gender-body-title">
+                <div class="gender-section-head">
+                  <div>
+                    <span class="eyebrow">Abstract body domains</span>
+                    <h4 id="gender-body-title">Embodiment alignment</h4>
+                  </div>
+                </div>
+                <div id="gender-body" class="gender-card-list"></div>
+              </section>
+            </div>
+
+            <section class="gender-section" aria-labelledby="gender-transition-title">
+              <div class="gender-section-head">
+                <div>
+                  <span class="eyebrow">Parallel, optional and revisable</span>
+                  <h4 id="gender-transition-title">Transition dimensions</h4>
+                </div>
+                <span class="micro">abstract access only · no treatment protocol or medical advice</span>
+              </div>
+              <div id="gender-transitions" class="gender-transition-grid"></div>
+            </section>
+
+            <div class="gender-actions-grid">
+              <section class="gender-section gender-probes" aria-labelledby="gender-probes-title">
+                <div class="gender-section-head">
+                  <div>
+                    <span class="eyebrow">Queued for the next tick</span>
+                    <h4 id="gender-probes-title">Events &amp; intentions</h4>
+                  </div>
+                </div>
+
+                <form id="gender-event-form" class="gender-probe-form">
+                  <fieldset>
+                    <legend>Context event</legend>
+                    <label>
+                      <span>Template</span>
+                      <select id="gender-event-type">
+                        <optgroup label="Affirming or neutral">
+                          <option value="reflection">reflection</option>
+                          <option value="exploration">exploration</option>
+                          <option value="affirmation">affirmation</option>
+                          <option value="support">support</option>
+                          <option value="community_contact">community contact</option>
+                          <option value="positive_representation">positive representation</option>
+                          <option value="correct_name_pronoun">correct name / pronoun</option>
+                          <option value="access_granted">access granted</option>
+                        </optgroup>
+                        <optgroup label="Hostility (fixed enum, no dialogue)">
+                          <option value="misgendering">misgendering</option>
+                          <option value="invalidation">invalidation</option>
+                          <option value="rejection">rejection</option>
+                          <option value="discrimination">discrimination</option>
+                          <option value="care_barrier">care barrier</option>
+                          <option value="access_denied">access denied</option>
+                        </optgroup>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Domain</span>
+                      <select id="gender-event-domain">
+                        <option value="general">general</option>
+                        <option value="presentation">presentation</option>
+                        <option value="name">name</option>
+                        <option value="pronouns">pronouns</option>
+                        <option value="voice">voice</option>
+                        <option value="social">social</option>
+                        <option value="administrative">administrative</option>
+                        <option value="body">body</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Intensity <output id="gender-event-intensity-value">0.50</output></span>
+                      <input id="gender-event-intensity" type="range" min="0" max="1" step="0.05" value="0.5" />
+                    </label>
+                    <button type="submit" class="btn btn-quiet">Queue event</button>
+                  </fieldset>
+                  <p class="micro">Hostile templates carry no free-text dialogue. Provenance is recorded as <span class="mono">user_probe</span>.</p>
+                </form>
+
+                <form id="gender-intent-form" class="gender-probe-form">
+                  <fieldset>
+                    <legend>Agent intention</legend>
+                    <label>
+                      <span>Intent</span>
+                      <select id="gender-intent-type">
+                        <option value="explore_identity">explore identity</option>
+                        <option value="adjust_expression">adjust expression</option>
+                        <option value="disclose">disclose</option>
+                        <option value="conceal">conceal for safety</option>
+                        <option value="assert_name_pronouns">assert name / pronouns</option>
+                        <option value="seek_support">seek support</option>
+                        <option value="connect_community">connect with community</option>
+                        <option value="seek_administrative_recognition">seek administrative recognition</option>
+                        <option value="seek_voice_work">seek voice work</option>
+                        <option value="seek_hormonal_care">seek hormonal care</option>
+                        <option value="seek_surgical_care">seek surgical care</option>
+                        <option value="pause">pause a dimension</option>
+                        <option value="revise_goals">revise goals</option>
+                        <option value="reverse">reverse a dimension</option>
+                        <option value="resume">resume a dimension</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Dimension</span>
+                      <select id="gender-intent-dimension">
+                        <option value="">none / general</option>
+                        <option value="social">social</option>
+                        <option value="administrative">administrative</option>
+                        <option value="voice">voice</option>
+                        <option value="hormonal">hormonal</option>
+                        <option value="surgical">surgical</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Urgency <output id="gender-intent-urgency-value">0.50</output></span>
+                      <input id="gender-intent-urgency" type="range" min="0" max="1" step="0.05" value="0.5" />
+                    </label>
+                    <button type="submit" class="btn btn-quiet">Queue intention</button>
+                  </fieldset>
+                </form>
+                <div id="gender-probe-log" class="gender-probe-log" aria-live="polite"></div>
+              </section>
+
+              <section class="gender-section gender-battery" aria-labelledby="gender-battery-title">
+                <div class="gender-section-head">
+                  <div>
+                    <span class="eyebrow">Matched counterfactuals</span>
+                    <h4 id="gender-battery-title">Gender-experience battery</h4>
+                  </div>
+                </div>
+                <p class="micro">
+                  Eight offline arms compare only the model's implemented assumptions. They do not
+                  estimate real-person effects and never mutate this live run.
+                </p>
+                <form id="gender-battery-form" class="gender-battery-form">
+                  <label>
+                    <span>Ticks</span>
+                    <input id="gender-battery-ticks" type="number" min="4" max="500" value="24" />
+                  </label>
+                  <button type="submit" class="btn btn-quiet">Run 8 matched arms</button>
+                </form>
+                <div id="gender-battery-result" class="gender-battery-result" aria-live="polite">
+                  <div class="empty">No counterfactual run yet.</div>
+                </div>
+              </section>
+            </div>
+          </div>
         </section>
 
         <section class="panel panel-opacity" aria-labelledby="opacity-title">
@@ -1259,6 +1602,21 @@
             </div>
           </div>
 
+          <div class="settings-group" data-group="Situated gendered self Phase 8">
+            <h4 class="sub">The situated gendered self (Phase 8)</h4>
+            <div class="deep-toggles" id="gender-toggles">
+              <label class="deep-toggle phase8-gate" title="A complete, explicit gender-life scenario must be installed through a full reset. No profile is inferred or silently assigned.">
+                <input type="checkbox" data-flag="gender_experience_enabled" data-explicit-scenario-only disabled />
+                <span>gender experience</span>
+                <small>Default off. Choose a complete life-course scenario in Mind to activate it.</small>
+              </label>
+            </div>
+            <p class="micro">
+              This flag is display-only here and is never restored from local storage.
+              <a href="#/mind">Open Gender experience</a> to inspect, configure and explicitly reset into a scenario.
+            </p>
+          </div>
+
           <div class="settings-group" data-group="Persistence">
             <h4 class="sub">Persistence &amp; I/O</h4>
             <div class="deep-toggles" id="persistence-toggles">
@@ -1391,6 +1749,6 @@
   <div id="toast-region" class="toast-region" aria-live="polite"></div>
   <div id="conn-warning" class="conn-warning" role="status" hidden></div>
 
-  <script src="app.js?v=8.0"></script>
+  <script src="app.js?v=8.1"></script>
 </body>
 </html>

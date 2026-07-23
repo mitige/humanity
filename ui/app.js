@@ -38,6 +38,10 @@
     "vector_memory_enabled", "td_learning_enabled", "mind_wandering_enabled",
     "world_dynamics_enabled", "tasks_enabled",
   ];
+  const GENDER_HOSTILE_EVENTS = new Set([
+    "misgendering", "invalidation", "rejection", "discrimination",
+    "threat", "care_barrier", "access_denied",
+  ]);
 
   // ---------- helpers ----------
   const $ = (s) => document.querySelector(s);
@@ -90,11 +94,19 @@
   function loadSettings() {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
-      return raw ? JSON.parse(raw) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
+      // Phase 8 requires a complete, explicit scenario reset. A stale browser
+      // preference must never activate the mechanism or invent a profile.
+      if (parsed && typeof parsed === "object") delete parsed.gender_experience_enabled;
+      return parsed;
     } catch (e) { return null; }
   }
   function saveSettings(obj) {
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(obj)); } catch (e) { /* ignore */ }
+    try {
+      const safe = { ...(obj || {}) };
+      delete safe.gender_experience_enabled;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(safe));
+    } catch (e) { /* ignore */ }
   }
   function persistSetting(patch) {
     saveSettings({ ...(loadSettings() || {}), ...patch });
@@ -139,6 +151,17 @@
   let memoryGraphRequest = null;
   let memoryGraphSelection = -1;
   let horizonGeneration = 0;
+  // Phase 8 client boundary: ordinary and public reads refresh in the poll.
+  // The private/debug payload only exists after the user explicitly reveals it.
+  let genderCatalog = [];
+  let genderManifestDraft = null;
+  let genderPayload = null;
+  let genderSocietyPayload = null;
+  let genderDebugPayload = null;
+  let genderProbeHistory = [];
+  let genderActivePresetId = null;
+  let genderSyncedProfileId = null;
+  let genderControlsBound = false;
 
   function resetHorizonClientState() {
     horizonGeneration += 1;
@@ -151,6 +174,11 @@
     memoryGraphSelection = -1;
     lastTrace = null;
     lastTick = -1;
+    genderPayload = null;
+    genderSocietyPayload = null;
+    genderDebugPayload = null;
+    genderProbeHistory = [];
+    genderSyncedProfileId = null;
 
     const searchResults = $("#memory-search-results");
     if (searchResults) searchResults.replaceChildren();
@@ -166,6 +194,7 @@
     renderIgnitionDynamics(null, -1);
     drawMemoryGraph(memoryGraphCache);
     renderHorizon(null, null);
+    renderGenderExperience(null, null);
   }
 
   // ============================================================
@@ -2022,6 +2051,829 @@
   }
 
   // ============================================================
+  //  SITUATED GENDERED SELF (Phase 8)
+  // ============================================================
+  // Three boundaries are deliberately kept separate:
+  //   1. complete private scenario input (explicit debug reveal only),
+  //   2. the simulated agent's readable self-understanding,
+  //   3. public projection and observer-local recognition.
+  // The browser never infers identity from affect, body, expression or society.
+  const genderHuman = (value) => String(value == null ? "" : value)
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const genderSigned = (value) => {
+    const n = num(value);
+    return (n >= 0 ? "+" : "") + n.toFixed(3);
+  };
+  const genderAxisText = (axes) => {
+    const a = axes || {};
+    return `f ${f2(a.feminine)} · m ${f2(a.masculine)} · a ${f2(a.androgynous)}`;
+  };
+
+  function setGenderStatus(text, kind) {
+    const node = $("#gender-scenario-status");
+    if (!node) return;
+    node.textContent = text || "";
+    node.classList.toggle("is-error", kind === "error");
+    node.classList.toggle("is-ok", kind === "ok");
+  }
+
+  function genderLabelsMarkup(values, emptyText, extraClass) {
+    const labels = Array.isArray(values) ? values : [];
+    if (!labels.length) {
+      return `<span class="gender-label ${extraClass || ""}">${esc(emptyText || "none disclosed")}</span>`;
+    }
+    return labels.map((label) =>
+      `<span class="gender-label ${extraClass || ""}">${esc(label)}</span>`
+    ).join("");
+  }
+
+  function renderGenderMetricGroup(selector, items) {
+    const host = $(selector);
+    if (!host) return;
+    host.replaceChildren();
+    (items || []).forEach((item) => {
+      const value = clamp01(num(item.value));
+      const metric = el("div", "gender-metric");
+      metric.dataset.tone = item.tone || "neutral";
+      const head = el("div", "gender-metric-head");
+      head.appendChild(el("span", "", esc(item.label)));
+      const output = document.createElement("output");
+      output.textContent = f3(value);
+      head.appendChild(output);
+      const meter = el("div", "meter");
+      meter.setAttribute("role", "meter");
+      meter.setAttribute("aria-label", item.label);
+      meter.setAttribute("aria-valuemin", "0");
+      meter.setAttribute("aria-valuemax", "1");
+      meter.setAttribute("aria-valuenow", value.toFixed(3));
+      const fill = el("div", "meter-fill");
+      fill.style.width = pctTxt(value);
+      meter.appendChild(fill);
+      metric.append(head, meter);
+      host.appendChild(metric);
+    });
+  }
+
+  function renderGenderTimeline(plan, state) {
+    const track = $("#gender-life-track");
+    const list = $("#gender-life-list");
+    if (!track || !list) return;
+    track.replaceChildren();
+    list.replaceChildren();
+
+    let stages = plan && Array.isArray(plan.stages) ? plan.stages : [];
+    if (!stages.length && state && state.life_stage) {
+      stages = [{ stage: state.life_stage, duration_ticks: null }];
+    }
+    stages.forEach((stage) => {
+      const current = !!(state && stage.stage === state.life_stage);
+      const visual = el("span", "gender-track-stage" + (current ? " is-current" : ""));
+      const duration = stage.duration_ticks == null ? 12 : num(stage.duration_ticks);
+      visual.style.setProperty("--stage-weight", String(clamp(duration / 12, 1, 8)));
+      track.appendChild(visual);
+
+      const item = el("li", current ? "is-current" : "");
+      const text = el("div");
+      const title = document.createElement("strong");
+      title.textContent = genderHuman(stage.stage);
+      const meta = document.createElement("span");
+      const durationText = stage.duration_ticks == null
+        ? "current stage"
+        : `${Math.round(num(stage.duration_ticks))} configured ticks`;
+      const currentText = current && state
+        ? ` · tick ${Math.round(num(state.tick_in_stage))} in stage`
+        : "";
+      meta.textContent = durationText + currentText;
+      text.append(title, meta);
+      item.appendChild(text);
+      list.appendChild(item);
+    });
+
+    const note = $("#gender-course-note");
+    if (note) {
+      const historyCount = plan && Array.isArray(plan.initial_history_summary)
+        ? plan.initial_history_summary.length : 0;
+      note.textContent = plan
+        ? `${stages.length} configured stage${stages.length === 1 ? "" : "s"} · ${historyCount} prior-history note${historyCount === 1 ? "" : "s"}`
+        : "Current stage shown; reveal experiment input for the full plan.";
+    }
+  }
+
+  function renderGenderSelf(state) {
+    const host = $("#gender-self-content");
+    if (!host) return;
+    const self = (state && state.self_understanding) || {};
+    const labels = Array.isArray(self.labels) ? self.labels : [];
+    const scopes = self.disclosure_scopes || {};
+    const currentIntent = state && state.current_intent;
+    host.innerHTML =
+      `<div class="gender-labels">${genderLabelsMarkup(
+        labels,
+        self.questioning ? "questioning / unlabeled" : "no active label",
+        self.questioning ? "is-questioning" : ""
+      )}</div>` +
+      `<dl class="gender-layer-kv">` +
+        `<dt>certainty</dt><dd class="mono">${f3(self.certainty)}</dd>` +
+        `<dt>questioning</dt><dd>${self.questioning ? "yes" : "no"}</dd>` +
+        `<dt>last revision</dt><dd class="mono">t${Math.round(num(self.last_revision_tick))}</dd>` +
+        `<dt>private scope</dt><dd>${esc((scopes.private || []).join(", ") || "none")}</dd>` +
+        `<dt>trusted scope</dt><dd>${esc((scopes.trusted || []).join(", ") || "none")}</dd>` +
+        `<dt>public scope</dt><dd>${esc((scopes.public || []).join(", ") || "none")}</dd>` +
+        `<dt>current intent</dt><dd>${currentIntent
+          ? `${esc(genderHuman(currentIntent.type))} · <span class="mono">${esc(currentIntent.provenance)}</span>`
+          : "none"}</dd>` +
+      `</dl>`;
+
+    const fits = Object.entries(self.fit_by_label || {});
+    if (fits.length) {
+      const heading = el("span", "eyebrow", "Fit evidence ledger");
+      const fitList = el("div", "gender-fit-list");
+      fits.sort((a, b) => num(b[1]) - num(a[1])).forEach(([label, raw]) => {
+        const value = clamp01(num(raw));
+        const row = el("div", "gender-fit-row");
+        row.appendChild(el("span", "", esc(label)));
+        const meter = el("div", "meter");
+        meter.setAttribute("role", "meter");
+        meter.setAttribute("aria-label", `Fit evidence for ${label}`);
+        meter.setAttribute("aria-valuemin", "0");
+        meter.setAttribute("aria-valuemax", "1");
+        meter.setAttribute("aria-valuenow", value.toFixed(3));
+        const fill = el("div", "meter-fill");
+        fill.style.width = pctTxt(value);
+        meter.appendChild(fill);
+        row.appendChild(meter);
+        row.appendChild(el("span", "mono", f2(value)));
+        fitList.appendChild(row);
+      });
+      host.append(heading, fitList);
+    }
+    if (state && state.report) {
+      host.appendChild(el("p", "report-voice", esc(state.report)));
+    }
+  }
+
+  function renderGenderPublic(society, state) {
+    const host = $("#gender-public-content");
+    if (!host) return;
+    const projections = (society && society.projections) || {};
+    const projection = projections["0"] || projections[0] || null;
+    if (!projection) {
+      host.innerHTML = '<div class="empty">No public projection is available.</div>';
+      return;
+    }
+    const recognitions = ((society && society.recognition) || [])
+      .filter((item) => num(item.target_id) === num(state && state.agent_id));
+    host.innerHTML =
+      `<div class="gender-labels">${genderLabelsMarkup(projection.labels, "no label disclosed")}</div>` +
+      `<dl class="gender-layer-kv">` +
+        `<dt>name</dt><dd>${esc(projection.name || "not disclosed")}</dd>` +
+        `<dt>pronouns</dt><dd>${esc((projection.pronouns || []).join(", ") || "not disclosed")}</dd>` +
+        `<dt>scope</dt><dd>${esc(projection.disclosure_scope || "public")}</dd>` +
+        `<dt>observer records</dt><dd class="mono">${recognitions.length}</dd>` +
+        `<dt>updated</dt><dd class="mono">t${Math.round(num(projection.updated_tick))}</dd>` +
+      `</dl>`;
+    const expression = Object.entries(projection.expression || {});
+    if (expression.length) {
+      const wrap = el("div", "gender-fit-list");
+      expression.forEach(([channel, axes]) => {
+        const row = el("div", "gender-fit-row");
+        row.appendChild(el("span", "", esc(genderHuman(channel))));
+        row.appendChild(el("span", "mono", esc(genderAxisText(axes))));
+        row.appendChild(el("span", "mono", "public"));
+        wrap.appendChild(row);
+      });
+      host.appendChild(wrap);
+    }
+  }
+
+  function renderGenderPrivate(debug) {
+    const host = $("#gender-private-content");
+    if (!host || !debug) return;
+    const profile = debug.profile || {};
+    const initial = profile.initial_self_understanding || {};
+    const affinities = Object.entries(profile.felt_affinities || {})
+      .sort((a, b) => num(b[1]) - num(a[1]));
+    const priorities = Object.entries(profile.transition_priorities || {});
+    const history = (debug.life_course && debug.life_course.initial_history_summary) || [];
+    host.innerHTML =
+      `<dl class="gender-layer-kv">` +
+        `<dt>profile input</dt><dd class="mono">${esc(profile.profile_id || "—")}</dd>` +
+        `<dt>assigned category</dt><dd>${esc(profile.assigned_category || "unspecified")}</dd>` +
+        `<dt>felt affinities</dt><dd>${esc(affinities.map(([k, v]) => `${k} ${f2(v)}`).join(" · ") || "none")}</dd>` +
+        `<dt>fluidity</dt><dd class="mono">${f3(profile.fluidity)}</dd>` +
+        `<dt>gender salience</dt><dd class="mono">${f3(profile.gender_salience)}</dd>` +
+        `<dt>initial labels</dt><dd>${esc((initial.labels || []).join(", ") || "unlabeled")}</dd>` +
+        `<dt>expression inputs</dt><dd>${esc(Object.keys(profile.preferred_expression || {}).map(genderHuman).join(", ") || "none")}</dd>` +
+        `<dt>body inputs</dt><dd>${esc(Object.keys(profile.body_preferences || {}).map(genderHuman).join(", ") || "none")}</dd>` +
+        `<dt>transition priorities</dt><dd>${esc(priorities.map(([k, v]) => `${genderHuman(k)} ${f2(v)}`).join(" · ") || "none")}</dd>` +
+        `<dt>prior history</dt><dd>${esc(history.join(" ") || "none configured")}</dd>` +
+        `<dt>pending events</dt><dd class="mono">${(debug.pending_events || []).length}</dd>` +
+        `<dt>event ledger</dt><dd class="mono">${Math.round(num(debug.event_ledger_size))}</dd>` +
+        `<dt>profile checksum</dt><dd class="mono">${esc(String(debug.profile_checksum || "").slice(0, 14))}…</dd>` +
+      `</dl>` +
+      `<p class="micro">${esc(debug.framing || "Experiment inputs are unavailable to simulated observers.")}</p>`;
+    host.hidden = false;
+    renderGenderTimeline(debug.life_course, debug.state);
+  }
+
+  function renderGenderExpression(state) {
+    const host = $("#gender-expression");
+    if (!host) return;
+    host.replaceChildren();
+    Object.entries((state && state.expression) || {}).forEach(([channel, item]) => {
+      const card = el("article", "gender-data-card");
+      card.innerHTML =
+        `<header><h5>${esc(genderHuman(channel))}</h5><output>accent ${f3(item.accentuation)}</output></header>` +
+        `<div class="gender-data-points">` +
+          `<span>visibility<b>${f2(item.visibility)}</b></span>` +
+          `<span>safety cost<b>${f2(item.safety_cost)}</b></span>` +
+          `<span>accentuation<b>${f2(item.accentuation)}</b></span>` +
+        `</div>` +
+        `<p class="micro">desired ${esc(genderAxisText(item.desired))}<br>public ${esc(genderAxisText(item.public))}</p>` +
+        `<div class="gender-driver-list">${(item.drivers || []).length
+          ? item.drivers.map((driver) => `<span class="gender-driver">${esc(genderHuman(driver))}</span>`).join("")
+          : '<span class="gender-driver">no accentuation driver</span>'}</div>`;
+      host.appendChild(card);
+    });
+    if (!host.childElementCount) host.innerHTML = '<div class="empty">No expression channels configured.</div>';
+  }
+
+  function renderGenderBody(state) {
+    const host = $("#gender-body");
+    if (!host) return;
+    host.replaceChildren();
+    Object.entries((state && state.body) || {}).forEach(([domain, item]) => {
+      const change = num(item.change_rate);
+      const card = el("article", "gender-data-card");
+      card.innerHTML =
+        `<header><h5>${esc(genderHuman(domain))}</h5><output>align ${f3(item.alignment)}</output></header>` +
+        `<div class="gender-data-points">` +
+          `<span>alignment<b>${f2(item.alignment)}</b></span>` +
+          `<span>salience<b>${f2(item.salience)}</b></span>` +
+          `<span>public vis.<b>${f2(item.public_visibility)}</b></span>` +
+        `</div>` +
+        `<p class="micro">current ${esc(genderAxisText(item.current))}<br>preferred ${esc(genderAxisText(item.preferred))}</p>` +
+        `<span class="gender-transition-meta">abstract change rate ${change >= 0 ? "+" : ""}${change.toFixed(3)}</span>`;
+      host.appendChild(card);
+    });
+    if (!host.childElementCount) host.innerHTML = '<div class="empty">No body domains configured.</div>';
+  }
+
+  function genderTransitionBar(label, value, kind) {
+    const v = clamp01(num(value));
+    return `<div class="gender-transition-bar" data-kind="${esc(kind)}">` +
+      `<span>${esc(label)}</span>` +
+      `<div class="meter" role="meter" aria-label="${esc(label)}" aria-valuemin="0" aria-valuemax="1" aria-valuenow="${v.toFixed(3)}">` +
+        `<div class="meter-fill" style="width:${pctTxt(v)}"></div>` +
+      `</div><span class="mono">${f2(v)}</span></div>`;
+  }
+
+  function renderGenderTransitions(state) {
+    const host = $("#gender-transitions");
+    if (!host) return;
+    host.replaceChildren();
+    Object.entries((state && state.transitions) || {}).forEach(([dimension, item]) => {
+      const card = el("article", "gender-transition");
+      card.innerHTML =
+        `<header><h5>${esc(genderHuman(dimension))}</h5><span class="gender-transition-status">${esc(genderHuman(item.status))}</span></header>` +
+        `<div class="gender-transition-bars">` +
+          genderTransitionBar("desire", item.desire, "desire") +
+          genderTransitionBar("access", item.access, "access") +
+          genderTransitionBar("progress", item.progress, "progress") +
+        `</div>` +
+        `<div class="gender-transition-meta">satisfaction ${num(item.satisfaction).toFixed(3)} · ${esc(genderHuman(item.reversibility))}</div>` +
+        `<div class="gender-transition-meta">${esc(item.last_reason || "no status change yet")} · t${Math.round(num(item.last_change_tick))}</div>`;
+      host.appendChild(card);
+    });
+    if (!host.childElementCount) host.innerHTML = '<div class="empty">No transition dimensions configured.</div>';
+  }
+
+  function renderGenderProbeLog(state) {
+    const host = $("#gender-probe-log");
+    if (!host) return;
+    host.replaceChildren();
+    const rows = genderProbeHistory.slice(0, 6);
+    const currentIntent = state && state.current_intent;
+    if (currentIntent && !rows.some((row) => row.id === `intent-${currentIntent.intent_id}`)) {
+      rows.unshift({
+        id: `intent-${currentIntent.intent_id}`,
+        label: `intent · ${genderHuman(currentIntent.type)}`,
+        tick: currentIntent.tick,
+        provenance: currentIntent.provenance,
+      });
+    }
+    const knownIds = new Set(rows.map((row) => String(row.eventId || "")));
+    ((state && state.recent_event_ids) || []).slice().reverse().forEach((eventId) => {
+      if (!knownIds.has(String(eventId)) && rows.length < 6) {
+        rows.push({
+          id: `event-${eventId}`,
+          label: `processed event #${eventId}`,
+          tick: state.tick,
+          provenance: "ledger",
+        });
+      }
+    });
+    rows.forEach((row) => {
+      const item = el("div", "gender-probe-entry");
+      item.appendChild(el("span", "", esc(row.label)));
+      item.appendChild(el("span", "", `t${Math.round(num(row.tick))} · ${esc(row.provenance || "unknown")}`));
+      host.appendChild(item);
+    });
+    if (!host.childElementCount) {
+      host.innerHTML = '<div class="empty">No recent event or intention provenance.</div>';
+    }
+  }
+
+  function renderGenderExperience(payload, society) {
+    if (payload !== undefined) genderPayload = payload;
+    if (society !== undefined) genderSocietyPayload = society;
+    const live = genderPayload;
+    const state = live && live.state;
+    const active = !!(live && live.enabled && live.configured && state);
+    const badge = $("#gender-phase-badge");
+    if (badge) {
+      badge.dataset.state = active ? "active" : "dormant";
+      badge.innerHTML = `<span aria-hidden="true"></span> ${active ? "active" : "dormant"}`;
+    }
+    const gate = document.querySelector('[data-flag="gender_experience_enabled"]');
+    if (gate) gate.checked = !!(live && live.enabled);
+    const disclaimer = $("#gender-disclaimer");
+    if (disclaimer && live && live.disclaimer) disclaimer.textContent = live.disclaimer;
+    const empty = $("#gender-empty");
+    const observatory = $("#gender-observatory");
+    if (empty) empty.hidden = active;
+    if (observatory) observatory.hidden = !active;
+    if (!active) {
+      const privateContent = $("#gender-private-content");
+      if (privateContent) privateContent.hidden = true;
+      const debugButton = $("#btn-gender-debug");
+      if (debugButton) {
+        debugButton.setAttribute("aria-expanded", "false");
+        debugButton.textContent = "Reveal private input";
+      }
+      return;
+    }
+
+    // On a fresh browser load, align the blueprint chooser with the active
+    // profile once. Subsequent user selection is left untouched so they can
+    // prepare a different scenario without the poll loop fighting the form.
+    if (genderSyncedProfileId !== state.profile_id) {
+      const matchingPreset = genderCatalog.find((item) => {
+        const agent = item.manifest && item.manifest.agents &&
+          (item.manifest.agents["0"] || item.manifest.agents[0]);
+        return agent && agent.profile && agent.profile.profile_id === state.profile_id;
+      });
+      if (matchingPreset && $("#gender-scenario-select")) {
+        $("#gender-scenario-select").value = matchingPreset.preset_id;
+        genderActivePresetId = matchingPreset.preset_id;
+        renderGenderScenarioEditor();
+      }
+      genderSyncedProfileId = state.profile_id;
+    }
+
+    $("#gender-life-position").textContent =
+      `${genderHuman(state.life_stage)} · ${Math.round(num(state.tick_in_stage))} ticks in stage`;
+    $("#gender-profile-id").textContent = state.profile_id || "—";
+    $("#gender-state-tick").textContent = "t" + Math.round(num(state.tick));
+    renderGenderTimeline(genderDebugPayload && genderDebugPayload.life_course, state);
+    renderGenderSelf(state);
+    renderGenderPublic(genderSocietyPayload, state);
+
+    const congruence = state.congruence || {};
+    renderGenderMetricGroup("#gender-congruence", [
+      { label: "body", value: congruence.body, tone: "private" },
+      { label: "expression", value: congruence.expression, tone: "constructive" },
+      { label: "social", value: congruence.social, tone: "public" },
+      { label: "administrative", value: congruence.administrative, tone: "public" },
+      { label: "total", value: congruence.total, tone: "constructive" },
+    ]);
+    const affect = state.affect || {};
+    renderGenderMetricGroup("#gender-affect", [
+      { label: "dysphoria", value: affect.dysphoria, tone: "stress" },
+      { label: "euphoria", value: affect.euphoria, tone: "constructive" },
+      { label: "fulfillment", value: affect.fulfillment, tone: "constructive" },
+    ]);
+    const stress = state.minority_stress || {};
+    renderGenderMetricGroup("#gender-stress", [
+      { label: "external now", value: stress.external_current, tone: "stress" },
+      { label: "external chronic", value: stress.external_chronic, tone: "stress" },
+      { label: "rejection expectation", value: stress.rejection_expectation, tone: "stress" },
+      { label: "concealment pressure", value: stress.concealment_pressure, tone: "stress" },
+      { label: "vigilance", value: stress.vigilance, tone: "stress" },
+      { label: "internalized transphobia", value: stress.internalized_transphobia, tone: "private" },
+      { label: "cumulative exposure", value: stress.cumulative_exposure, tone: "stress" },
+    ]);
+    const resilience = state.resilience || {};
+    renderGenderMetricGroup("#gender-resilience", [
+      { label: "support", value: resilience.support, tone: "constructive" },
+      { label: "community", value: resilience.community, tone: "constructive" },
+      { label: "positive representation", value: resilience.positive_representation, tone: "constructive" },
+      { label: "pride", value: resilience.pride, tone: "constructive" },
+      { label: "self-acceptance", value: resilience.self_acceptance, tone: "constructive" },
+      { label: "combined index", value: resilience.index, tone: "constructive" },
+    ]);
+    renderGenderExpression(state);
+    renderGenderBody(state);
+    renderGenderTransitions(state);
+    renderGenderProbeLog(state);
+  }
+
+  function renderGenderScenarioEditor() {
+    const select = $("#gender-scenario-select");
+    const item = genderCatalog.find((candidate) => candidate.preset_id === (select && select.value));
+    if (!item) {
+      genderManifestDraft = null;
+      const apply = $("#btn-gender-apply");
+      if (apply) apply.disabled = true;
+      return;
+    }
+    genderManifestDraft = JSON.parse(JSON.stringify(item.manifest));
+    genderActivePresetId = genderActivePresetId || item.preset_id;
+    const title = $("#gender-scenario-title");
+    if (title) title.textContent = genderHuman(item.preset_id);
+    const description = $("#gender-scenario-description");
+    if (description) description.textContent = item.description;
+    renderGenderLifeEditor(genderManifestDraft);
+    const confirm = $("#gender-reset-confirm");
+    const apply = $("#btn-gender-apply");
+    if (confirm) confirm.checked = false;
+    if (apply) apply.disabled = true;
+    setGenderStatus("Blueprint loaded. Inspect or configure it before applying.", "");
+  }
+
+  function renderGenderLifeEditor(manifest) {
+    const stagesHost = $("#gender-life-stages");
+    const contextHost = $("#gender-context-fields");
+    if (!stagesHost || !contextHost || !manifest) return;
+    stagesHost.replaceChildren();
+    contextHost.replaceChildren();
+    const agentInput = manifest.agents && (manifest.agents["0"] || manifest.agents[0]);
+    const stages = (agentInput && agentInput.life_course && agentInput.life_course.stages) || [];
+    stages.forEach((stage, index) => {
+      const card = el("section", "gender-stage-editor");
+      card.dataset.stageIndex = String(index);
+      card.innerHTML =
+        `<label><input type="checkbox" data-stage-enabled checked><span>${esc(genderHuman(stage.stage))}</span></label>` +
+        `<label><span>duration ticks</span><input type="number" data-stage-field="duration_ticks" min="1" max="1000000" value="${Math.round(num(stage.duration_ticks))}"></label>` +
+        `<label><span>body change <output>${f2(stage.body_change_rate)}</output></span><input type="range" data-stage-field="body_change_rate" min="0" max="1" step="0.01" value="${num(stage.body_change_rate)}"></label>` +
+        `<label><span>autonomy <output>${f2(stage.autonomy)}</output></span><input type="range" data-stage-field="autonomy" min="0" max="1" step="0.01" value="${num(stage.autonomy)}"></label>` +
+        `<label><span>resource access <output>${f2(stage.resource_access)}</output></span><input type="range" data-stage-field="resource_access" min="0" max="1" step="0.01" value="${num(stage.resource_access)}"></label>` +
+        `<label><span>norm exposure <output>${f2(stage.norm_exposure)}</output></span><input type="range" data-stage-field="norm_exposure" min="0" max="1" step="0.01" value="${num(stage.norm_exposure)}"></label>`;
+      const enabled = card.querySelector("[data-stage-enabled]");
+      enabled.addEventListener("change", () => card.classList.toggle("is-omitted", !enabled.checked));
+      card.querySelectorAll('input[type="range"]').forEach((input) => {
+        input.addEventListener("input", () => {
+          const output = input.closest("label").querySelector("output");
+          if (output) output.textContent = f2(input.valueAsNumber);
+        });
+      });
+      stagesHost.appendChild(card);
+    });
+
+    const context = manifest.social_context || {};
+    const contextFields = [
+      ["norm_rigidity", "norm rigidity"],
+      ["institutional_hostility", "institutional hostility"],
+      ["baseline_safety", "baseline safety"],
+      ["care_access", "abstract care access"],
+      ["community_visibility", "community visibility"],
+      ["positive_representation", "positive representation"],
+    ];
+    contextFields.forEach(([key, label]) => {
+      const value = clamp01(num(context[key]));
+      const field = el("label", "gender-context-field");
+      field.innerHTML =
+        `<span>${esc(label)} <output>${f2(value)}</output></span>` +
+        `<input type="range" data-context-field="${esc(key)}" min="0" max="1" step="0.01" value="${value}">`;
+      const input = field.querySelector("input");
+      input.addEventListener("input", () => {
+        field.querySelector("output").textContent = f2(input.valueAsNumber);
+      });
+      contextHost.appendChild(field);
+    });
+    const hostility = el("label", "gender-context-hostility");
+    hostility.innerHTML =
+      `<input type="checkbox" data-context-hostility ${context.hostility_enabled ? "checked" : ""}>` +
+      `<span>allow configured hostile social events</span>`;
+    contextHost.appendChild(hostility);
+  }
+
+  function buildGenderManifestFromEditor() {
+    if (!genderManifestDraft) throw new Error("Choose a scenario blueprint first.");
+    const manifest = JSON.parse(JSON.stringify(genderManifestDraft));
+    const agentInput = manifest.agents && (manifest.agents["0"] || manifest.agents[0]);
+    if (!agentInput || !agentInput.life_course) throw new Error("Scenario has no agent 0 life course.");
+    const original = agentInput.life_course.stages || [];
+    const selectedStages = [];
+    document.querySelectorAll("#gender-life-stages .gender-stage-editor").forEach((card) => {
+      if (!card.querySelector("[data-stage-enabled]").checked) return;
+      const index = Math.max(0, Math.trunc(Number(card.dataset.stageIndex) || 0));
+      const stage = JSON.parse(JSON.stringify(original[index]));
+      card.querySelectorAll("[data-stage-field]").forEach((input) => {
+        const key = input.dataset.stageField;
+        stage[key] = key === "duration_ticks"
+          ? Math.max(1, Math.min(1000000, Math.round(input.valueAsNumber || 1)))
+          : clamp01(input.valueAsNumber);
+      });
+      selectedStages.push(stage);
+    });
+    if (!selectedStages.length) throw new Error("Keep at least one life stage.");
+    agentInput.life_course.stages = selectedStages;
+    document.querySelectorAll("#gender-context-fields [data-context-field]").forEach((input) => {
+      manifest.social_context[input.dataset.contextField] = clamp01(input.valueAsNumber);
+    });
+    const hostility = document.querySelector("#gender-context-fields [data-context-hostility]");
+    if (hostility) manifest.social_context.hostility_enabled = !!hostility.checked;
+    const seedInput = $("#gender-scenario-seed");
+    const seed = Math.max(0, Math.min(4294967295, Math.trunc(Number(seedInput && seedInput.value) || 0)));
+    if (seedInput) seedInput.value = String(seed);
+    manifest.seed = seed;
+    const root = manifest.preset_id || "custom";
+    manifest.scenario_id = `${root}-${seed}-configured`.slice(0, 96);
+    return manifest;
+  }
+
+  async function loadGenderScenarios() {
+    const select = $("#gender-scenario-select");
+    const seedInput = $("#gender-scenario-seed");
+    if (!select || !seedInput) return;
+    const previous = select.value || "nonbinary";
+    const seed = Math.max(0, Math.min(4294967295, Math.trunc(Number(seedInput.value) || 42)));
+    seedInput.value = String(seed);
+    select.disabled = true;
+    setGenderStatus("Loading inspectable manifests…", "");
+    try {
+      const result = await api(`gender/scenarios?seed=${encodeURIComponent(seed)}`);
+      genderCatalog = Array.isArray(result && result.scenarios) ? result.scenarios : [];
+      select.replaceChildren();
+      genderCatalog.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.preset_id;
+        option.textContent = genderHuman(item.preset_id);
+        select.appendChild(option);
+      });
+      const wanted = genderCatalog.some((item) => item.preset_id === previous)
+        ? previous
+        : (genderCatalog.some((item) => item.preset_id === "nonbinary") ? "nonbinary" : (genderCatalog[0] && genderCatalog[0].preset_id));
+      if (wanted) select.value = wanted;
+      renderGenderScenarioEditor();
+    } catch (error) {
+      genderCatalog = [];
+      genderManifestDraft = null;
+      select.innerHTML = '<option value="">Scenario API unavailable</option>';
+      setGenderStatus("Could not load gender-life scenarios.", "error");
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  async function applyGenderScenario(event) {
+    event.preventDefault();
+    const confirm = $("#gender-reset-confirm");
+    const button = $("#btn-gender-apply");
+    if (!confirm || !confirm.checked) {
+      setGenderStatus("Confirm the full reset before applying.", "error");
+      return;
+    }
+    let manifest;
+    try {
+      manifest = buildGenderManifestFromEditor();
+    } catch (error) {
+      setGenderStatus(error.message, "error");
+      return;
+    }
+    button.disabled = true;
+    button.textContent = "Resetting…";
+    setGenderStatus("Installing the complete manifest transactionally…", "");
+    try {
+      const response = await postJSON("gender/scenario", { scenario: manifest });
+      resetHorizonClientState();
+      genderActivePresetId = manifest.preset_id || $("#gender-scenario-select").value;
+      genderPayload = response.agents && (response.agents["0"] || response.agents[0]);
+      genderSocietyPayload = response.public_society || null;
+      genderDebugPayload = null;
+      renderGenderExperience(genderPayload, genderSocietyPayload);
+      applyControlStates({ gender_experience_enabled: true });
+      clientConfig.gender_experience_enabled = true;
+      buildConfigFull();
+      confirm.checked = false;
+      setGenderStatus(
+        `${genderHuman(manifest.preset_id || "custom scenario")} installed · full reset · initialized t${Math.round(num(response.initialized_tick))}.`,
+        "ok"
+      );
+      toast("Gender-life scenario applied through a full reset.", "ok");
+      await refreshAll();
+    } catch (error) {
+      const detail = error && error.detail && error.detail.detail;
+      const validationMessage = Array.isArray(detail) && detail[0] && detail[0].msg;
+      setGenderStatus(
+        typeof detail === "string"
+          ? detail
+          : (validationMessage || "Scenario rejected; the live run was not partially changed."),
+        "error"
+      );
+      setStatus("error", "Gender scenario error");
+    } finally {
+      button.textContent = "Apply & reset";
+      button.disabled = true;
+    }
+  }
+
+  function hideGenderDebug() {
+    genderDebugPayload = null;
+    const content = $("#gender-private-content");
+    const button = $("#btn-gender-debug");
+    if (content) {
+      content.replaceChildren();
+      content.hidden = true;
+    }
+    if (button) {
+      button.setAttribute("aria-expanded", "false");
+      button.textContent = "Reveal private input";
+    }
+    const state = genderPayload && genderPayload.state;
+    if (state) renderGenderTimeline(null, state);
+  }
+
+  async function revealGenderDebug(options) {
+    const quiet = options && options.quiet;
+    const button = $("#btn-gender-debug");
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Loading private input…";
+    }
+    try {
+      const debug = await api("agent/gender/debug");
+      genderDebugPayload = debug;
+      renderGenderPrivate(debug);
+      if (button) {
+        button.setAttribute("aria-expanded", "true");
+        button.textContent = "Hide private input";
+      }
+      if (!quiet) toast("Private experiment input revealed locally.", "ok");
+    } catch (error) {
+      if (!quiet) toast("Private input is unavailable until a scenario is configured.", "error");
+      hideGenderDebug();
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  async function toggleGenderDebug() {
+    const content = $("#gender-private-content");
+    if (content && !content.hidden) hideGenderDebug();
+    else await revealGenderDebug();
+  }
+
+  async function queueGenderEvent(event) {
+    event.preventDefault();
+    if (!(genderPayload && genderPayload.configured)) {
+      toast("Choose a gender-life scenario first.", "error");
+      return;
+    }
+    const type = $("#gender-event-type").value;
+    const domain = $("#gender-event-domain").value;
+    const intensity = clamp01($("#gender-event-intensity").valueAsNumber);
+    const hostile = GENDER_HOSTILE_EVENTS.has(type);
+    try {
+      const response = await postJSON("agent/gender/event", {
+        type,
+        domain,
+        intensity,
+        visibility: hostile ? "public" : "trusted",
+        deliberate: hostile,
+        context_code: `ui_${type}`.slice(0, 64),
+      });
+      genderProbeHistory.unshift({
+        id: `event-${response.event.event_id}`,
+        eventId: response.event.event_id,
+        label: `event · ${genderHuman(type)} · ${genderHuman(domain)}`,
+        tick: response.scheduled_tick,
+        provenance: response.event.provenance,
+      });
+      renderGenderProbeLog(genderPayload.state);
+      toast(`Event queued for t${response.scheduled_tick}.`, "ok");
+      if (genderDebugPayload) await revealGenderDebug({ quiet: true });
+    } catch (error) {
+      toast("Event rejected without changing the queue.", "error");
+    }
+  }
+
+  async function queueGenderIntent(event) {
+    event.preventDefault();
+    if (!(genderPayload && genderPayload.configured)) {
+      toast("Choose a gender-life scenario first.", "error");
+      return;
+    }
+    const type = $("#gender-intent-type").value;
+    const dimension = $("#gender-intent-dimension").value;
+    const body = {
+      type,
+      domain: dimension || "general",
+      urgency: clamp01($("#gender-intent-urgency").valueAsNumber),
+    };
+    if (dimension) body.transition_dimension = dimension;
+    if (type === "disclose") body.disclosure_scope = "public";
+    if (type === "conceal") body.disclosure_scope = "private";
+    try {
+      const response = await postJSON("agent/gender/intent", body);
+      genderProbeHistory.unshift({
+        id: `intent-${response.intent.intent_id}`,
+        label: `intent · ${genderHuman(type)}${dimension ? ` · ${genderHuman(dimension)}` : ""}`,
+        tick: response.scheduled_tick,
+        provenance: response.intent.provenance,
+      });
+      renderGenderProbeLog(genderPayload.state);
+      toast(`Intention queued for t${response.scheduled_tick}.`, "ok");
+      if (genderDebugPayload) await revealGenderDebug({ quiet: true });
+    } catch (error) {
+      toast("Intention rejected without changing the queue.", "error");
+    }
+  }
+
+  function renderGenderBattery(result) {
+    const host = $("#gender-battery-result");
+    if (!host) return;
+    host.replaceChildren();
+    Object.entries((result && result.comparisons) || {}).forEach(([name, values]) => {
+      const row = el("div", "gender-comparison");
+      const same = values && values.same_private_profile;
+      row.appendChild(el(
+        "strong",
+        "",
+        `${esc(genderHuman(name))}${same === true ? ' <span class="gender-driver">same private profile</span>' : ""}`
+      ));
+      Object.entries(values || {})
+        .filter(([key, value]) => key !== "same_private_profile" && typeof value === "number")
+        .forEach(([key, value]) => {
+          row.appendChild(el("span", "", `${esc(genderHuman(key))} ${genderSigned(value)}`));
+        });
+      host.appendChild(row);
+    });
+    host.appendChild(el("p", "gender-battery-note", esc(
+      (result && result.interpretation) || "Counterfactual interpretation unavailable."
+    )));
+  }
+
+  async function runGenderBattery(event) {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector("button[type='submit']");
+    const ticks = Math.max(4, Math.min(500, Math.round($("#gender-battery-ticks").valueAsNumber || 24)));
+    const seed = Math.max(0, Math.min(4294967295, Math.trunc(Number($("#gender-scenario-seed").value) || 42)));
+    const presetId = genderActivePresetId || $("#gender-scenario-select").value || "nonbinary";
+    button.disabled = true;
+    button.textContent = "Running 8 arms…";
+    $("#gender-battery-result").innerHTML = '<div class="empty">Computing deterministic matched arms…</div>';
+    try {
+      const result = await postJSON("battery/gender-experience", {
+        preset_id: presetId,
+        seed,
+        ticks,
+      });
+      renderGenderBattery(result);
+    } catch (error) {
+      $("#gender-battery-result").innerHTML = '<div class="empty">Battery request failed.</div>';
+    } finally {
+      button.disabled = false;
+      button.textContent = "Run 8 matched arms";
+    }
+  }
+
+  function bindGenderControls() {
+    if (genderControlsBound) return;
+    genderControlsBound = true;
+    $("#gender-scenario-select")?.addEventListener("change", renderGenderScenarioEditor);
+    $("#gender-scenario-seed")?.addEventListener("change", () => { void loadGenderScenarios(); });
+    $("#gender-reset-confirm")?.addEventListener("change", (event) => {
+      const button = $("#btn-gender-apply");
+      if (button) button.disabled = !event.currentTarget.checked || !genderManifestDraft;
+    });
+    $("#gender-scenario-form")?.addEventListener("submit", applyGenderScenario);
+    $("#btn-gender-debug")?.addEventListener("click", () => { void toggleGenderDebug(); });
+    $("#gender-event-form")?.addEventListener("submit", queueGenderEvent);
+    $("#gender-intent-form")?.addEventListener("submit", queueGenderIntent);
+    $("#gender-battery-form")?.addEventListener("submit", runGenderBattery);
+
+    [
+      ["#gender-event-intensity", "#gender-event-intensity-value"],
+      ["#gender-intent-urgency", "#gender-intent-urgency-value"],
+    ].forEach(([inputSelector, outputSelector]) => {
+      const input = $(inputSelector);
+      const output = $(outputSelector);
+      if (input && output) input.addEventListener("input", () => {
+        output.textContent = f2(input.valueAsNumber);
+      });
+    });
+  }
+
+  async function initGenderExperience() {
+    bindGenderControls();
+    renderGenderExperience(null, null);
+    await loadGenderScenarios();
+  }
+
+  // ============================================================
   //  REFRESH (poll /state + agent endpoints)
   // ============================================================
   async function refreshAll() {
@@ -2047,7 +2899,10 @@
   async function performRefreshAll() {
     const generation = horizonGeneration;
     try {
-      const [state, metrics, consciousness, ws, stream, self, mem, intro] = await Promise.all([
+      const [
+        state, metrics, consciousness, ws, stream, self, mem, intro,
+        gender, genderSociety,
+      ] = await Promise.all([
         api("state").catch(() => null),
         api("metrics").catch(() => null),
         api("agent/consciousness").catch(() => null),
@@ -2056,6 +2911,8 @@
         api("agent/self-model").catch(() => null),
         api("agent/memory?limit=20").catch(() => []),
         api("agent/introspection").catch(() => null),
+        api("agent/gender").catch(() => null),
+        api("society/gender").catch(() => null),
       ]);
       if (generation !== horizonGeneration) return;
 
@@ -2110,6 +2967,7 @@
       if (self) renderSelfModel(self);
       renderMemories(mem || []);
       if (intro) renderIntrospection(intro);
+      if (gender) renderGenderExperience(gender, genderSociety);
       // The optional trace sub-objects (learning, personality, sleep, opacity,
       // individuation, asymptote…) now ride on GET /agent/consciousness, so
       // every panel refreshes during BACKGROUND runs; a client-side CycleTrace
@@ -2193,6 +3051,14 @@
     }
     if (trace.self_model) renderSelfModel(trace.self_model);
     if (trace.introspection) renderIntrospection(trace.introspection);
+    if (trace.gender_experience) {
+      renderGenderExperience({
+        enabled: true,
+        configured: true,
+        state: trace.gender_experience,
+        disclaimer: trace.gender_experience.disclaimer,
+      }, genderSocietyPayload);
+    }
     if (trace.working_memory) {
       const load = trace.metrics ? trace.metrics.working_memory_load
         : trace.working_memory.length / 5;
@@ -2746,6 +3612,7 @@
   // checked by default (matches applyDeepDefaults); each flips one feature flag.
   // covers both the #deep-toggles (Phase 2) and #lp-toggles (Phase 3) groups.
   document.querySelectorAll(".panel-config input[data-flag]").forEach((box) => {
+    if (box.hasAttribute("data-explicit-scenario-only")) return;
     box.addEventListener("change", async () => {
       const flag = box.dataset.flag;
       try {
@@ -2775,6 +3642,7 @@
       const live = await api("config");
       if (live && live.config) {
         clientConfig = live.config;
+        applyControlStates(live.config);
         buildConfigFull();
       }
     } catch (e) { /* non-fatal — dials fall back to payload values */ }
@@ -4084,6 +4952,7 @@
     ["Phase 5 — the asymptote", { recurrence_enabled: false, recurrence_passes: 3, recurrence_gain: 0.5, reality_monitor_enabled: false, intero_inference_enabled: false, intero_lr: 0.25, temporality_enabled: false, retention_horizon: 5, protention_window: 6, inner_speech_enabled: false, inner_speech_gain: 0.6, phi_ar_enabled: false, phi_ar_window: 32, phi_ar_every: 8, priming_enabled: false, priming_decay: 0.5, priming_gain: 0.35 }],
     ["Phase 6 — the invention of language", { language_drive_enabled: false, language_drive: 1 }],
     ["Phase 7 — the horizon", { phi_causal_enabled: false, phi_causal_nodes: 5, phi_causal_window: 96, phi_causal_every: 16, hierarchy_enabled: false, hierarchy_lr: 0.15, hierarchy_gain: 0.3, planning_enabled: false, planning_horizon: 3, planning_discount: 0.7, vector_memory_enabled: false, semantic_weight: 0.6, td_learning_enabled: false, td_lambda: 0.8, td_discount: 0.9, mind_wandering_enabled: false, wandering_gain: 0.6, world_dynamics_enabled: false, season_period: 200, regrow_rate: 0.02, tasks_enabled: false }],
+    ["Phase 8 — situated gendered self", { gender_experience_enabled: false, gender_affect_weight: 0.2, gender_motivation_weight: 1, gender_internalization_rate: 0.05, gender_recovery_rate: 0.03, gender_event_memory_max: 256 }],
   ];
   const cfgFmt = (v) => typeof v === "boolean" ? (v ? "on" : "off") : String(v);
   function buildConfigFull() {
@@ -4137,6 +5006,7 @@
   observeCanvasResize($("#lab-chart"), () => { refreshLabChart().catch(() => {}); });
   // apply the saved settings (or first-run defaults), then take the first reading
   async function bootstrap() {
+    try { await initGenderExperience(); } catch (e) { /* Phase 8 remains explicitly dormant */ }
     try { await applyDeepDefaults(); } catch (e) { /* first reading still useful */ }
     await refreshAll();
     try { await refreshCoverage(); } catch (e) { /* non-fatal */ }
