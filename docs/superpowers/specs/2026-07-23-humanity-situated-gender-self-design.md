@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-23
 
-**Status:** approved in design dialogue; pending written-spec review
+**Status:** approved, implemented and validated
 
 **Scope chosen by the user:** hybrid, factorized, multidimensional, full life course, including
 external and internalized transphobia
@@ -565,7 +565,7 @@ structural and must go through the scenario reset endpoint.
 | `GET` | `/society/agent/{id}/gender` | Agent-readable Phase-8 state for any configured society member |
 | `GET` | `/society/agent/{id}/gender/debug` | Explicit private-input observatory view for that member |
 | `GET` | `/society/gender` | Public projections, recognition states, social climate and aggregate event counts |
-| `GET` | `/export/gender-scenario` | Export the public manifest; private inputs require `include_private_inputs=true` |
+| `GET` | `/export/gender-scenario` | Export the public manifest; private inputs require `include_private=true` |
 | `POST` | `/battery/gender-experience` | Run bounded supportive/hostile and dysphoria/euphoria counterfactuals off-line |
 
 The debug endpoint is a conceptual observability boundary, not an authentication boundary; Humanity
@@ -627,7 +627,7 @@ mechanisms, local-storage defaults do not silently enable Phase 8 without a sele
   recognition states, transition state and the gender RNG state.
 - Checkpoint load must resume bit-for-bit from the next tick.
 - The ordinary trace/export never includes a private profile.
-- A scenario manifest can be exported separately with an explicit `include_private_inputs=true`
+- A scenario manifest can be exported separately with an explicit `include_private=true`
   debug choice.
 - Scenario reset clears incompatible gender events, social recognition, autobiographical state and
   traces by resetting the full run.
