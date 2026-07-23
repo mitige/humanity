@@ -1733,44 +1733,88 @@ mechanisms without suggesting a lived experience.
 
 ---
 
-## Future extensions
+## Roadmap completed
 
-- ✅ **LLM integration — delivered as an optional peripheral.** The grounded narrator, dialogue,
-  biography, inner voice, skeptical audit and cross-examination read real variables while retaining
-  the "text generated from variables" framing. The deterministic cognitive core remains LLM-free.
-- ✅ **A more faithful Phi family — delivered in Phases 5 and 7.** Φ_AR implements the published
-  Barrett–Seth time-series measure; coarse causal Φ builds an empirical TPM and exhaustively searches
-  the MIP on a deliberately bounded substrate. Neither is presented as full IIT 3.0/4.0 Φ.
-- ✅ **Fuller active inference — delivered in Phase 7.** Multi-step EFE policy sequences,
-  hierarchical generative regimes and explicit variational free energy compose with the existing
-  one-step controller.
-- ✅ **Vector memory — delivered in Phase 7.** A dependency-free 64-dimensional semantic index uses
-  stable CRC32 n-grams, a fixed seeded orthogonal projection, cosine retrieval, free-text search and
-  a deterministic graph.
-- ✅ **Reinforcement learning — delivered in Phases 3 and 7.** The learned policy is augmented by
-  contextual TD(λ), whose eligibility traces propagate delayed credit across action/context pairs.
-- ✅ **Multi-agents — delivered in Phase 1.** See [The multi-agent society](#the-multi-agent-society-social-layer);
-  Phase 7 additionally isolates each agent's persistent memory and trace files.
-- ✅ **Deep consciousness mechanisms — delivered in Phase 2.** Circadian state, sleep/consolidation,
-  dreams, imagination, curiosity/boredom and agency remain deterministic and flag-gated.
-- ✅ **Learning & personality — delivered in Phase 3.** Learned values, concept formation,
-  meta-learning and divergent personality arise from distinct trajectories.
-- ✅ **Scientific instrument — delivered in Phase 4 and hardened in Phase 7.** Reproducible scenarios,
-  CSV/JSON exports, dashboards and functional batteries now run hermetically without touching the
-  live memory or trace store.
-- ✅ **A richer environment — delivered in Phase 7.** Seasonal dynamics, food regrowth, hazard
-  oscillation, object drift and rotating forage/reach/patrol tasks make the grid a living test bed.
-- ✅ **Time-domain and memory visualization — delivered in Phase 7.** The Observatoire plots ignition
-  against threshold, renders the dominant-source timeline, enables semantic search, and exposes an
-  accessible autobiographical similarity graph.
-- ✅ **Richer trace export — delivered in Phase 7.** Tick/ignition/field filters, JSONL/JSON/CSV output
-  and streaming analysis provide ignition, action, error, sleep, wandering and Φ-family aggregates.
-- ✅ **Situated gendered self — delivered in Phase 8.** Explicit private profiles, configurable life
-  courses, independent dysphoria/euphoria/fulfillment, context-specific expression, external and
-  internalized transphobia, resilience, optional transition dimensions and privacy-separated
-  observability compose without inferring identity or changing the feature-off baseline.
+Every engineering objective previously listed as future work is now delivered. The detailed
+[Phase 7 chapter](#phase-7--the-horizon-every-remaining-extension-delivered) remains the technical
+reference, and the [Phase 8 chapter](#phase-8--the-situated-gendered-self) documents the situated
+gendered-self extension. This final checklist is the completion ledger.
 
-**Every extension above is now delivered** at the strongest deterministic scale this project can defend honestly. The remaining boundary is not an engineering backlog item: full IIT 3.0/4.0 cause-effect structure on a true micro-substrate is computationally out of scope, and phenomenal consciousness remains empirically undecidable here.
+### Foundations delivered — Phases 1–6
+
+- ✅ **Multi-agent society (Phase 1).** Shared world, communication, theory of mind, social mirror,
+  isolated per-agent persistence, and deterministic collective ticks.
+- ✅ **Deep mechanisms (Phase 2).** Circadian state, sleep/consolidation, dreams, imagination,
+  curiosity/boredom, agency, relational self, and self-opacity.
+- ✅ **Learning and personality (Phase 3).** Learned values, concepts, meta-learning, divergent
+  personality, and individuation from accumulated history.
+- ✅ **Scientific instrument (Phase 4).** Reproducible scenarios, metric history, CSV/JSON export,
+  fast training, and deterministic functional probes.
+- ✅ **The asymptote (Phase 5).** Recurrence, reality monitoring, interoceptive inference,
+  temporality, inner speech, Φ_AR, subliminal facilitation, and psychophysics probes.
+- ✅ **The invention of language (Phase 6).** Deterministic naming games, emergent conventions,
+  language metrics, society dictionary, and the language-genesis probe.
+- ✅ **Optional LLM peripheral.** Grounded narration, conversation, biography, skeptical audit,
+  cross-examination, and inner-voice re-entry without changing the deterministic cognitive core.
+
+### Phase 7 — The Horizon delivered
+
+- ✅ **Coarse causal Φ.** Empirical binary TPM, exact bounded MIP search, trace state, metric, and
+  real-trace analysis.
+- ✅ **Predictive hierarchy and VFE.** Slow regime inference, top-down modulation, and explicit
+  variational free energy.
+- ✅ **Multi-step EFE planning.** Deterministic bounded policy-tree search with inspectable best
+  sequence and planning depth.
+- ✅ **Semantic vector memory.** Stable 64-dimensional embeddings, cosine retrieval, free-text
+  search, and deterministic autobiographical graph.
+- ✅ **Contextual TD(λ).** Context/action values and eligibility traces for delayed credit
+  assignment.
+- ✅ **Mind-wandering / default mode.** Demand-sensitive associative memory walks that can re-enter
+  workspace competition.
+- ✅ **Living world dynamics.** Seasons, renewable food, oscillating hazards, deterministic drift,
+  and auditable world events.
+- ✅ **Structured tasks.** Deterministic forage, reach, and patrol rotation with progress metrics.
+
+### Phase 8 — The situated gendered self delivered
+
+- ✅ **Hybrid self-understanding.** Private configured felt profiles coexist with agent-authored,
+  vocabulary-dependent labels; identity is never inferred from dysphoria, expression, embodiment,
+  observers, or transition choices.
+- ✅ **Configurable life course.** Childhood, puberty, adolescence, adulthood, and later life may be
+  included, omitted, resized, or used as the starting point, with explicit autonomy, access, norm
+  exposure, abstract body-change, and prior-history inputs.
+- ✅ **Independent experience dimensions.** Congruence, dysphoria, acute euphoria, sustained
+  fulfillment, private/trusted/public expression, and personal-baseline accentuation remain
+  factorized rather than forming a mandatory causal pipeline.
+- ✅ **Minority stress and resilience.** External and internalized transphobia, concealment,
+  vigilance, support, community, pride, self-acceptance, and recovery are inspectable without
+  allowing hostility to mutate the private felt profile.
+- ✅ **Multidimensional transition.** Social, administrative, voice, hormonal, and surgical
+  dimensions have independent desire, access, status, progress, satisfaction, pause, revision,
+  reversal, and resumption states; medical mechanisms remain abstract and non-clinical.
+- ✅ **Privacy-separated society.** Experiment input, agent-readable self-understanding, and public
+  presentation are distinct surfaces; social recognition is observer-local and one-tick deferred.
+- ✅ **Reproducible instrument.** Eleven complete presets, custom manifests, template-safe
+  events/intents, public/private exports, exact checkpoint continuation, and an eight-arm offline
+  counterfactual battery are available through the API and responsive observatory.
+
+### Delivery quality completed
+
+- ✅ **Horizon Observatoire and interventions.** Live Horizon readouts, ignition/source timelines,
+  semantic memory topology, all five grounded interaction modalities, and a keyboard-operable world grid.
+- ✅ **Scientific trace surface.** Filtered JSONL/JSON/CSV export plus streaming ignition, error,
+  sleep, wandering, action, and Φ-family analysis.
+- ✅ **Atomic persistence and checkpoints.** Multi-file rollback, managed memory/trace branch
+  restoration, corruption preflight, legacy marking, and recoverable double-fault handling.
+- ✅ **Responsive and strict public contracts.** Heavy jobs run outside the event loop behind a busy
+  gate; cancellation, stale UI responses, bounded schemas, and concurrent live reads are covered.
+- ✅ **Accessible and reproducible delivery.** Keyboard/text equivalents, locked dependencies,
+  hermetic runtime storage, deterministic flags-off behavior, and **692/692 tests passing**.
+
+**The engineering roadmap is complete at the strongest deterministic scale this project can defend
+honestly.** This does not establish phenomenal consciousness. Full IIT 3.0/4.0 cause-effect
+structure on a true micro-substrate remains computationally out of scope, and subjective experience
+remains empirically undecidable here.
 
 ---
 
