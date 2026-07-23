@@ -269,5 +269,15 @@ def test_readme_documents_phase8_without_a_mandatory_identity_pipeline() -> None
     ):
         assert endpoint in readme
 
+    for image_name in (
+        "gender-experience.png",
+        "gender-dynamics.png",
+        "gender-instrument.png",
+    ):
+        assert f"(docs/images/{image_name})" in readme
+        image_path = ROOT / "docs" / "images" / image_name
+        assert image_path.is_file()
+        assert image_path.stat().st_size > 75_000
+
     assert "tests-692%20passing" in readme
     assert "# 692 deterministic tests" in readme

@@ -12,10 +12,11 @@
 
 </div>
 
-![The Humanity instrument — full dashboard](docs/images/dashboard.png)
+![Humanity Overview — global access, live indicators, winning sources, world and society](docs/images/dashboard.png)
 
-<p align="center"><em>The live instrument — conscious moment, global workspace, the multi-agent society,
-learning &amp; personality, and the scientific laboratory, all observable in one dashboard.</em></p>
+<p align="center"><em>The current Overview at tick 96 — global access, live indicators, recent winning
+sources, the grid world and a four-agent society in one view. The focused captures below cover every
+principal instrument route.</em></p>
 
 > **What is this?** A from-scratch, **LLM-free, neural-network-free** cognitive agent whose loop is
 > assembled from the *actual mechanisms* the leading theories of consciousness propose as
@@ -254,15 +255,13 @@ A **central dynamics fix** was applied to the global workspace (GWT), with two r
 The test suite stays green; public signatures are preserved and the new parameters are keyword
 arguments with default values.
 
-![Global workspace — specialist coalitions competing for global access](docs/images/global-workspace.png)
-*The global workspace: each bar is a specialist coalition (perception, memory, motivation, social,
-concept, imagination, metacognition…) bidding for global access. Here the winner's ignition score
-crosses the effective threshold (dashed line) → ignition and broadcast (conscious access).*
+![Workspace observatory — coalition competition, attention schema and higher-order state](docs/images/global-workspace.png)
+*The Workspace route at tick 96: specialist coalitions bid for access while the attention schema,
+higher-order state and ignition stream expose how a conscious-moment record is produced.*
 
-![Conscious moment — the bound global state after ignition](docs/images/conscious-moment.png)
-*The resulting conscious moment: the winning content reaches global access ("conscious"), bound
-together with the dominant affect, awareness level, valence and the integrated-information proxy (Φ).
-When the winner stays below the threshold, the same panel reads "present but subliminal".*
+![Conscious moment — bound state, live indicators and winning sources](docs/images/conscious-moment.png)
+*The Overview binds the winning content to affect, awareness, valence and the integrated-information
+proxy (Φ), then keeps that moment legible beside its recent sources and the live world/society state.*
 
 ### The bug that was fixed
 
@@ -572,9 +571,9 @@ curl -X POST http://127.0.0.1:8000/agent/perturb \
 > **clickable grid**: clicking a cell triggers a world stimulus (`POST /world/stimulus`) at that
 > location. Every interaction stays accompanied by the disclaimer and the theoretical framing.
 
-![The grid world — agent, perception radius, and objects](docs/images/world.png)
-*The grid world: the agent (ringed) with its perception radius, surrounded by food, hazards, tools
-and curios. Clicking a cell injects a real stimulus there.*
+![World observatory — interactive grid, agent, perception radius and objects](docs/images/world.png)
+*The World route at tick 96: the ringed agent and its perception radius share the grid with food,
+hazards, tools and curios; the adjacent interaction console turns clicks and probes into real stimuli.*
 
 ---
 
@@ -586,9 +585,9 @@ changes is that they **perceive**, **communicate with**, **model** and **affecti
 another. The `SocietyManager` (`core/society.py`) owns the shared world and N agents, and runs a
 deterministic **collective tick** (each agent cycles once, in ascending id order).
 
-![The multi-agent society — agents foraging in a shared world](docs/images/society.png)
-*The multi-agent society: several agents (here 0, 1, 2…) sharing one world, each running its own full
-cognitive loop, perceiving and modeling the others.*
+![Society observatory — four agents foraging in a shared world](docs/images/society.png)
+*The responsive Society route at tick 96: four agents share one world while each runs a complete
+cognitive loop, perceives neighbors and maintains its own local models of the others.*
 
 | Social mechanism | Module | What it does (FUNCTIONAL) |
 |---|---|---|
@@ -667,9 +666,10 @@ it**: they wrap around the GWT/AST/HOT/active-inference/Phi-proxy cycle describe
 project, they stay **level 2**: the agents are **neither conscious, sentient, nor alive** — same
 honesty contract.
 
-![Deep consciousness — circadian clock, sleep, agency, curiosity, imagination](docs/images/deep-consciousness.png)
-*Phase 2 deep consciousness: the circadian clock (daylight), sleep state, sense of agency,
-boredom/curiosity, and the imagined plan from bounded mental rollouts.*
+![Mind observatory — self-opacity, rhythms, drives and the functional asymptote](docs/images/deep-consciousness.png)
+*The Mind route joins Phase-2 rhythms and drives to self-opacity and the Phase-5 functional
+asymptote: daylight, sleep, agency, curiosity, imagination and the model's declared limits remain
+visible together.*
 
 | # | Mechanism (per agent) | What it does (FUNCTIONAL) |
 |---|---|---|
@@ -754,9 +754,9 @@ no black box, just readable tables and scalars. Like everything else in the proj
 deterministic and grounded** in real internal variables — and the agents are **neither conscious,
 sentient, nor alive** (same honesty contract).
 
-![Learning & personality — learned action values, concepts, emergent traits](docs/images/learning-personality.png)
-*Phase 3 learning & personality: the learned `Q[action]` values, the dominant emergent concept, the
-self-tuned learning rate, and the divergent personality traits (openness, caution, novelty-seeking).*
+![Learning and language observatory — action values, concepts, traits and invented lexicon](docs/images/learning-personality.png)
+*The Learning & Language route combines Phase-3 action values, concepts, adaptive learning rates and
+divergent traits with the Phase-6 naming game and its inspectable invented lexicon.*
 
 | # | Mechanism (per agent) | What it does (FUNCTIONAL) |
 |---|---|---|
@@ -851,10 +851,9 @@ science** on this implementation. It is a **non-invasive** layer — it *orchest
 the existing agent/society **without modifying the cognitive cycle** — and is therefore deterministic
 at the seed and regression-free (the whole suite stays green).
 
-![The Laboratory — comparative time series, scenarios, test battery, fast training](docs/images/laboratory.png)
-*Phase 4 scientific instrument: divergent multi-agent time series (here the Phi proxy), CSV/JSON
-export, a reproducible-scenario runner, the functional test battery, and the fast-training control —
-each with the honesty disclaimer in plain sight.*
+![Laboratory observatory — live indicators, comparative time series and functional battery](docs/images/laboratory.png)
+*The Laboratory route at tick 96: live indicators, comparative multi-agent time series, reproducible
+scenario controls, exports and the functional battery remain gathered under the honesty disclaimer.*
 
 | Brick | Module | What it does (FUNCTIONAL) |
 |---|---|---|
@@ -1292,6 +1291,11 @@ represent:
 The backend flag `gender_experience_enabled` defaults to `False`, and no profile — including a cis
 profile — is silently assigned at boot. A gender-life scenario must be deliberately selected.
 
+![Phase 8 gender experience observatory — scenario, life course and privacy-separated layers](docs/images/gender-experience.png)
+*One deliberately selected example at tick 10: the scenario console and configurable life timeline
+sit above three visibly separate layers — private experiment input, agent-readable self-understanding
+and observer-safe public presentation. The private layer appears only after an explicit debug reveal.*
+
 ### The model is hybrid, not inferential
 
 The private felt profile and life plan are **configured experiment inputs**. Labels can be present
@@ -1349,6 +1353,11 @@ The engine updates these dimensions without collapsing them into a single “tra
 | **Resilience** | Interpersonal support, community connection, positive representation, pride, self-acceptance and a derived resilience index |
 | **Transition** | Social, administrative, voice, hormonal and surgical dimensions, all optional and independent |
 | **Agency** | An explicit current intent, access/safety constraints, event provenance and a bounded life-event ledger |
+
+![Phase 8 multidimensional dynamics — congruence, affect, minority stress, resilience and expression](docs/images/gender-dynamics.png)
+*The same configured run exposes congruence by domain, dysphoria, euphoria, fulfillment, external and
+internalized transphobia, resilience, expression drivers and abstract embodiment side by side. No
+single score is allowed to stand in for identity.*
 
 Medical dimensions remain abstract: they adjust configured domain coordinates and recovery load.
 There are no protocols, doses, eligibility rules, anatomical imagery or treatment recommendations.
@@ -1503,6 +1512,11 @@ implemented stress, concealment, resilience and disclosure trajectories may dive
 must remain equal and identity-inference invariant violations must remain zero. This demonstrates
 the consequences of **the simulator's declared assumptions**; it is not evidence that the reported
 effect sizes or causal relations hold for real people.
+
+![Phase 8 instrument — independent transitions, event ledger and eight-arm counterfactual battery](docs/images/gender-instrument.png)
+*The lower observatory keeps five independent transition dimensions, validated events and intentions,
+and all eight matched battery arms inspectable in one instrument. Counterfactuals preserve the same
+private profile checksum and never mutate the live run.*
 
 ### Observatory and measured validation
 
