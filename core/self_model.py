@@ -11,6 +11,8 @@ or alive, and the narrative text is generated from these variables.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from core.constants import CONFIDENCE_EMA, COHERENCE_WINDOW
@@ -23,6 +25,9 @@ from schemas.models import (
     SelfModelState,
     SimConfig,
 )
+
+if TYPE_CHECKING:
+    from core.gender_experience import GenderInfluence
 
 # Stable identity for the simulated agent.
 _IDENTITY = "Aurora-fn-01"
@@ -84,6 +89,7 @@ class SelfModel:
         tick: int,
         conscious_contents: str | None = None,
         reflected: RelationalSelf | None = None,
+        gender_influence: "GenderInfluence | None" = None,
     ) -> None:
         """Update self-state from the latest cycle outcome.
 
@@ -160,6 +166,10 @@ class SelfModel:
                     self._stream = self._stream[-self._stream_max:]
 
         s.coherence = self.coherence()
+        # Phase 8: apply the engine's already-capped deltas only after the
+        # ordinary self-model update. Identity revisions never enter coherence.
+        if self.config.gender_experience_enabled and gender_influence is not None:
+            self._apply_gender_influence(gender_influence)
         s.narrative = self._build_narrative(goals)
 
     def _trim_history(self) -> None:
@@ -288,6 +298,21 @@ class SelfModel:
         """Nudge confidence toward a high sense of agency (Phase 2, gentle EMA)."""
         a = _clip01(float(agency))
         self._state.confidence = _clip01(0.9 * self._state.confidence + 0.1 * a)
+
+    def _apply_gender_influence(self, influence: "GenderInfluence") -> None:
+        """Apply Phase-8 affect deltas without altering identity or preferences."""
+        self._state.mood = _clip_unit(
+            self._state.mood
+            + max(-0.08, min(0.08, float(influence.mood_delta)))
+        )
+        self._state.confidence = _clip01(
+            self._state.confidence
+            + max(-0.05, min(0.05, float(influence.confidence_delta)))
+        )
+        self._state.coherence = _clip01(
+            self._state.coherence
+            + max(-0.03, min(0.03, float(influence.coherence_delta)))
+        )
 
     def snapshot(self) -> SelfModelState:
         """Return a deep copy of the current self-model state."""

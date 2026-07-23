@@ -11,11 +11,19 @@ import asyncio
 from copy import deepcopy
 
 from core.agent import CognitiveAgent
+from core.gender_society import GenderSociety
 from core.individuation import compute_individuation
 from core.metrics_recorder import MetricsRecorder
 from core.shared_world import SharedWorld
 from core.world_tasks import TaskManager
-from schemas.models import ConfigPatch, CycleTrace, RunRequest, SimConfig
+from schemas.models import (
+    ConfigPatch,
+    CycleTrace,
+    GenderScenario,
+    GenderSocietyState,
+    RunRequest,
+    SimConfig,
+)
 from storage.persistence import MemoryStore, atomic_save_batch
 
 
@@ -81,6 +89,8 @@ class SocietyManager:
     def _build(self) -> None:
         self.world, self.agents, self.recorder = self._build_artifacts(
             self.config)
+        self.gender_society = GenderSociety(self.config)
+        self.gender_scenario_manifest: GenderScenario | None = None
 
     @staticmethod
     def _build_artifacts(config: SimConfig) -> tuple[
@@ -110,6 +120,10 @@ class SocietyManager:
     # ------------------------------------------------------------- ticking
     def tick(self) -> list[CycleTrace]:
         """Run one society tick: each agent cycles once, in ascending id order."""
+        if self.config.gender_experience_enabled:
+            self.gender_society.deliver_pending(self.agents)
+        else:
+            self.gender_society.clear_pending()
         traces: list[CycleTrace] = []
         for aid in sorted(self.agents):
             trace = self.agents[aid].cognitive_cycle()
@@ -120,6 +134,11 @@ class SocietyManager:
         # (one-tick deferred => order-independent => deterministic).
         if self.config.social_mirror_enabled:
             self._update_reflected_appraisals()
+        if self.config.gender_experience_enabled:
+            cycle_tick = traces[0].tick if traces else int(self.world.tick) + 1
+            self.gender_society.after_tick(
+                self.agents, tick=int(cycle_tick)
+            )
         world_events = self.world.advance_tick()
         if world_events:
             for trace in traces:
@@ -225,6 +244,50 @@ class SocietyManager:
         self.world = world
         self.agents = agents
         self.recorder = recorder
+        self.gender_society = GenderSociety(candidate)
+        self.gender_scenario_manifest = None
+
+    def install_gender_scenario(self, scenario: GenderScenario) -> None:
+        """Apply a validated scenario through one full transactional reset."""
+        manifest = scenario.model_copy(deep=True)
+        n_agents = max(manifest.agents) + 1
+        candidate = SimConfig.model_validate({
+            **self.config.model_dump(),
+            "random_seed": manifest.seed,
+            "n_agents": n_agents,
+            "gender_experience_enabled": bool(manifest.enable),
+        })
+        world, agents, recorder = self._build_artifacts(candidate)
+        gender_society = GenderSociety(
+            candidate,
+            context=manifest.social_context,
+            seed=manifest.seed,
+            dispositions={
+                agent_id: item.observer_disposition
+                for agent_id, item in manifest.agents.items()
+            },
+        )
+        for agent_id, item in manifest.agents.items():
+            initial_events = [
+                event for event in manifest.initial_events
+                if event.target_id == agent_id
+            ]
+            agents[agent_id].install_gender_experience(
+                item.profile,
+                item.life_course,
+                social_context=manifest.social_context,
+                seed=manifest.seed,
+                initial_events=initial_events,
+            )
+
+        # Commit only after every artifact and private engine validates.
+        self.pause()
+        self.config = candidate
+        self.world = world
+        self.agents = agents
+        self.recorder = recorder
+        self.gender_society = gender_society
+        self.gender_scenario_manifest = manifest
 
     async def apply_config(self, patch: dict | ConfigPatch) -> list[str]:
         """Validate and apply a non-structural config patch without rebuilding.
@@ -480,6 +543,10 @@ class SocietyManager:
         from core.language import society_language_summary
         return society_language_summary({aid: ag.lexicon for aid, ag in self.agents.items()})
 
+    def gender_society_state(self) -> GenderSocietyState:
+        """Return the public/observer layer; private profiles are excluded."""
+        return self.gender_society.state()
+
     def relations(self) -> dict:
         """Trust/ToM graph: nodes = agents, edges = (observer -> other, trust)."""
         edges = []
@@ -509,4 +576,9 @@ class SocietyManager:
             "n_agents": len(self.agents),
             "agents": per_agent,
             "relations": self.relations(),
+            "gender": (
+                self.gender_society.state().model_dump()
+                if self.config.gender_experience_enabled
+                else None
+            ),
         }
