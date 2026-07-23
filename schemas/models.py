@@ -1,5 +1,6 @@
 from __future__ import annotations
 from enum import Enum
+from math import isfinite
 from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -750,6 +751,593 @@ class TaskState(BaseModel):
     completed_total: int = 0
 
 
+class GenderLifeStage(str, Enum):
+    """Semantic life-course stages, never legal or clinical age rules."""
+
+    CHILDHOOD = "childhood"
+    PUBERTY = "puberty"
+    ADOLESCENCE = "adolescence"
+    ADULTHOOD = "adulthood"
+    LATER_LIFE = "later_life"
+
+
+class TransitionDimension(str, Enum):
+    SOCIAL = "social"
+    ADMINISTRATIVE = "administrative"
+    VOICE = "voice"
+    HORMONAL = "hormonal"
+    SURGICAL = "surgical"
+
+
+class TransitionStatus(str, Enum):
+    NOT_DESIRED = "not_desired"
+    CONSIDERING = "considering"
+    DESIRED = "desired"
+    SEEKING = "seeking"
+    BLOCKED = "blocked"
+    UNDERWAY = "underway"
+    COMPLETED = "completed"
+    PAUSED = "paused"
+    REVISING = "revising"
+
+
+class TransitionReversibility(str, Enum):
+    FULLY = "fully"
+    PARTLY = "partly"
+    NOT_MODELED = "not_modeled"
+
+
+class GenderEventType(str, Enum):
+    REFLECTION = "reflection"
+    EXPLORATION = "exploration"
+    VOCABULARY_DISCOVERY = "vocabulary_discovery"
+    LABEL_REVISION = "label_revision"
+    LIFE_STAGE_CHANGE = "life_stage_change"
+    BODY_CHANGE = "body_change"
+    VOICE_CHANGE = "voice_change"
+    RECOVERY = "recovery"
+    AFFIRMATION = "affirmation"
+    CORRECT_NAME_PRONOUN = "correct_name_pronoun"
+    SUPPORT = "support"
+    COMMUNITY_CONTACT = "community_contact"
+    POSITIVE_REPRESENTATION = "positive_representation"
+    LEGAL_RECOGNITION = "legal_recognition"
+    MISGENDERING = "misgendering"
+    INVALIDATION = "invalidation"
+    REJECTION = "rejection"
+    DISCRIMINATION = "discrimination"
+    THREAT = "threat"
+    CARE_BARRIER = "care_barrier"
+    ACCESS_GRANTED = "access_granted"
+    ACCESS_DENIED = "access_denied"
+    TRANSITION_STARTED = "transition_started"
+    TRANSITION_PROGRESS = "transition_progress"
+    TRANSITION_PAUSED = "transition_paused"
+    TRANSITION_REVISED = "transition_revised"
+    TRANSITION_COMPLETED = "transition_completed"
+
+
+class GenderEventProvenance(str, Enum):
+    SYSTEM = "system"
+    LIFECYCLE = "lifecycle"
+    SOCIETY = "society"
+    USER_PROBE = "user_probe"
+    SCENARIO_HISTORY = "scenario_history"
+
+
+class GenderIntentType(str, Enum):
+    EXPLORE_IDENTITY = "explore_identity"
+    ADJUST_EXPRESSION = "adjust_expression"
+    DISCLOSE = "disclose"
+    CONCEAL = "conceal"
+    ASSERT_NAME_PRONOUNS = "assert_name_pronouns"
+    SEEK_SUPPORT = "seek_support"
+    CONNECT_COMMUNITY = "connect_community"
+    SEEK_ADMINISTRATIVE_RECOGNITION = "seek_administrative_recognition"
+    SEEK_VOICE_WORK = "seek_voice_work"
+    SEEK_HORMONAL_CARE = "seek_hormonal_care"
+    SEEK_SURGICAL_CARE = "seek_surgical_care"
+    PAUSE = "pause"
+    REVISE_GOALS = "revise_goals"
+    REVERSE = "reverse"
+    RESUME = "resume"
+
+
+class GenderIntentStatus(str, Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    COMPLETED = "completed"
+
+
+class ExpressionDriver(str, Enum):
+    EXPLORATION = "exploration"
+    EUPHORIA = "euphoria"
+    RECOGNITION = "recognition"
+    ASSIGNED_COMPENSATION = "assigned_compensation"
+    PROVING_PRESSURE = "proving_pressure"
+    SAFETY = "safety"
+    AESTHETIC = "aesthetic"
+
+
+class _GenderModel(BaseModel):
+    """Strict common contract for Phase-8 values and requests."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        allow_inf_nan=False,
+        str_strip_whitespace=True,
+    )
+
+
+def _validate_score_map(
+    values: dict[str, float],
+    *,
+    field_name: str,
+    max_key_length: int = 64,
+) -> None:
+    for key, value in values.items():
+        if not key or len(key) > max_key_length:
+            raise ValueError(
+                f"{field_name} keys must contain 1..{max_key_length} characters"
+            )
+        if not isfinite(float(value)) or not 0.0 <= float(value) <= 1.0:
+            raise ValueError(f"{field_name} values must be finite and within [0, 1]")
+
+
+def _validate_open_strings(
+    values: list[str],
+    *,
+    field_name: str,
+    max_length: int = 64,
+) -> None:
+    if len(values) != len(set(values)):
+        raise ValueError(f"{field_name} must not contain duplicates")
+    for value in values:
+        if not value or len(value) > max_length:
+            raise ValueError(
+                f"{field_name} entries must contain 1..{max_length} characters"
+            )
+
+
+class GenderAxes(_GenderModel):
+    """Independent expression/body coordinates; never an identity classifier."""
+
+    feminine: float = Field(default=0.0, ge=0.0, le=1.0)
+    masculine: float = Field(default=0.0, ge=0.0, le=1.0)
+    androgynous: float = Field(default=0.0, ge=0.0, le=1.0)
+    custom: dict[str, float] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_custom_axes(self) -> "GenderAxes":
+        _validate_score_map(self.custom, field_name="custom axes")
+        return self
+
+
+class GenderSelfUnderstanding(_GenderModel):
+    """The labels and fit evidence available to the simulated agent."""
+
+    labels: list[str] = Field(default_factory=list, max_length=16)
+    certainty: float = Field(default=0.0, ge=0.0, le=1.0)
+    questioning: bool = True
+    fit_by_label: dict[str, float] = Field(default_factory=dict)
+    known_vocabulary: list[str] = Field(default_factory=list, max_length=64)
+    disclosure_scopes: dict[str, list[str]] = Field(default_factory=dict)
+    last_revision_tick: int = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def validate_open_labels(self) -> "GenderSelfUnderstanding":
+        _validate_open_strings(self.labels, field_name="labels")
+        _validate_open_strings(
+            self.known_vocabulary, field_name="known_vocabulary")
+        _validate_score_map(self.fit_by_label, field_name="fit_by_label")
+        for scope, labels in self.disclosure_scopes.items():
+            if not scope or len(scope) > 64:
+                raise ValueError("disclosure scope names must contain 1..64 characters")
+            _validate_open_strings(
+                labels, field_name=f"disclosure_scopes[{scope}]")
+        return self
+
+
+class GenderProfileSegment(_GenderModel):
+    """A configured, non-overlapping change in the private felt profile."""
+
+    start_tick: int = Field(ge=0)
+    end_tick: int = Field(gt=0)
+    stage: GenderLifeStage | None = None
+    affinities: dict[str, float] = Field(min_length=1, max_length=64)
+
+    @model_validator(mode="after")
+    def validate_segment(self) -> "GenderProfileSegment":
+        if self.end_tick <= self.start_tick:
+            raise ValueError("end_tick must be greater than start_tick")
+        _validate_score_map(self.affinities, field_name="segment affinities")
+        return self
+
+
+class ExpressionChannelProfile(_GenderModel):
+    """Private desired expression for one independently configurable channel."""
+
+    desired: GenderAxes = Field(default_factory=GenderAxes)
+    private_baseline: GenderAxes = Field(default_factory=GenderAxes)
+    trusted_baseline: GenderAxes = Field(default_factory=GenderAxes)
+    public_baseline: GenderAxes = Field(default_factory=GenderAxes)
+    salience: float = Field(default=0.5, ge=0.0, le=1.0)
+
+
+class BodyDomainPreference(_GenderModel):
+    """Abstract preferred embodiment; no anatomy, protocol or dose."""
+
+    preferred: GenderAxes = Field(default_factory=GenderAxes)
+    initial: GenderAxes = Field(default_factory=GenderAxes)
+    salience: float = Field(default=0.5, ge=0.0, le=1.0)
+    public_visibility: float = Field(default=0.0, ge=0.0, le=1.0)
+    dysphoria_sensitivity: float = Field(default=0.5, ge=0.0, le=1.0)
+    euphoria_sensitivity: float = Field(default=0.5, ge=0.0, le=1.0)
+
+
+class GenderProfile(_GenderModel):
+    """Private experiment input. It is configured, never inferred."""
+
+    profile_id: str = Field(min_length=1, max_length=96)
+    assigned_category: str = Field(min_length=1, max_length=96)
+    felt_affinities: dict[str, float] = Field(default_factory=dict, max_length=64)
+    felt_timeline: list[GenderProfileSegment] = Field(
+        default_factory=list, max_length=64)
+    fluidity: float = Field(default=0.0, ge=0.0, le=1.0)
+    gender_salience: float = Field(default=0.5, ge=0.0, le=1.0)
+    available_vocabulary: list[str] = Field(default_factory=list, max_length=64)
+    preferred_expression: dict[str, ExpressionChannelProfile] = Field(
+        default_factory=dict, max_length=32)
+    body_preferences: dict[str, BodyDomainPreference] = Field(
+        default_factory=dict, max_length=64)
+    transition_priorities: dict[TransitionDimension, float] = Field(
+        default_factory=dict)
+    initial_self_understanding: GenderSelfUnderstanding = Field(
+        default_factory=GenderSelfUnderstanding)
+
+    @model_validator(mode="after")
+    def validate_profile(self) -> "GenderProfile":
+        _validate_score_map(
+            self.felt_affinities, field_name="felt_affinities")
+        _validate_open_strings(
+            self.available_vocabulary, field_name="available_vocabulary")
+        for name in (*self.preferred_expression.keys(),
+                     *self.body_preferences.keys()):
+            if not name or len(name) > 64:
+                raise ValueError(
+                    "expression/body domain names must contain 1..64 characters")
+        for dimension, value in self.transition_priorities.items():
+            if not isinstance(dimension, TransitionDimension):
+                raise ValueError("unknown transition dimension")
+            if not isfinite(float(value)) or not 0.0 <= float(value) <= 1.0:
+                raise ValueError(
+                    "transition priority values must be within [0, 1]")
+        ordered = sorted(
+            self.felt_timeline, key=lambda item: (item.start_tick, item.end_tick))
+        for previous, current in zip(ordered, ordered[1:]):
+            if current.start_tick < previous.end_tick:
+                raise ValueError("felt_timeline segments must not overlap")
+        return self
+
+
+class LifeCourseStage(_GenderModel):
+    stage: GenderLifeStage
+    duration_ticks: int = Field(ge=1, le=1_000_000)
+    body_targets: dict[str, GenderAxes] = Field(
+        default_factory=dict, max_length=64)
+    body_change_rate: float = Field(default=0.05, ge=0.0, le=1.0)
+    autonomy: float = Field(default=0.5, ge=0.0, le=1.0)
+    resource_access: float = Field(default=0.5, ge=0.0, le=1.0)
+    norm_exposure: float = Field(default=0.5, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def validate_body_domains(self) -> "LifeCourseStage":
+        for name in self.body_targets:
+            if not name or len(name) > 64:
+                raise ValueError(
+                    "body target names must contain 1..64 characters")
+        return self
+
+
+class LifeCoursePlan(_GenderModel):
+    stages: list[LifeCourseStage] = Field(min_length=1, max_length=16)
+    initial_history_summary: list[str] = Field(
+        default_factory=list, max_length=64)
+
+    @model_validator(mode="after")
+    def validate_stage_order(self) -> "LifeCoursePlan":
+        order = {
+            GenderLifeStage.CHILDHOOD: 0,
+            GenderLifeStage.PUBERTY: 1,
+            GenderLifeStage.ADOLESCENCE: 2,
+            GenderLifeStage.ADULTHOOD: 3,
+            GenderLifeStage.LATER_LIFE: 4,
+        }
+        positions = [order[item.stage] for item in self.stages]
+        if positions != sorted(positions) or len(positions) != len(set(positions)):
+            raise ValueError(
+                "life-course stages must be unique and monotonic")
+        _validate_open_strings(
+            self.initial_history_summary,
+            field_name="initial_history_summary",
+            max_length=240,
+        )
+        return self
+
+
+_HOSTILE_GENDER_EVENTS = {
+    GenderEventType.MISGENDERING,
+    GenderEventType.INVALIDATION,
+    GenderEventType.REJECTION,
+    GenderEventType.DISCRIMINATION,
+    GenderEventType.THREAT,
+    GenderEventType.CARE_BARRIER,
+    GenderEventType.ACCESS_DENIED,
+}
+
+
+class GenderEventRequest(_GenderModel):
+    target_id: int = Field(default=0, ge=0, le=1_000_000)
+    actor_id: int | None = Field(default=None, ge=0, le=1_000_000)
+    type: GenderEventType
+    domain: str = Field(default="general", min_length=1, max_length=64)
+    intensity: float = Field(default=0.5, ge=0.0, le=1.0)
+    visibility: Literal["private", "trusted", "public"] = "private"
+    deliberate: bool = False
+    context_code: str = Field(default="unspecified", min_length=1, max_length=64)
+    note: str | None = Field(default=None, min_length=1, max_length=240)
+
+    @model_validator(mode="after")
+    def forbid_hostile_dialogue(self) -> "GenderEventRequest":
+        if self.type in _HOSTILE_GENDER_EVENTS and self.note is not None:
+            raise ValueError("hostile events cannot carry free-text dialogue")
+        return self
+
+
+class GenderEvent(GenderEventRequest):
+    event_id: int = Field(ge=0)
+    tick: int = Field(ge=0)
+    provenance: GenderEventProvenance
+    processed: bool = False
+
+
+class GenderIntentRequest(_GenderModel):
+    type: GenderIntentType
+    domain: str = Field(default="general", min_length=1, max_length=64)
+    urgency: float = Field(default=0.5, ge=0.0, le=1.0)
+    transition_dimension: TransitionDimension | None = None
+    disclosure_scope: Literal["private", "trusted", "public"] | None = None
+
+
+class GenderIntent(GenderIntentRequest):
+    intent_id: int = Field(ge=0)
+    tick: int = Field(ge=0)
+    status: GenderIntentStatus = GenderIntentStatus.PENDING
+    provenance: GenderEventProvenance = GenderEventProvenance.SYSTEM
+    reason: str = Field(default="", max_length=240)
+
+
+class ExpressionChannelState(_GenderModel):
+    channel: str = Field(min_length=1, max_length=64)
+    desired: GenderAxes = Field(default_factory=GenderAxes)
+    private: GenderAxes = Field(default_factory=GenderAxes)
+    trusted: GenderAxes = Field(default_factory=GenderAxes)
+    public: GenderAxes = Field(default_factory=GenderAxes)
+    visibility: float = Field(default=0.0, ge=0.0, le=1.0)
+    safety_cost: float = Field(default=0.0, ge=0.0, le=1.0)
+    accentuation: float = Field(default=0.0, ge=0.0, le=1.0)
+    drivers: list[ExpressionDriver] = Field(default_factory=list, max_length=7)
+
+
+class BodyDomainState(_GenderModel):
+    name: str = Field(min_length=1, max_length=64)
+    current: GenderAxes = Field(default_factory=GenderAxes)
+    preferred: GenderAxes = Field(default_factory=GenderAxes)
+    salience: float = Field(default=0.5, ge=0.0, le=1.0)
+    public_visibility: float = Field(default=0.0, ge=0.0, le=1.0)
+    alignment: float = Field(default=1.0, ge=0.0, le=1.0)
+    change_rate: float = Field(default=0.0, ge=-1.0, le=1.0)
+
+
+class GenderCongruenceState(_GenderModel):
+    by_domain: dict[str, float] = Field(default_factory=dict)
+    body: float = Field(default=1.0, ge=0.0, le=1.0)
+    expression: float = Field(default=1.0, ge=0.0, le=1.0)
+    social: float = Field(default=1.0, ge=0.0, le=1.0)
+    administrative: float = Field(default=1.0, ge=0.0, le=1.0)
+    total: float = Field(default=1.0, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def validate_domain_scores(self) -> "GenderCongruenceState":
+        _validate_score_map(self.by_domain, field_name="congruence by_domain")
+        return self
+
+
+class GenderAffectState(_GenderModel):
+    dysphoria_by_domain: dict[str, float] = Field(default_factory=dict)
+    dysphoria: float = Field(default=0.0, ge=0.0, le=1.0)
+    euphoria_by_domain: dict[str, float] = Field(default_factory=dict)
+    euphoria: float = Field(default=0.0, ge=0.0, le=1.0)
+    fulfillment: float = Field(default=0.0, ge=0.0, le=1.0)
+    last_affirming_event_ids: list[int] = Field(
+        default_factory=list, max_length=32)
+    last_distressing_event_ids: list[int] = Field(
+        default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def validate_affect_maps(self) -> "GenderAffectState":
+        _validate_score_map(
+            self.dysphoria_by_domain, field_name="dysphoria_by_domain")
+        _validate_score_map(
+            self.euphoria_by_domain, field_name="euphoria_by_domain")
+        return self
+
+
+class GenderMinorityStressState(_GenderModel):
+    external_current: float = Field(default=0.0, ge=0.0, le=1.0)
+    external_chronic: float = Field(default=0.0, ge=0.0, le=1.0)
+    rejection_expectation: float = Field(default=0.0, ge=0.0, le=1.0)
+    concealment_pressure: float = Field(default=0.0, ge=0.0, le=1.0)
+    vigilance: float = Field(default=0.0, ge=0.0, le=1.0)
+    internalized_transphobia: float = Field(default=0.0, ge=0.0, le=1.0)
+    incident_count: int = Field(default=0, ge=0)
+    cumulative_exposure: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
+class GenderResilienceState(_GenderModel):
+    support: float = Field(default=0.0, ge=0.0, le=1.0)
+    community: float = Field(default=0.0, ge=0.0, le=1.0)
+    positive_representation: float = Field(default=0.0, ge=0.0, le=1.0)
+    pride: float = Field(default=0.0, ge=0.0, le=1.0)
+    self_acceptance: float = Field(default=0.0, ge=0.0, le=1.0)
+    index: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
+class TransitionDimensionState(_GenderModel):
+    dimension: TransitionDimension
+    desire: float = Field(default=0.0, ge=0.0, le=1.0)
+    status: TransitionStatus = TransitionStatus.NOT_DESIRED
+    access: float = Field(default=0.0, ge=0.0, le=1.0)
+    progress: float = Field(default=0.0, ge=0.0, le=1.0)
+    satisfaction: float = Field(default=0.0, ge=-1.0, le=1.0)
+    reversibility: TransitionReversibility = TransitionReversibility.NOT_MODELED
+    target_domains: list[str] = Field(default_factory=list, max_length=64)
+    last_reason: str = Field(default="", max_length=240)
+    last_change_tick: int = Field(default=0, ge=0)
+
+
+GENDER_EXPERIENCE_DISCLAIMER = (
+    "Functional qualitative model of gender experience. Not a diagnostic, "
+    "clinical or predictive model, and not evidence of subjective experience."
+)
+
+
+class GenderExperienceState(_GenderModel):
+    agent_id: int = Field(ge=0)
+    profile_id: str = Field(min_length=1, max_length=96)
+    tick: int = Field(ge=0)
+    life_stage: GenderLifeStage
+    tick_in_stage: int = Field(ge=0)
+    self_understanding: GenderSelfUnderstanding = Field(
+        default_factory=GenderSelfUnderstanding)
+    expression: dict[str, ExpressionChannelState] = Field(default_factory=dict)
+    body: dict[str, BodyDomainState] = Field(default_factory=dict)
+    congruence: GenderCongruenceState = Field(
+        default_factory=GenderCongruenceState)
+    affect: GenderAffectState = Field(default_factory=GenderAffectState)
+    minority_stress: GenderMinorityStressState = Field(
+        default_factory=GenderMinorityStressState)
+    resilience: GenderResilienceState = Field(
+        default_factory=GenderResilienceState)
+    transitions: dict[TransitionDimension, TransitionDimensionState] = Field(
+        default_factory=dict)
+    current_intent: GenderIntent | None = None
+    recent_event_ids: list[int] = Field(default_factory=list, max_length=64)
+    report: str = ""
+    disclaimer: str = GENDER_EXPERIENCE_DISCLAIMER
+
+
+class GenderObserverDisposition(_GenderModel):
+    respect_propensity: float = Field(default=0.8, ge=0.0, le=1.0)
+    learned_bias: float = Field(default=0.0, ge=0.0, le=1.0)
+    affirmation_tendency: float = Field(default=0.7, ge=0.0, le=1.0)
+
+
+class PublicGenderProjection(_GenderModel):
+    agent_id: int = Field(ge=0)
+    labels: list[str] = Field(default_factory=list, max_length=16)
+    pronouns: list[str] = Field(default_factory=list, max_length=16)
+    name: str | None = Field(default=None, max_length=96)
+    expression: dict[str, GenderAxes] = Field(default_factory=dict)
+    disclosure_scope: Literal["private", "trusted", "public"] = "public"
+    updated_tick: int = Field(default=0, ge=0)
+
+
+class GenderRecognitionState(_GenderModel):
+    observer_id: int = Field(ge=0)
+    target_id: int = Field(ge=0)
+    known_labels: list[str] = Field(default_factory=list, max_length=16)
+    known_pronouns: list[str] = Field(default_factory=list, max_length=16)
+    respect_propensity: float = Field(default=0.8, ge=0.0, le=1.0)
+    learned_bias: float = Field(default=0.0, ge=0.0, le=1.0)
+    relationship_trust: float = Field(default=0.5, ge=0.0, le=1.0)
+    knowledge_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    last_update_tick: int = Field(default=0, ge=0)
+
+
+class GenderSocialContext(_GenderModel):
+    norm_rigidity: float = Field(default=0.3, ge=0.0, le=1.0)
+    institutional_hostility: float = Field(default=0.0, ge=0.0, le=1.0)
+    baseline_safety: float = Field(default=0.8, ge=0.0, le=1.0)
+    care_access: float = Field(default=0.7, ge=0.0, le=1.0)
+    community_visibility: float = Field(default=0.5, ge=0.0, le=1.0)
+    positive_representation: float = Field(default=0.5, ge=0.0, le=1.0)
+    hostility_enabled: bool = True
+    context_tags: dict[str, float] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_context_tags(self) -> "GenderSocialContext":
+        _validate_score_map(self.context_tags, field_name="context_tags")
+        return self
+
+
+class GenderScenarioAgent(_GenderModel):
+    profile: GenderProfile
+    life_course: LifeCoursePlan
+    observer_disposition: GenderObserverDisposition = Field(
+        default_factory=GenderObserverDisposition)
+
+
+class GenderScenario(_GenderModel):
+    schema_version: int = Field(default=1, ge=1, le=1)
+    scenario_id: str = Field(min_length=1, max_length=96)
+    preset_id: str | None = Field(default=None, min_length=1, max_length=96)
+    seed: int = Field(default=42, ge=0, le=2**32 - 1)
+    enable: bool = True
+    agents: dict[int, GenderScenarioAgent] = Field(min_length=1, max_length=128)
+    social_context: GenderSocialContext = Field(
+        default_factory=GenderSocialContext)
+    initial_events: list[GenderEvent] = Field(default_factory=list, max_length=512)
+
+    @model_validator(mode="after")
+    def validate_agents(self) -> "GenderScenario":
+        if any(agent_id < 0 for agent_id in self.agents):
+            raise ValueError("scenario agent IDs must be non-negative")
+        profile_ids = [item.profile.profile_id for item in self.agents.values()]
+        if len(profile_ids) != len(set(profile_ids)):
+            raise ValueError("scenario profile IDs must be unique")
+        for event in self.initial_events:
+            if event.target_id not in self.agents:
+                raise ValueError(
+                    "initial event target must reference a configured agent")
+            if event.actor_id is not None and event.actor_id not in self.agents:
+                raise ValueError(
+                    "initial event actor must reference a configured agent")
+        return self
+
+
+class GenderDebugState(_GenderModel):
+    profile: GenderProfile
+    life_course: LifeCoursePlan
+    state: GenderExperienceState
+    pending_events: list[GenderEvent] = Field(default_factory=list)
+    event_ledger_size: int = Field(default=0, ge=0)
+    profile_checksum: str
+    framing: str = (
+        "Experiment inputs shown here are unavailable to simulated observers."
+    )
+
+
+class GenderSocietyState(_GenderModel):
+    projections: dict[int, PublicGenderProjection] = Field(default_factory=dict)
+    recognition: list[GenderRecognitionState] = Field(default_factory=list)
+    social_context: GenderSocialContext = Field(
+        default_factory=GenderSocialContext)
+    event_counts: dict[str, int] = Field(default_factory=dict)
+    disclaimer: str = GENDER_EXPERIENCE_DISCLAIMER
+
+
 class CycleTrace(BaseModel):
     tick: int
     observation: Observation
@@ -792,6 +1380,7 @@ class CycleTrace(BaseModel):
     semantic_memory: SemanticMemoryState | None = None
     wandering: MindWanderingState | None = None
     task: TaskState | None = None
+    gender_experience: GenderExperienceState | None = None
 
 
 class SimConfig(BaseModel):
@@ -948,6 +1537,15 @@ class SimConfig(BaseModel):
     season_period: int = Field(default=200, ge=10, le=100_000)
     regrow_rate: float = Field(default=0.02, ge=0.0, le=1.0)
     tasks_enabled: bool = False                   # rotating structured world tasks
+    # Phase 8 — situated gendered self. No profile is silently assigned. The
+    # flag defaults OFF and the engine remains inert until an explicit scenario
+    # installs a private profile for an agent.
+    gender_experience_enabled: bool = False
+    gender_affect_weight: float = Field(default=0.20, ge=0.0, le=1.0)
+    gender_motivation_weight: float = Field(default=1.0, ge=0.0, le=100.0)
+    gender_internalization_rate: float = Field(default=0.05, ge=0.0, le=1.0)
+    gender_recovery_rate: float = Field(default=0.03, ge=0.0, le=1.0)
+    gender_event_memory_max: int = Field(default=256, ge=1, le=100_000)
 
     @model_validator(mode="after")
     def validate_agent_capacity(self) -> "SimConfig":
@@ -1071,6 +1669,12 @@ class ConfigPatch(BaseModel):
     season_period: int | None = None
     regrow_rate: float | None = None
     tasks_enabled: bool | None = None
+    gender_experience_enabled: bool | None = None
+    gender_affect_weight: float | None = None
+    gender_motivation_weight: float | None = None
+    gender_internalization_rate: float | None = None
+    gender_recovery_rate: float | None = None
+    gender_event_memory_max: int | None = None
 
     @model_validator(mode="after")
     def validate_against_sim_config(self) -> "ConfigPatch":
