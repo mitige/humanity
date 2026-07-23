@@ -16,6 +16,10 @@ from fastapi import APIRouter, HTTPException, Query, Response, WebSocket, WebSoc
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core.agent import get_manager
+from core.gender_scenarios import (
+    get_gender_scenario,
+    list_gender_scenarios,
+)
 from core.society import ConfigRequiresReset, SocietyManager
 from core.constants import THEORY_FRAMING_EN, THEORY_FRAMING_FR
 from core.scenario import ScenarioRunner
@@ -30,6 +34,14 @@ from schemas.models import (
     ConsciousMoment,
     CycleTrace,
     GoalRequest,
+    GenderBatteryRequest,
+    GenderBatteryResult,
+    GENDER_EXPERIENCE_DISCLAIMER,
+    GenderEventRequest,
+    GenderExperienceState,
+    GenderIntentRequest,
+    GenderScenarioSelection,
+    GenderSocietyState,
     IntrospectionReport,
     MemoryRecord,
     Metrics,
@@ -212,6 +224,137 @@ async def get_consciousness() -> dict:
     state["disclaimer"] = DISCLAIMER_EN
     state["framing"] = THEORY_FRAMING_EN
     return state
+
+
+# --------------------------------------------------------------------------- #
+# Phase 8 — situated gendered self
+# --------------------------------------------------------------------------- #
+def _gender_payload(agent) -> dict:
+    state = agent.gender_state()
+    return {
+        "enabled": bool(agent.config.gender_experience_enabled),
+        "configured": agent.gender_experience._profile is not None,
+        "state": state.model_dump(mode="json") if state is not None else None,
+        "disclaimer": GENDER_EXPERIENCE_DISCLAIMER,
+    }
+
+
+def _require_gender_configured(agent):
+    if agent.gender_experience._profile is None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "accepted": False,
+                "reason": "No gender-life scenario profile is installed for this agent.",
+            },
+        )
+    return agent
+
+
+@router.get("/gender/scenarios")
+async def get_gender_scenarios(
+    seed: int = Query(default=42, ge=0, le=2**32 - 1),
+) -> dict:
+    """List complete, reproducible example manifests (never hidden defaults)."""
+    return {
+        "scenarios": list_gender_scenarios(seed=seed),
+        "note": (
+            "Presets are examples, not archetypes. Applying one performs a full reset."
+        ),
+        "disclaimer": GENDER_EXPERIENCE_DISCLAIMER,
+    }
+
+
+@router.post("/gender/scenario")
+async def post_gender_scenario(selection: GenderScenarioSelection) -> dict:
+    """Apply one preset/custom scenario through a full transactional reset."""
+    try:
+        manifest = (
+            selection.scenario.model_copy(deep=True)
+            if selection.scenario is not None
+            else get_gender_scenario(
+                str(selection.preset_id), seed=selection.seed
+            )
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    mgr = _manager()
+    async with mgr._lock:
+        mgr._exclusive_worker = True
+        try:
+            mgr.install_gender_scenario(manifest)
+            traces = mgr.tick() if manifest.enable else []
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        finally:
+            mgr._exclusive_worker = False
+    return {
+        "mode": "full_reset",
+        "reset": True,
+        "scenario_id": manifest.scenario_id,
+        "preset_id": manifest.preset_id,
+        "initialized_tick": int(mgr.world.tick),
+        "agents": {
+            agent_id: _gender_payload(mgr.agents[agent_id])
+            for agent_id in sorted(mgr.agents)
+        },
+        "public_society": mgr.gender_society_state().model_dump(mode="json"),
+        "trace_count": len(traces),
+        "disclaimer": GENDER_EXPERIENCE_DISCLAIMER,
+    }
+
+
+@router.get("/agent/gender")
+async def get_agent_gender() -> dict:
+    """Return agent-readable Phase-8 state; never the private profile."""
+    return _gender_payload(_agent0())
+
+
+@router.get("/agent/gender/debug")
+async def get_agent_gender_debug() -> dict:
+    """Explicit private experiment/debug view."""
+    agent = _require_gender_configured(_agent0())
+    if agent.gender_state() is None:
+        raise HTTPException(
+            status_code=409,
+            detail="The installed scenario has not produced a gender state yet.",
+        )
+    return agent.gender_debug_state().model_dump(mode="json")
+
+
+@router.post("/agent/gender/event")
+async def post_agent_gender_event(request: GenderEventRequest) -> dict:
+    """Queue a validated, template-safe event for agent 0's next tick."""
+    if request.target_id != 0:
+        raise HTTPException(
+            status_code=422,
+            detail="Use /society/agent/{agent_id}/gender/event for another target.",
+        )
+    mgr = _manager()
+    async with mgr._lock:
+        event = _require_gender_configured(
+            mgr.agent(0)
+        ).queue_gender_event(request)
+    return {
+        "accepted": True,
+        "scheduled_tick": event.tick,
+        "event": event.model_dump(mode="json"),
+    }
+
+
+@router.post("/agent/gender/intent")
+async def post_agent_gender_intent(request: GenderIntentRequest) -> dict:
+    """Queue one explicit user-probe intent for the next tick."""
+    mgr = _manager()
+    async with mgr._lock:
+        intent = _require_gender_configured(
+            mgr.agent(0)
+        ).queue_gender_intent(request)
+    return {
+        "accepted": True,
+        "scheduled_tick": intent.tick,
+        "intent": intent.model_dump(mode="json"),
+    }
 
 
 @router.get("/agent/workspace", response_model=WorkspaceState)
@@ -555,6 +698,26 @@ async def get_export_analysis(window: int = Query(default=50, ge=1, le=1000)) ->
     return await _run_cpu_bound(analysis, path, window=window)
 
 
+@router.get("/export/gender-scenario")
+async def get_export_gender_scenario(
+    include_private: bool = Query(
+        default=False,
+        description="Explicit opt-in to configured private experiment inputs.",
+    ),
+) -> dict:
+    """Export public projections by default; private profiles only by opt-in."""
+    from storage.trace_export import gender_scenario_export
+    try:
+        return gender_scenario_export(
+            _manager(), include_private=include_private
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"accepted": False, "reason": str(exc)},
+        ) from exc
+
+
 # --------------------------------------------------------------------------- #
 # Society (multi-agent) endpoints
 # --------------------------------------------------------------------------- #
@@ -638,6 +801,67 @@ def _require_agent(agent_id: int):
     if agent_id not in mgr.agents:
         raise HTTPException(status_code=404, detail=f"agent {agent_id} not found")
     return mgr.agent(agent_id)
+
+
+@router.get("/society/gender", response_model=GenderSocietyState)
+async def get_society_gender() -> GenderSocietyState:
+    """Return public projections and observer-local recognition only."""
+    return _manager().gender_society_state()
+
+
+@router.get("/society/agent/{agent_id}/gender")
+async def get_society_agent_gender(agent_id: int) -> dict:
+    return _gender_payload(_require_agent(agent_id))
+
+
+@router.get("/society/agent/{agent_id}/gender/debug")
+async def get_society_agent_gender_debug(agent_id: int) -> dict:
+    agent = _require_gender_configured(_require_agent(agent_id))
+    if agent.gender_state() is None:
+        raise HTTPException(
+            status_code=409,
+            detail="The installed scenario has not produced a gender state yet.",
+        )
+    return agent.gender_debug_state().model_dump(mode="json")
+
+
+@router.post("/society/agent/{agent_id}/gender/event")
+async def post_society_agent_gender_event(
+    agent_id: int,
+    request: GenderEventRequest,
+) -> dict:
+    if request.target_id != agent_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Body target_id must match the path agent_id.",
+        )
+    mgr = _manager()
+    async with mgr._lock:
+        event = _require_gender_configured(
+            _require_agent(agent_id)
+        ).queue_gender_event(request)
+    return {
+        "accepted": True,
+        "scheduled_tick": event.tick,
+        "event": event.model_dump(mode="json"),
+    }
+
+
+@router.post("/society/agent/{agent_id}/gender/intent")
+async def post_society_agent_gender_intent(
+    agent_id: int,
+    request: GenderIntentRequest,
+) -> dict:
+    mgr = _manager()
+    async with mgr._lock:
+        intent = _require_gender_configured(
+            _require_agent(agent_id)
+        ).queue_gender_intent(request)
+    return {
+        "accepted": True,
+        "scheduled_tick": intent.tick,
+        "intent": intent.model_dump(mode="json"),
+    }
 
 
 @router.get("/society/agent/{agent_id}/consciousness")
@@ -775,6 +999,26 @@ async def post_checkpoint_delete(req: _CheckpointReq) -> dict:
 async def post_scenario_run(scenario: Scenario) -> ScenarioResult:
     """Run a reproducible scripted scenario and return its metrics time series."""
     return await _run_cpu_bound(ScenarioRunner().run, scenario)
+
+
+@router.post(
+    "/battery/gender-experience",
+    response_model=GenderBatteryResult,
+)
+async def post_gender_experience_battery(
+    request: GenderBatteryRequest,
+) -> GenderBatteryResult:
+    """Run matched Phase-8 counterfactuals without touching the live society."""
+    battery = ConsciousnessTestBattery()
+    try:
+        return await _run_cpu_bound(
+            battery.gender_experience_test,
+            seed=request.seed,
+            ticks=request.ticks,
+            preset_id=request.preset_id,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/battery/{test_name}", response_model=BatteryResult)

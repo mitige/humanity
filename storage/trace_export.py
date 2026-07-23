@@ -26,6 +26,48 @@ _ANALYSIS_DISCLAIMER = (
 )
 
 
+def gender_scenario_export(manager, *, include_private: bool = False) -> dict:
+    """Export a Phase-8 scenario with an explicit privacy boundary.
+
+    The default export contains only manifest metadata, social context and the
+    public observer layer. ``include_private=True`` is an explicit opt-in to the
+    full experiment input, including configured private profiles.
+    """
+    manifest = getattr(manager, "gender_scenario_manifest", None)
+    if manifest is None:
+        raise ValueError("no gender-life scenario is installed")
+    if include_private:
+        return {
+            "privacy": "private_experiment_input",
+            "contains_private_profiles": True,
+            "manifest": manifest.model_dump(mode="json"),
+            "warning": (
+                "This export contains configured felt profiles, body preferences "
+                "and undisclosed experiment inputs. Do not treat it as observer "
+                "knowledge or as a diagnostic record."
+            ),
+        }
+    society = manager.gender_society.state()
+    return {
+        "privacy": "public_projection",
+        "contains_private_profiles": False,
+        "manifest": {
+            "schema_version": manifest.schema_version,
+            "scenario_id": manifest.scenario_id,
+            "preset_id": manifest.preset_id,
+            "seed": manifest.seed,
+            "enable": manifest.enable,
+            "configured_agent_ids": sorted(manifest.agents),
+            "social_context": manifest.social_context.model_dump(mode="json"),
+        },
+        "society": society.model_dump(mode="json"),
+        "warning": (
+            "Public projection only. Private felt profiles, body goals, "
+            "internalized pressure and undisclosed intents are excluded."
+        ),
+    }
+
+
 def _as_float(value: object, default: float = 0.0) -> float:
     """Coerce ``value`` to a FINITE float, returning ``default`` on any failure.
 

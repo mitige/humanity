@@ -1317,6 +1317,59 @@ class GenderScenario(_GenderModel):
         return self
 
 
+class GenderScenarioSelection(_GenderModel):
+    """Choose exactly one built-in preset or one complete custom manifest."""
+
+    preset_id: str | None = Field(default=None, min_length=1, max_length=96)
+    seed: int = Field(default=42, ge=0, le=2**32 - 1)
+    scenario: GenderScenario | None = None
+
+    @model_validator(mode="after")
+    def validate_exactly_one_source(self) -> "GenderScenarioSelection":
+        if (self.preset_id is None) == (self.scenario is None):
+            raise ValueError(
+                "provide exactly one of preset_id or scenario"
+            )
+        return self
+
+
+class GenderBatteryRequest(_GenderModel):
+    preset_id: str = Field(default="nonbinary", min_length=1, max_length=96)
+    seed: int = Field(default=42, ge=0, le=2**32 - 1)
+    ticks: int = Field(default=24, ge=4, le=500)
+
+
+class GenderBatteryArm(_GenderModel):
+    arm_id: str = Field(min_length=1, max_length=96)
+    profile_checksum: str = Field(pattern=r"^[0-9a-f]{64}$")
+    curve: list[dict[str, float | int | str]] = Field(
+        min_length=1, max_length=500
+    )
+    final: dict[str, float] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_final_scores(self) -> "GenderBatteryArm":
+        for key, value in self.final.items():
+            if not key or len(key) > 96:
+                raise ValueError("battery final metric names are invalid")
+            if not isfinite(float(value)):
+                raise ValueError("battery final metrics must be finite")
+        return self
+
+
+class GenderBatteryResult(_GenderModel):
+    test: Literal["gender_experience"] = "gender_experience"
+    preset_id: str = Field(min_length=1, max_length=96)
+    seed: int = Field(ge=0, le=2**32 - 1)
+    ticks: int = Field(ge=4, le=500)
+    arms: dict[str, GenderBatteryArm] = Field(min_length=8, max_length=8)
+    comparisons: dict[str, dict[str, float | bool]] = Field(
+        default_factory=dict
+    )
+    interpretation: str = Field(min_length=1, max_length=1000)
+    disclaimer: str = GENDER_EXPERIENCE_DISCLAIMER
+
+
 class GenderDebugState(_GenderModel):
     profile: GenderProfile
     life_course: LifeCoursePlan

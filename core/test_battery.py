@@ -432,3 +432,337 @@ class ConsciousnessTestBattery:
                                      "insertion_analogues": insert,
                                      "ticks": int(ticks)},
                              interpretation=interp, disclaimer=BATTERY_DISCLAIMER)
+
+    # ------------------------------------------------------------------ #
+    # Phase 8 — matched situated-gender counterfactuals (functional)
+    # ------------------------------------------------------------------ #
+    def gender_experience_test(
+        self,
+        *,
+        seed: int = 42,
+        ticks: int = 24,
+        preset_id: str = "nonbinary",
+    ):
+        """Run four matched pairs over the Phase-8 qualitative assumptions.
+
+        The probe changes one configured factor per pair. It does not estimate
+        real-world causal effects and does not diagnose or classify anyone.
+        """
+        from core.gender_experience import GenderExperienceEngine
+        from core.gender_scenarios import get_gender_scenario
+        from schemas.models import (
+            GenderBatteryArm,
+            GenderBatteryResult,
+            GenderEventRequest,
+            GenderEventType,
+            GenderIntentRequest,
+            GenderIntentType,
+            GenderSocialContext,
+        )
+
+        n_ticks = max(4, min(500, int(ticks)))
+        base = get_gender_scenario(preset_id, seed=int(seed))
+        configured = base.agents[0]
+        common_config = SimConfig(
+            random_seed=int(seed),
+            gender_experience_enabled=True,
+            gender_internalization_rate=0.16,
+            gender_recovery_rate=0.12,
+            persist_memory=False,
+            trace_logging=False,
+        )
+
+        supportive = GenderSocialContext(
+            norm_rigidity=0.1,
+            institutional_hostility=0.0,
+            baseline_safety=1.0,
+            care_access=0.8,
+            community_visibility=0.8,
+            positive_representation=0.9,
+            hostility_enabled=False,
+        )
+        hostile = GenderSocialContext(
+            norm_rigidity=0.95,
+            institutional_hostility=0.85,
+            baseline_safety=0.2,
+            care_access=0.25,
+            community_visibility=0.1,
+            positive_representation=0.1,
+            hostility_enabled=True,
+        )
+        isolated = GenderSocialContext(
+            norm_rigidity=0.4,
+            institutional_hostility=0.0,
+            baseline_safety=0.7,
+            community_visibility=0.0,
+            positive_representation=0.0,
+            hostility_enabled=False,
+        )
+        community = GenderSocialContext(
+            norm_rigidity=0.4,
+            institutional_hostility=0.0,
+            baseline_safety=0.7,
+            community_visibility=1.0,
+            positive_representation=1.0,
+            hostility_enabled=False,
+        )
+
+        def sensitivity_profile(*, dysphoria: float, euphoria: float):
+            body = {
+                name: preference.model_copy(
+                    update={
+                        "dysphoria_sensitivity": dysphoria,
+                        "euphoria_sensitivity": euphoria,
+                    },
+                    deep=True,
+                )
+                for name, preference
+                in configured.profile.body_preferences.items()
+            }
+            return configured.profile.model_copy(
+                update={
+                    "profile_id": (
+                        f"{configured.profile.profile_id}-"
+                        f"d{dysphoria:.2f}-e{euphoria:.2f}"
+                    ),
+                    "body_preferences": body,
+                },
+                deep=True,
+            )
+
+        arm_specs = {
+            "supportive": {
+                "profile": configured.profile,
+                "context": supportive,
+                "mode": "supportive",
+            },
+            "hostile": {
+                "profile": configured.profile,
+                "context": hostile,
+                "mode": "hostile",
+            },
+            "expression_allowed": {
+                "profile": configured.profile,
+                "context": supportive,
+                "mode": "expression_allowed",
+            },
+            "expression_constrained": {
+                "profile": configured.profile,
+                "context": hostile,
+                "mode": "expression_constrained",
+            },
+            "euphoria_sensitive": {
+                "profile": sensitivity_profile(
+                    dysphoria=0.0, euphoria=1.0
+                ),
+                "context": supportive,
+                "mode": "euphoria_sensitive",
+            },
+            "dysphoria_sensitive": {
+                "profile": sensitivity_profile(
+                    dysphoria=1.0, euphoria=0.15
+                ),
+                "context": supportive,
+                "mode": "dysphoria_sensitive",
+            },
+            "isolated": {
+                "profile": configured.profile,
+                "context": isolated,
+                "mode": "isolated",
+            },
+            "community_connected": {
+                "profile": configured.profile,
+                "context": community,
+                "mode": "community",
+            },
+        }
+
+        def run_arm(arm_id: str, spec: dict) -> GenderBatteryArm:
+            engine = GenderExperienceEngine(
+                common_config,
+                agent_id=0,
+                profile=spec["profile"],
+                life_course=configured.life_course,
+                social_context=spec["context"],
+                seed=int(seed),
+            )
+            curve: list[dict[str, float | int | str]] = []
+            mode = spec["mode"]
+            for tick in range(1, n_ticks + 1):
+                if tick == 1 and mode in {
+                    "supportive",
+                    "expression_allowed",
+                    "euphoria_sensitive",
+                    "community",
+                }:
+                    engine.queue_event(
+                        GenderEventRequest(
+                            type=GenderEventType.AFFIRMATION,
+                            domain="general",
+                            intensity=0.9,
+                            context_code="matched_battery_affirmation",
+                        )
+                    )
+                if tick == 1 and mode == "expression_allowed":
+                    engine.queue_intent(
+                        GenderIntentRequest(
+                            type=GenderIntentType.ADJUST_EXPRESSION,
+                            domain="presentation",
+                            urgency=0.8,
+                        )
+                    )
+                if tick == 1 and mode == "expression_constrained":
+                    engine.queue_intent(
+                        GenderIntentRequest(
+                            type=GenderIntentType.CONCEAL,
+                            domain="presentation",
+                            urgency=0.8,
+                            disclosure_scope="public",
+                        )
+                    )
+                if mode in {"hostile", "expression_constrained"} \
+                        and tick % 3 == 1:
+                    engine.queue_event(
+                        GenderEventRequest(
+                            type=GenderEventType.INVALIDATION,
+                            domain="public_recognition",
+                            intensity=0.85,
+                            deliberate=True,
+                            context_code="matched_battery_hostility",
+                        )
+                    )
+                if mode == "community" and tick % 3 == 1:
+                    engine.queue_event(
+                        GenderEventRequest(
+                            type=GenderEventType.COMMUNITY_CONTACT,
+                            domain="social",
+                            intensity=0.9,
+                            context_code="matched_battery_community",
+                        )
+                    )
+                state = engine.update(tick)
+                transition_progress = _mean([
+                    value.progress for value in state.transitions.values()
+                ])
+                accentuation = _mean([
+                    value.accentuation for value in state.expression.values()
+                ])
+                curve.append({
+                    "tick": tick,
+                    "life_stage": state.life_stage.value,
+                    "congruence": round(state.congruence.total, 6),
+                    "expression_congruence": round(
+                        state.congruence.expression, 6
+                    ),
+                    "dysphoria": round(state.affect.dysphoria, 6),
+                    "euphoria": round(state.affect.euphoria, 6),
+                    "fulfillment": round(state.affect.fulfillment, 6),
+                    "external_stress": round(
+                        state.minority_stress.external_current, 6
+                    ),
+                    "internalized_transphobia": round(
+                        state.minority_stress.internalized_transphobia, 6
+                    ),
+                    "resilience": round(state.resilience.index, 6),
+                    "accentuation": round(accentuation, 6),
+                    "transition_progress": round(
+                        transition_progress, 6
+                    ),
+                })
+            final_row = curve[-1]
+            final = {
+                key: float(value)
+                for key, value in final_row.items()
+                if key not in {"tick", "life_stage"}
+            }
+            return GenderBatteryArm(
+                arm_id=arm_id,
+                profile_checksum=engine.profile_checksum,
+                curve=curve,
+                final=final,
+            )
+
+        arms = {
+            arm_id: run_arm(arm_id, spec)
+            for arm_id, spec in arm_specs.items()
+        }
+
+        def difference(left: str, right: str, metric: str) -> float:
+            return round(
+                arms[left].final[metric] - arms[right].final[metric],
+                6,
+            )
+
+        comparisons = {
+            "supportive_vs_hostile": {
+                "same_private_profile": (
+                    arms["supportive"].profile_checksum
+                    == arms["hostile"].profile_checksum
+                ),
+                "fulfillment_delta": difference(
+                    "supportive", "hostile", "fulfillment"
+                ),
+                "external_stress_delta": difference(
+                    "supportive", "hostile", "external_stress"
+                ),
+                "internalization_delta": difference(
+                    "supportive", "hostile",
+                    "internalized_transphobia",
+                ),
+            },
+            "expression_allowed_vs_constrained": {
+                "same_private_profile": (
+                    arms["expression_allowed"].profile_checksum
+                    == arms["expression_constrained"].profile_checksum
+                ),
+                "expression_congruence_delta": difference(
+                    "expression_allowed",
+                    "expression_constrained",
+                    "expression_congruence",
+                ),
+                "stress_delta": difference(
+                    "expression_allowed",
+                    "expression_constrained",
+                    "external_stress",
+                ),
+            },
+            "euphoria_vs_dysphoria_sensitivity": {
+                "euphoria_delta": difference(
+                    "euphoria_sensitive",
+                    "dysphoria_sensitive",
+                    "euphoria",
+                ),
+                "dysphoria_delta": difference(
+                    "euphoria_sensitive",
+                    "dysphoria_sensitive",
+                    "dysphoria",
+                ),
+            },
+            "community_vs_isolation": {
+                "same_private_profile": (
+                    arms["community_connected"].profile_checksum
+                    == arms["isolated"].profile_checksum
+                ),
+                "resilience_delta": difference(
+                    "community_connected", "isolated", "resilience"
+                ),
+                "internalization_delta": difference(
+                    "community_connected",
+                    "isolated",
+                    "internalized_transphobia",
+                ),
+            },
+        }
+        return GenderBatteryResult(
+            preset_id=preset_id,
+            seed=int(seed),
+            ticks=n_ticks,
+            arms=arms,
+            comparisons=comparisons,
+            interpretation=(
+                "Matched counterfactuals show consequences of the implemented "
+                "qualitative assumptions only. They are not estimates of causal "
+                "effects in real people and cannot diagnose, classify, or predict "
+                "a person's gender or transition."
+            ),
+        )
