@@ -209,9 +209,9 @@ def test_gender_probes_use_enum_templates_and_show_provenance() -> None:
 
 def test_gender_ui_is_responsive_accessible_and_cache_busted() -> None:
     html, _js, css, probe = _sources()
-    assert "styles.css?v=8.1" in probe.hrefs
-    assert "app.js?v=8.1" in probe.srcs
-    assert html.count("?v=8.1") == 2
+    assert "styles.css?v=8.2" in probe.hrefs
+    assert "app.js?v=8.2" in probe.srcs
+    assert html.count("?v=8.2") == 2
     assert probe.by_id["gender-scenario-status"].get("aria-live") == "polite"
     assert probe.by_id["gender-probe-log"].get("aria-live") == "polite"
     assert probe.by_id["gender-battery-result"].get("aria-live") == "polite"

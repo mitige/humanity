@@ -14,12 +14,12 @@
 @layer tokens {
   :root, [data-theme="dark"] {
     color-scheme: dark;
-    /* Surfaces */
-    --field: #07090D;
-    --surface-1: #0D1117;
+    /* Surfaces — Apple-linen white (cool undertones, more depth) */
+    --field: #05060A;
+    --surface-1: #0A0E14;
     --surface-2: #131922;
     --surface-3: #19212C;
-    --inset: #05070A;
+    --inset: #030407;
     /* Inks */
     --ink: #F3EFE6;
     --ink-2: #A9B0BC;
@@ -27,8 +27,8 @@
     --ink-ghost: #4A5364;
     /* Electrum — the rare signal */
     --electrum: #E7BC68;
-    --electrum-bright: #F2D48C;
-    --electrum-deep: #8F7336;
+    --electrum-bright: #F5DD9B;
+    --electrum-deep: #A48C56;
     --on-electrum: #1D1407;
     --electrum-veil: rgba(231, 188, 104, 0.12);
     /* Semantics */
@@ -57,7 +57,7 @@
            0 18px 44px -28px rgba(0, 0, 0, 0.72);
     --e-3: 0 2px 6px rgba(0, 0, 0, 0.40), 0 28px 70px -34px rgba(0, 0, 0, 0.85);
     --e-inset: inset 0 2px 6px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(243, 239, 230, 0.05);
-    --grain-op: 0.02;
+    --grain-op: 0.008;
     /* Coalition sources (12 canonical + 4 emitted-in-practice) — AA on inset */
     --src-perception: #7CC1DB;   --src-imagination: #9FB2EC;
     --src-memory: #A79BDF;       --src-dream: #BF93E6;
@@ -146,11 +146,11 @@
     --stack-gap: 18px;
     /* Radii */
     --r-1: 4px; --r-2: 6px; --r-3: 8px; --r-4: 10px; --r-round: 999px;
-    /* Motion */
-    --dur-flip: 120ms;
+    /* Motion — Apple-like micro-timing */
+    --dur-flip: 100ms;
     --dur-value: 180ms;
     --dur-access: 240ms;
-    --ease-instrument: cubic-bezier(0.25, 0.9, 0.2, 1.02);
+    --ease-instrument: cubic-bezier(0.33, 0, 0.2, 1.04);
     --ease-exit: cubic-bezier(0.4, 0, 0.7, 0.2);
     --breath: 2400ms;
     /* Controls */
@@ -228,8 +228,8 @@
 
   :focus-visible {
     outline: var(--focus-w) solid var(--focus);
-    outline-offset: var(--focus-offset);
-    border-radius: 2px;
+    outline-offset: 3px;
+    border-radius: 3px;
   }
 
   .sr-only {
@@ -267,9 +267,9 @@
     display: flex; align-items: center; gap: var(--sp-4);
     height: var(--topbar-h);
     padding: 0 var(--sp-4);
-    background: color-mix(in srgb, var(--field) 88%, transparent);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--hairline);
+    background: color-mix(in srgb, var(--field) 90%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 0.5px solid var(--hairline);
   }
   .brand { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
   .brand-mark svg { display: block; }
@@ -410,8 +410,9 @@
     height: var(--strip-h);
     display: flex; align-items: center; gap: var(--sp-2);
     padding: 0 var(--sp-4);
-    background: var(--field);
-    border-top: 1px solid var(--hairline);
+    background: color-mix(in srgb, var(--field) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-top: 0.5px solid var(--hairline);
     font-size: var(--fs-micro);
     color: var(--ink-3);
   }
@@ -435,10 +436,10 @@
   .panel {
     position: relative; z-index: var(--z-panel);
     background: var(--surface-1);
-    border: 1px solid var(--hairline);
-    border-radius: var(--r-4);
+    border: 0.5px solid var(--hairline);
+    border-radius: 12px;
     padding: var(--panel-pad);
-    box-shadow: var(--e-2);
+    box-shadow: var(--e-inset);
     min-width: 0;
   }
   .panel-head {
@@ -449,8 +450,9 @@
     border-bottom: 1px solid var(--hairline);
   }
   .panel-head h3 {
-    font-family: var(--font-sans); font-weight: 600;
-    font-size: var(--fs-panel); letter-spacing: 0.12em; text-transform: uppercase;
+    font-family: var(--font-serif); font-style: italic; font-weight: 600;
+    font-size: var(--fs-panel); letter-spacing: 0.02em; text-transform: none;
+    color: var(--ink-2);
   }
   .src {
     font-family: var(--font-mono); font-size: var(--fs-micro);
@@ -550,7 +552,7 @@
   .stat-k { font-size: var(--fs-caption); color: var(--ink-3); letter-spacing: 0.04em; }
   .stat-v { font-size: var(--fs-data); text-align: right; color: var(--ink); }
   .meter {
-    position: relative; height: 7px; border-radius: var(--r-round);
+    position: relative; height: 6px; border-radius: var(--r-round);
     background: var(--inset); box-shadow: var(--e-inset);
     overflow: hidden;
   }
@@ -693,7 +695,7 @@
   }
   .kpi-k { font-size: var(--fs-micro); color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase; }
   .kpi-v { font-family: var(--font-mono); font-size: var(--fs-numeral); font-weight: 600; }
-  .kpi-spark { width: 100%; height: 22px; }
+  .kpi-spark { width: 100%; height: 26px; }
   .kpi-spark [data-line] { fill: none; stroke: var(--ink-2); stroke-width: 1.4; }
   .kpi-spark .area { fill: var(--ink-2); opacity: 0.10; }
 
@@ -1577,8 +1579,9 @@
     width: min(440px, 92vw); z-index: var(--z-dock);
     display: flex; flex-direction: column;
     background: var(--surface-1);
-    border-left: 1px solid var(--line);
+    border-left: 0.5px solid var(--line);
     box-shadow: var(--e-3);
+    backdrop-filter: blur(8px);
     transform: translateX(100%);
     transition: transform var(--dur-value) var(--ease-instrument);
     visibility: hidden;
@@ -1601,12 +1604,12 @@
   /* =================== DIALOGS =================== */
   dialog {
     background: var(--surface-1); color: var(--ink);
-    border: 1px solid var(--line); border-radius: var(--r-4);
+    border: 0.5px solid var(--line); border-radius: 14px;
     box-shadow: var(--e-3);
     padding: var(--sp-6);
     max-width: min(620px, 92vw);
   }
-  dialog::backdrop { background: rgba(3, 4, 7, 0.6); backdrop-filter: blur(3px); }
+  dialog::backdrop { background: rgba(5, 6, 10, 0.65); backdrop-filter: blur(6px); }
   .charter-head { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
   .charter-head h2 { font-family: var(--font-serif); font-size: var(--fs-view); flex: 1; }
   .charter-head svg { color: var(--electrum); }
@@ -1621,7 +1624,7 @@
   .charter-actions { margin-top: var(--sp-5); display: flex; justify-content: flex-end; }
 
   .command-palette {
-    width: min(560px, 92vw);
+    width: min(520px, 92vw);
     padding: 0;
     margin-top: 12vh;
   }
@@ -1755,7 +1758,7 @@
   .toast { animation: toast-in var(--dur-value) var(--ease-instrument); }
   .view { animation: view-in var(--dur-flip) ease-out; }
   @keyframes view-in {
-    from { opacity: 0.35; }
+    from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; }
   }
 
